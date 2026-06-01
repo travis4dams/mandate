@@ -67,13 +67,14 @@ describe("runReplay", () => {
     expect(trajectory.find((s) => s.date === "1980-03")).toBeUndefined();
   });
 
-  it("snapshots are independent: mutating one entry does not corrupt others", () => {
-    const trajectory = runReplay("replay.1979_volcker_chair_strategy", 5);
-    const originalRate = trajectory[2].vars.policy_rate;
-    trajectory[0].vars.policy_rate = 99;
-    trajectory[0].flags.tampered = true;
-    expect(trajectory[2].vars.policy_rate).toBe(originalRate);
-    expect(trajectory[2].flags.tampered).toBeUndefined();
+  it("snapshots survive cross-call independence: mutating a returned trajectory does not leak into a fresh run", () => {
+    const first = runReplay("replay.1979_volcker_chair_strategy", 3);
+    const baseline = first[0].vars.policy_rate;
+    first[0].vars.policy_rate = 99;
+    first[0].flags.tampered = true;
+    const second = runReplay("replay.1979_volcker_chair_strategy", 3);
+    expect(second[0].vars.policy_rate).toBe(baseline);
+    expect(second[0].flags.tampered).toBeUndefined();
   });
 });
 
@@ -115,7 +116,6 @@ describe("replay schema validation", () => {
   });
 
   it("rejects a replay with non-strictly-increasing action dates (loadReplay-level guard)", () => {
-    const repoReplays = new URL("../content/replays", import.meta.url).pathname;
     const dir = join(tmpdir(), `mandate-test-replay-order-${process.pid}`);
     mkdirSync(dir, { recursive: true });
     try {
@@ -130,18 +130,30 @@ describe("replay schema validation", () => {
         ],
       };
       writeFileSync(join(dir, "bad.json"), JSON.stringify(badReplay));
-      const replays = loadValidated<{ id: string; actions: { date: string }[] }>(REPLAY_SCHEMA, dir);
-      const replay = replays[0];
-      for (let i = 1; i < replay.actions.length; i++) {
-        if (replay.actions[i].date <= replay.actions[i - 1].date) {
-          throw new ReplayActionOrderError(replay.id, replay.actions[i].date, replay.actions[i - 1].date);
-        }
-      }
-    } catch (e) {
-      expect(e).toBeInstanceOf(ReplayActionOrderError);
+      expect(() => loadReplay("replay.test_unsorted", dir)).toThrow(ReplayActionOrderError);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
-    expect(repoReplays).toBeDefined();
+  });
+
+  it("rejects equal consecutive dates too (strictly increasing, not just non-decreasing)", () => {
+    const dir = join(tmpdir(), `mandate-test-replay-eq-${process.pid}`);
+    mkdirSync(dir, { recursive: true });
+    try {
+      const badReplay = {
+        id: "replay.test_duplicate_date",
+        name: "replay.test_duplicate_date.name",
+        desc: "replay.test_duplicate_date.desc",
+        scenario: "scen.1979_volcker",
+        actions: [
+          { date: "1979-08", policy_rate: 0.10 },
+          { date: "1979-08", policy_rate: 0.11 },
+        ],
+      };
+      writeFileSync(join(dir, "bad.json"), JSON.stringify(badReplay));
+      expect(() => loadReplay("replay.test_duplicate_date", dir)).toThrow(ReplayActionOrderError);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

@@ -15,7 +15,10 @@ export function runReplay(replayId: string, months: number): GameStateSnapshot[]
     state = loadScenario(replay.scenario, ["policy_rate"]);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    throw new Error(`runReplay("${replayId}"): scenario "${replay.scenario}" failed to load — ${msg}`);
+    throw new Error(
+      `runReplay("${replayId}"): scenario "${replay.scenario}" failed to load — ${msg}`,
+      { cause: e },
+    );
   }
 
   const trajectory: GameStateSnapshot[] = [];

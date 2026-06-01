@@ -28,15 +28,20 @@ export class ReplayNotFoundError extends Error {
 }
 
 // Thrown when a replay's actions are not strictly increasing by date.
-// Loading guards this so Array.find() can never silently match the wrong action.
+// The structural invariant lets callers iterate actions predictably (e.g.,
+// a streaming runner could advance a single cursor instead of scanning).
 export class ReplayActionOrderError extends Error {
-  constructor(replayId: string, badDate: string, prevDate: string) {
+  constructor(
+    public readonly replayId: string,
+    public readonly badDate: string,
+    public readonly prevDate: string,
+  ) {
     super(`Replay "${replayId}": action date ${badDate} is not strictly after ${prevDate}.`);
     this.name = "ReplayActionOrderError";
   }
 }
 
-const REPLAYS_DIR = join(
+const DEFAULT_REPLAYS_DIR = join(
   new URL(".", import.meta.url).pathname,
   "../../content/replays"
 );
@@ -48,11 +53,14 @@ const SCHEMA_PATH = join(
 /**
  * Load a replay strategy by id.
  *
- * @param id - The replay id, e.g. "replay.1979_volcker_chair_strategy".
- * @throws ReplayNotFoundError if the id is not present in content/replays/.
+ * @param id  - The replay id, e.g. "replay.1979_volcker_chair_strategy".
+ * @param dir - Optional override of the content directory (used by tests to
+ *              load a synthetic fixture without touching `content/replays/`).
+ * @throws ReplayNotFoundError    when no replay with the id is present in `dir`.
+ * @throws ReplayActionOrderError when action dates are not strictly increasing.
  */
-export function loadReplay(id: string): Replay {
-  const replays = loadValidated<Replay>(SCHEMA_PATH, REPLAYS_DIR);
+export function loadReplay(id: string, dir: string = DEFAULT_REPLAYS_DIR): Replay {
+  const replays = loadValidated<Replay>(SCHEMA_PATH, dir);
   const replay = replays.find((r) => r.id === id);
   if (!replay) {
     throw new ReplayNotFoundError(id);
