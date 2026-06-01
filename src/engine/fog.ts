@@ -1,5 +1,4 @@
 // SPEC-FOG-1: data fog mechanic — history-aware lag + deterministic noise.
-// observe() is a pure function: no Math.random(), no Date, no mutation of input.
 
 import { join } from "node:path";
 import { loadValidated } from "../content/loader.js";
@@ -10,7 +9,8 @@ interface FogParams {
   lag_months: number;
 }
 
-interface EngineParams {
+// Partial view — full schema: schemas/engine-params.schema.json
+interface FogParamsSection {
   fog: Record<string, FogParams>;
 }
 
@@ -24,24 +24,20 @@ const SCHEMA_PATH = join(
   "../../schemas/engine-params.schema.json"
 );
 
-// Load params once at module level (content is static; hot-reload not needed).
-const params: EngineParams = loadValidated<EngineParams>(SCHEMA_PATH, PARAMS_DIR)[0];
+function loadFogParams(): FogParamsSection {
+  const loaded = loadValidated<FogParamsSection>(SCHEMA_PATH, PARAMS_DIR);
+  if (!loaded[0] || !loaded[0].fog) {
+    throw new Error("Engine params content/engine/params.json not found or schema-invalid");
+  }
+  return loaded[0];
+}
 
-/**
- * Return a fogged observation of `seriesId` from `state`.
- *
- * Lag indexing (AC-4, locked):
- *   lag_months === 0  →  state.vars[seriesId]  (current)
- *   lag_months >= 1 && history.length >= lag_months
- *                     →  state.history[lag_months - 1].vars[seriesId]
- *   lag_months >= 1 && history.length < lag_months
- *                     →  state.vars[seriesId]  (graceful fallback)
- *
- * Noise: Box-Muller transform of two rng() calls produces standard-normal z;
- *   observed = truth + noise_scale * z
- *
- * @throws {Error} if seriesId is not present in content/engine/params.json#fog.
- */
+// Load params once at module level (content is static; hot-reload not needed).
+const params: FogParamsSection = loadFogParams();
+
+// observe() is pure: no Math.random(), no Date, no mutation of input.
+// SPEC-FOG-1 lag indexing: lag_months===0 → current; lag_months>=1 → history[lag_months-1];
+// if history is shorter than lag_months → current (graceful fallback).
 export function observe(
   state: GameState,
   seriesId: string,
@@ -56,15 +52,24 @@ export function observe(
 
   const { noise_scale, lag_months } = fogEntry;
 
-  // Determine the truth value according to lag indexing.
   let truth: number;
   if (lag_months === 0) {
-    truth = state.vars[seriesId] ?? 0;
+    if (!(seriesId in state.vars)) {
+      throw new Error(`fog: series "${seriesId}" missing from state.vars`);
+    }
+    truth = state.vars[seriesId];
   } else if (state.history.length >= lag_months) {
-    truth = state.history[lag_months - 1].vars[seriesId] ?? 0;
+    const slot = state.history[lag_months - 1];
+    if (!(seriesId in slot.vars)) {
+      throw new Error(`fog: series "${seriesId}" missing from state.history[${lag_months - 1}].vars`);
+    }
+    truth = slot.vars[seriesId];
   } else {
     // History is shorter than requested lag — fall back to current value.
-    truth = state.vars[seriesId] ?? 0;
+    if (!(seriesId in state.vars)) {
+      throw new Error(`fog: series "${seriesId}" missing from state.vars (fallback path)`);
+    }
+    truth = state.vars[seriesId];
   }
 
   if (noise_scale === 0) {

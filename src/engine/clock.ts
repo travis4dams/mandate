@@ -1,32 +1,47 @@
-import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { loadValidated } from "../content/loader.js";
 import type { GameState, GameStateSnapshot } from "./state.js";
 
 // SPEC-SIM-3: pure calendar tick with bounded state history.
 // No Math.random(), no Date(), no wall clock — engine purity contract.
 
-/** Default history size fallback if params are not provided. */
-const DEFAULT_HISTORY_SIZE = 24;
+/** Structural minimum: history_size must be at least this. */
+const MIN_HISTORY_SIZE = 1;
 
-/** Load history_size from content/engine/params.json at module-load time. */
-function loadDefaultHistorySize(): number {
-  try {
-    const raw = JSON.parse(readFileSync("content/engine/params.json", "utf8"));
-    return (raw?.tick?.history_size as number | undefined) ?? DEFAULT_HISTORY_SIZE;
-  } catch {
-    return DEFAULT_HISTORY_SIZE;
-  }
+interface TickParams {
+  tick: { history_size: number };
 }
 
-const contentHistorySize: number = loadDefaultHistorySize();
+// cwd-safe path resolution — mirrors src/content/scenarios.ts pattern.
+const PARAMS_DIR = join(
+  new URL(".", import.meta.url).pathname,
+  "../../content/engine"
+);
+const SCHEMA_PATH = join(
+  new URL(".", import.meta.url).pathname,
+  "../../schemas/engine-params.schema.json"
+);
+
+function loadHistorySize(): number {
+  const loaded = loadValidated<TickParams>(SCHEMA_PATH, PARAMS_DIR);
+  if (!loaded[0] || loaded[0].tick?.history_size === undefined) {
+    throw new Error("Engine params content/engine/params.json not found or missing tick.history_size");
+  }
+  const size = loaded[0].tick.history_size;
+  if (!Number.isInteger(size) || size < MIN_HISTORY_SIZE) {
+    throw new Error(`tick.history_size must be an integer >= ${MIN_HISTORY_SIZE}, got: ${size}`);
+  }
+  return size;
+}
+
+const contentHistorySize: number = loadHistorySize();
 
 /**
  * Pure calendar tick: advances `state.date` (YYYY-MM) by N months and
  * maintains a bounded `state.history` of prior snapshots.
  *
- * Conventions (locked — see AC-2):
- *  - history[0] is the most-recent prior snapshot.
- *  - The current state is NOT in history.
- *  - For months <= 0, returns a clone with no history mutation.
+ * history[0] is the most-recent prior snapshot; current state is NOT in history.
+ * For months <= 0, returns a clone with no history mutation.
  *
  * @param state   Input game state (never mutated).
  * @param months  Number of months to advance. Non-positive → pure clone.
@@ -54,7 +69,7 @@ export function tick(
   let currentVars = { ...state.vars };
   let currentFlags = { ...state.flags };
   // Start from a copy of the existing history (most-recent-first convention kept).
-  let history: GameStateSnapshot[] = state.history.map((s) => ({
+  const history: GameStateSnapshot[] = state.history.map((s) => ({
     ...s,
     vars: { ...s.vars },
     flags: { ...s.flags },
@@ -68,10 +83,10 @@ export function tick(
       flags: { ...currentFlags },
     };
     // Prepend — history[0] must be the most-recent prior snapshot.
-    history = [snapshot, ...history];
+    history.unshift(snapshot);
     // Truncate from the back to honour history_size.
     if (history.length > historySize) {
-      history = history.slice(0, historySize);
+      history.pop();
     }
     // Advance the date by one month (hand-rolled — no Date() constructor).
     currentDate = advanceOneMonth(currentDate);

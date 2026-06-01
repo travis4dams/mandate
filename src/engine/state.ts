@@ -1,15 +1,8 @@
 // The single source of truth for a running game. The financial-network "map"
 // and every dashboard are views derived from this — never a separate store.
 
-/** A non-recursive snapshot of game state (flat date/vars/flags — excludes history).
- *  tick() is the only writer of state.history; tests that build a GameState
- *  directly start with history: [].
- */
-export interface GameStateSnapshot {
-  date: string;
-  vars: Record<string, number>;
-  flags: Record<string, boolean>;
-}
+// tick() is the only appender to state.history; tests that build a GameState directly start with history: [].
+export type GameStateSnapshot = Omit<GameState, "history">;
 
 export interface GameState {
   /** ISO year-month, e.g. "1979-08". */
@@ -23,11 +16,11 @@ export interface GameState {
   history: GameStateSnapshot[];
 }
 
-export function makeState(partial: Partial<GameState> = {}): GameState {
+export function makeState(partial: Partial<Omit<GameState, "history">> = {}): GameState {
   return {
     date: partial.date ?? "1913-01",
     vars: { ...(partial.vars ?? {}) },
     flags: { ...(partial.flags ?? {}) },
-    history: partial.history ? [...partial.history] : [],
+    history: [],
   };
 }
