@@ -39,6 +39,14 @@ describe("tick", () => {
     expect(JSON.stringify(s)).toBe(before);
   });
 
+  it("December → January rolls year correctly", () => {
+    // SPEC-SIM-3: a swap of the year-increment condition would break this case
+    // while leaving year-crossing tests that start mid-year green.
+    const s = makeState({ date: "1979-12" });
+    const next = tick(s, 1);
+    expect(next.date).toBe("1980-01");
+  });
+
   it("history is bounded to params.history_size", () => {
     const params = { history_size: 3 };
     let s = makeState({ date: "1979-01" });
@@ -46,6 +54,9 @@ describe("tick", () => {
       s = tick(s, 1, params);
     }
     expect(s.history.length).toBeLessThanOrEqual(3);
+    // Verify the surviving entries: history[0] is most-recent, history[2] is oldest kept.
+    expect(s.history[0].date).toBe("1979-10");
+    expect(s.history[2].date).toBe("1979-08");
   });
 
   it("history[0] is the most-recent prior snapshot after one tick", () => {
