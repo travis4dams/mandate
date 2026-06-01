@@ -1,8 +1,8 @@
 {
-  "id": "replay.1979_volcker_chair_strategy",
-  "name": "replay.1979_volcker_chair_strategy.name",
-  "desc": "replay.1979_volcker_chair_strategy.desc",
-  "scenario": "scen.1979_volcker",
+  "id": "replay.1979_chair_tightening",
+  "name": "replay.1979_chair_tightening.name",
+  "desc": "replay.1979_chair_tightening.desc",
+  "scenario": "scen.1979_stagflation",
   "actions": [
     {"date": "1979-08", "policy_rate": 0.1075},
     {"date": "1979-10", "policy_rate": 0.138},

@@ -24,6 +24,12 @@ against this file on every pull request.
   strings live in `content/localization/`. (SPEC-CONTENT-2)
 - **Schema-governed content.** New content types need a schema in `schemas/` and
   must pass `npm run validate`. (SPEC-CONTENT-1)
+- **No real person names.** Named people in the game (committee members, Chair
+  characters, etc.) MUST use randomly-generated names that don't correspond to real
+  historical figures. Institution names (FOMC, FRED, Federal Reserve) and period
+  markers (1979 stagflation, late-1970s tightening) are fine. This applies to
+  content/localization values, scenario/replay ids that reference a person, and any
+  future characters.
 
 ## Before opening a PR
 - Run `npm run check` (typecheck + validate + spec:trace + test) — all green.

@@ -1,8 +1,8 @@
 {
-  "id": "scen.1979_volcker",
+  "id": "scen.1979_stagflation",
   "date": "1979-08",
-  "name": "scen.1979_volcker.name",
-  "desc": "scen.1979_volcker.desc",
+  "name": "scen.1979_stagflation.name",
+  "desc": "scen.1979_stagflation.desc",
   "vars": {
     "inflation": 0.114,
     "unemployment": 0.058,

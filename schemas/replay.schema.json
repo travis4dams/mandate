@@ -10,22 +10,22 @@
     "id": {
       "type": "string",
       "pattern": "^replay\\.[a-z0-9_]+$",
-      "description": "Stable unique id, e.g. replay.1979_volcker_chair_strategy."
+      "description": "Stable unique id, e.g. replay.1979_chair_tightening."
     },
     "name": {
       "type": "string",
       "pattern": "^[a-z][a-z0-9_.]+$",
-      "description": "Localization key for the replay title, e.g. replay.1979_volcker_chair_strategy.name."
+      "description": "Localization key for the replay title, e.g. replay.1979_chair_tightening.name."
     },
     "desc": {
       "type": "string",
       "pattern": "^[a-z][a-z0-9_.]+$",
-      "description": "Localization key for the replay description, e.g. replay.1979_volcker_chair_strategy.desc."
+      "description": "Localization key for the replay description, e.g. replay.1979_chair_tightening.desc."
     },
     "scenario": {
       "type": "string",
       "pattern": "^scen\\.[a-z0-9_]+$",
-      "description": "Scenario id this strategy is played against, e.g. scen.1979_volcker."
+      "description": "Scenario id this strategy is played against, e.g. scen.1979_stagflation."
     },
     "actions": {
       "type": "array",

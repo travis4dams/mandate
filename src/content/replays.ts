@@ -53,7 +53,7 @@ const SCHEMA_PATH = join(
 /**
  * Load a replay strategy by id.
  *
- * @param id  - The replay id, e.g. "replay.1979_volcker_chair_strategy".
+ * @param id  - The replay id, e.g. "replay.1979_chair_tightening".
  * @param dir - Optional override of the content directory (used by tests to
  *              load a synthetic fixture without touching `content/replays/`).
  * @throws ReplayNotFoundError    when no replay with the id is present in `dir`.

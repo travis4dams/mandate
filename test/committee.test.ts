@@ -36,8 +36,8 @@ describe("loadCommittee", () => {
         name: "comm.test_dup.name",
         desc: "comm.test_dup.desc",
         members: [
-          { id: "member.volcker", name: "member.volcker.name", lean: "hawkish", competence: 0.9 },
-          { id: "member.volcker", name: "member.volcker.name", lean: "hawkish", competence: 0.8 },
+          { id: "member.chair", name: "member.chair.name", lean: "hawkish", competence: 0.9 },
+          { id: "member.chair", name: "member.chair.name", lean: "hawkish", competence: 0.8 },
         ],
       };
       writeFileSync(join(dir, "dup.json"), JSON.stringify(dup));
@@ -59,8 +59,8 @@ describe("committee schema validation", () => {
         desc: "comm.test_bad.desc",
         members: [
           {
-            id: "member.volcker",
-            name: "Paul Volcker", // inline English — must fail schema
+            id: "member.chair",
+            name: "Dr. Eleanor Voss", // inline English — must fail schema
             lean: "hawkish",
             competence: 0.95,
           },
@@ -83,8 +83,8 @@ describe("committee schema validation", () => {
         desc: "comm.test_lean.desc",
         members: [
           {
-            id: "member.volcker",
-            name: "member.volcker.name",
+            id: "member.chair",
+            name: "member.chair.name",
             lean: "moderate", // not in enum
             competence: 0.95,
           },
@@ -106,7 +106,7 @@ describe("committee schema validation", () => {
         name: "comm.test_comp.name",
         desc: "comm.test_comp.desc",
         members: [
-          { id: "member.volcker", name: "member.volcker.name", lean: "hawkish", competence: 1.5 },
+          { id: "member.chair", name: "member.chair.name", lean: "hawkish", competence: 1.5 },
         ],
       };
       writeFileSync(join(dir, "bad.json"), JSON.stringify(bad));
@@ -125,7 +125,7 @@ describe("committee schema validation", () => {
         name: "comm.test_neg.name",
         desc: "comm.test_neg.desc",
         members: [
-          { id: "member.volcker", name: "member.volcker.name", lean: "hawkish", competence: -0.1 },
+          { id: "member.chair", name: "member.chair.name", lean: "hawkish", competence: -0.1 },
         ],
       };
       writeFileSync(join(dir, "bad.json"), JSON.stringify(bad));
@@ -161,7 +161,7 @@ describe("committee schema validation", () => {
         name: "comm.test_desc.name",
         desc: "The 1979 Federal Open Market Committee.", // inline English — must fail
         members: [
-          { id: "member.volcker", name: "member.volcker.name", lean: "hawkish", competence: 0.9 },
+          { id: "member.chair", name: "member.chair.name", lean: "hawkish", competence: 0.9 },
         ],
       };
       writeFileSync(join(dir, "bad.json"), JSON.stringify(bad));
@@ -180,7 +180,7 @@ describe("committee schema validation", () => {
         name: "comm.test_id.name",
         desc: "comm.test_id.desc",
         members: [
-          { id: "volcker", name: "member.volcker.name", lean: "hawkish", competence: 0.9 },
+          { id: "volcker", name: "member.chair.name", lean: "hawkish", competence: 0.9 },
         ],
       };
       writeFileSync(join(dir, "bad.json"), JSON.stringify(bad));
