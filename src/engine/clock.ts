@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { loadValidated } from "../content/loader.js";
+import { loadValidatedFile } from "../content/loader.js";
 import type { GameState, GameStateSnapshot } from "./state.js";
 
 // SPEC-SIM-3: pure calendar tick with bounded state history.
@@ -9,25 +9,22 @@ import type { GameState, GameStateSnapshot } from "./state.js";
 const MIN_HISTORY_SIZE = 1;
 
 interface TickParams {
-  tick: { history_size: number };
+  history_size: number;
 }
 
 // cwd-safe path resolution — mirrors src/content/scenarios.ts pattern.
-const PARAMS_DIR = join(
-  new URL(".", import.meta.url).pathname,
-  "../../content/engine"
-);
 const SCHEMA_PATH = join(
   new URL(".", import.meta.url).pathname,
-  "../../schemas/engine-params.schema.json"
+  "../../schemas/tick.schema.json"
+);
+const FILE_PATH = join(
+  new URL(".", import.meta.url).pathname,
+  "../../content/engine/tick.json"
 );
 
 function loadHistorySize(): number {
-  const loaded = loadValidated<TickParams>(SCHEMA_PATH, PARAMS_DIR);
-  if (!loaded[0] || loaded[0].tick?.history_size === undefined) {
-    throw new Error("Engine params content/engine/params.json not found or missing tick.history_size");
-  }
-  const size = loaded[0].tick.history_size;
+  const loaded = loadValidatedFile<TickParams>(SCHEMA_PATH, FILE_PATH);
+  const size = loaded.history_size;
   if (!Number.isInteger(size) || size < MIN_HISTORY_SIZE) {
     throw new Error(`tick.history_size must be an integer >= ${MIN_HISTORY_SIZE}, got: ${size}`);
   }

@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { loadValidated } from "../content/loader.js";
+import { loadValidatedFile } from "../content/loader.js";
 import type { GameState } from "./state.js";
 
 // The credibility/expectations core: never spent, only earned or lost; both the score and the effectiveness multiplier.
@@ -102,28 +102,18 @@ export function applyMonthlySpiral(
   };
 }
 
-// Partial shape — full schema: schemas/engine-params.schema.json
-interface CredibilityParamsSection {
-  credibility: CredibilityParams;
-}
-
-const PARAMS_DIR = join(new URL(".", import.meta.url).pathname, "../../content/engine");
-const SCHEMA_PATH = join(new URL(".", import.meta.url).pathname, "../../schemas/engine-params.schema.json");
+const SCHEMA_PATH = join(new URL(".", import.meta.url).pathname, "../../schemas/credibility.schema.json");
+const FILE_PATH = join(new URL(".", import.meta.url).pathname, "../../content/engine/credibility.json");
 
 let _cachedCredibilityParams: CredibilityParams | undefined;
 
-/** Lazy-loaded cached params from content/engine/params.json#credibility. */
+/** Lazy-loaded cached params from content/engine/credibility.json. */
 export function loadCredibilityParams(): CredibilityParams {
   if (_cachedCredibilityParams !== undefined) return _cachedCredibilityParams;
-  let loaded: CredibilityParamsSection[];
   try {
-    loaded = loadValidated<CredibilityParamsSection>(SCHEMA_PATH, PARAMS_DIR);
+    _cachedCredibilityParams = loadValidatedFile<CredibilityParams>(SCHEMA_PATH, FILE_PATH);
   } catch (e) {
-    throw new Error("Failed to load credibility params from content/engine/params.json", { cause: e });
+    throw new Error("Failed to load credibility params from content/engine/credibility.json", { cause: e });
   }
-  if (!loaded[0] || !loaded[0].credibility) {
-    throw new Error("Engine params content/engine/params.json missing credibility section");
-  }
-  _cachedCredibilityParams = loaded[0].credibility;
   return _cachedCredibilityParams;
 }

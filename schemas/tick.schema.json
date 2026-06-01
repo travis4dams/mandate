@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mandate.dev/schemas/tick.schema.json",
+  "title": "TickParams",
+  "description": "Clock tick parameters. SPEC-SIM-3: history_size bounds state.history length.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["history_size"],
+  "properties": {
+    "history_size": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Maximum number of prior snapshots retained in state.history. Default 24 (two years of monthly ticks)."
+    }
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mandate.dev/schemas/committee-params.schema.json",
+  "title": "CommitteeParams",
+  "description": "FOMC committee vote parameters. SPEC-COMM-2: dissent tolerance and lean weights.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "dissent_tolerance",
+    "hawkish_inflation_weight",
+    "dovish_unemployment_weight",
+    "neutral_blend",
+    "target_inflation",
+    "target_unemployment"
+  ],
+  "properties": {
+    "dissent_tolerance": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Absolute rate difference above which a member is counted as dissenting."
+    },
+    "hawkish_inflation_weight": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Factor by which hawkish members scale the inflation gap when computing preferred rate."
+    },
+    "dovish_unemployment_weight": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Factor by which dovish members scale the unemployment gap when computing preferred rate."
+    },
+    "neutral_blend": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Weight of the inflation gap in the neutral member blend (0..1); unemployment weight is 1 - neutral_blend."
+    },
+    "target_inflation": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Long-run inflation target used by all member types when computing gap_inflation."
+    },
+    "target_unemployment": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Natural rate of unemployment used by all member types when computing gap_unemployment."
+    }
+  }
+}

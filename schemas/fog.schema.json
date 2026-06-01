@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mandate.dev/schemas/fog.schema.json",
+  "title": "FogParams",
+  "description": "Per-series fog parameters. SPEC-FOG-1: noise_scale and lag_months for each observable series.",
+  "type": "object",
+  "additionalProperties": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["noise_scale", "lag_months"],
+    "properties": {
+      "noise_scale": {
+        "type": "number",
+        "minimum": 0,
+        "description": "Standard deviation of Gaussian noise added to the observed value."
+      },
+      "lag_months": {
+        "type": "integer",
+        "minimum": 0,
+        "description": "How many months behind current state the observation is drawn from. 0 = current."
+      }
+    }
+  }
+}
