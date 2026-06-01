@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mandate.dev/schemas/scenario.schema.json",
+  "title": "Scenario",
+  "description": "An initial game state. Logic only — name and desc are localization keys, not inline player-facing strings.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "date", "name", "desc", "vars", "flags"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^scen\\.[a-z0-9_]+$",
+      "description": "Stable unique id, e.g. scen.1979_volcker."
+    },
+    "date": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}$",
+      "description": "ISO year-month start date, e.g. 1979-08."
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_.]+$",
+      "description": "Localization key for the scenario title, e.g. scen.1979_volcker.name."
+    },
+    "desc": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_.]+$",
+      "description": "Localization key for the scenario description, e.g. scen.1979_volcker.desc."
+    },
+    "vars": {
+      "type": "object",
+      "additionalProperties": { "type": "number" },
+      "description": "Initial continuous economic and institutional variables."
+    },
+    "flags": {
+      "type": "object",
+      "additionalProperties": { "type": "boolean" },
+      "description": "Initial boolean world facts."
+    }
+  }
+}

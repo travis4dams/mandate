@@ -1,0 +1,15 @@
+{
+  "id": "scen.1979_volcker",
+  "date": "1979-08",
+  "name": "scen.1979_volcker.name",
+  "desc": "scen.1979_volcker.desc",
+  "vars": {
+    "inflation": 0.114,
+    "unemployment": 0.058,
+    "credibility": 25,
+    "expectations_anchor": 0.090,
+    "policy_rate": 0.1075,
+    "months_below_anchor": 6
+  },
+  "flags": {}
+}
