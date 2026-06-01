@@ -11,5 +11,7 @@
   "tech.infrastructure.mainframe_computing.desc": "Establishes the IT division and sharpens the data picture.",
   "division.it": "Information Technology",
   "scen.1979_volcker.name": "Volcker Disinflation 1979",
-  "scen.1979_volcker.desc": "Paul Volcker takes the chair in August 1979 with inflation at 11% and credibility shredded. Can you break expectations before the institution does?"
+  "scen.1979_volcker.desc": "Paul Volcker takes the chair in August 1979 with inflation at 11% and credibility shredded. Can you break expectations before the institution does?",
+  "replay.1979_volcker_chair_strategy.name": "Volcker's Tightening",
+  "replay.1979_volcker_chair_strategy.desc": "Paul Volcker's 1979-1986 disinflation policy: ramp the fed funds rate to ~19% by mid-1981, then ease as inflation breaks. A canned strategy for testing the engine end-to-end."
 }
