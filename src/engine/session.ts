@@ -18,12 +18,6 @@ import type { Replay } from "../content/replays.js";
  */
 export type ForwardGuidanceStance = "hawkish" | "dovish" | "neutral";
 
-// Slice-1 committee id — engine code must not hardcode content, but the
-// committee to use for proposeRate is a session-construction parameter.
-// Defaulting to the 1979 FOMC committee keeps SESSION-0 concrete without
-// embedding the id in any content file or hardcoding a policy decision.
-const DEFAULT_COMMITTEE_ID = "comm.fomc_1979";
-
 // Required vars that every scenario must supply for the engine to function.
 const REQUIRED_VARS = ["policy_rate", "inflation", "unemployment"] as const;
 
@@ -51,14 +45,14 @@ export class Session {
   private _currentCache: GameStateSnapshot;
   private _trajectoryCache: readonly GameStateSnapshot[];
 
-  // Monotonic version counter guards concurrent-render tearing detection.
-  private _version: number = 0;
-
   // Replay to apply actions from (null when constructed from scenario only).
   private readonly _replay: Replay | null;
 
   // Stored seed for future stochastic mechanics (SESSION-0: unused in dynamics).
   private readonly _seed: number;
+
+  // Committee id used by proposeRate; passed as a required factory argument.
+  private readonly _committeeId: string;
 
   // Stored stance; wired to dynamics in GUIDE-1.
   private _stance: ForwardGuidanceStance = "neutral";
@@ -69,9 +63,10 @@ export class Session {
   // Snapshot of the initial state so reset() can restore it without re-loading content.
   private readonly _initialState: GameState;
 
-  private constructor(initialState: GameState, seed: number, replay: Replay | null) {
+  private constructor(initialState: GameState, seed: number, replay: Replay | null, committeeId: string) {
     this._seed = seed;
     this._replay = replay;
+    this._committeeId = committeeId;
     this._initialState = initialState;
     this._state = { ...initialState, vars: { ...initialState.vars }, flags: { ...initialState.flags }, history: [] };
 
@@ -84,20 +79,22 @@ export class Session {
   /**
    * Construct a Session from a scenario content file.
    * The seed is stored for future stochastic use (SESSION-0: deterministic substrate only).
+   * committeeId identifies the FOMC committee used by proposeRate (e.g. "comm.fomc_1979").
    */
-  static fromScenario(scenarioId: string, seed: number): Session {
+  static fromScenario(scenarioId: string, seed: number, committeeId: string): Session {
     const state = loadScenario(scenarioId, [...REQUIRED_VARS]);
-    return new Session(state, seed, null);
+    return new Session(state, seed, null, committeeId);
   }
 
   /**
    * Construct a Session from a replay strategy.
    * The replay's actions are applied inside `advance()` as each month plays forward.
+   * committeeId identifies the FOMC committee used by proposeRate (e.g. "comm.fomc_1979").
    */
-  static fromReplay(replayId: string, seed: number): Session {
+  static fromReplay(replayId: string, seed: number, committeeId: string): Session {
     const replay = loadReplay(replayId);
     const state = loadScenario(replay.scenario, [...REQUIRED_VARS]);
-    return new Session(state, seed, replay);
+    return new Session(state, seed, replay, committeeId);
   }
 
   // --- Getters (identity-stable) ---
@@ -157,15 +154,15 @@ export class Session {
   /**
    * Propose a rate for the current month's FOMC meeting.
    * SESSION-0: every month is meeting-eligible (SESSION-1 wires the actual schedule).
-   * Returns the FomcVote, or null if not a meeting month (always a meeting in SESSION-0).
+   * Returns the FomcVote for the meeting.
    * @throws {Error} if rate is not finite.
    */
-  proposeRate(rate: number): FomcVote | null {
+  proposeRate(rate: number): FomcVote {
     if (!Number.isFinite(rate)) {
       throw new Error(`Session.proposeRate: rate ${rate} is not finite.`);
     }
 
-    const committee = loadCommittee(DEFAULT_COMMITTEE_ID);
+    const committee = loadCommittee(this._committeeId);
     const params = loadCommitteeParams();
     const fomcVote = vote(committee, rate, this._state, params);
 
@@ -199,6 +196,7 @@ export class Session {
    * Fires listeners.
    */
   reset(): void {
+    this._stance = "neutral";
     this._state = {
       ...this._initialState,
       vars: { ...this._initialState.vars },
@@ -245,9 +243,7 @@ export class Session {
 
   /** Rebuild the referentially-stable caches after every mutation. */
   private _rebuildCaches(): void {
-    this._version += 1;
-    const last = this._trajectoryInternal[this._trajectoryInternal.length - 1];
-    this._currentCache = last;
+    this._currentCache = Session._snapshotOf(this._state);
     this._trajectoryCache = Object.freeze([...this._trajectoryInternal]);
   }
 
