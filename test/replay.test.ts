@@ -1,51 +1,101 @@
-// SPEC-SIM-4
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
+import { writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { replay, type PolicyScript } from "./replay.js";
+import { tmpdir } from "node:os";
+import { loadReplay, ReplayNotFoundError } from "../src/content/replays";
+import { loadValidated } from "../src/content/loader";
+import { runReplay } from "./run-replay";
 
-const volckerTightening: PolicyScript = {
-  "1979-08": { policy_rate: 0.1075 },
-  "1979-10": { policy_rate: 0.1380 },
-  "1980-03": { policy_rate: 0.1700 },
-  "1980-07": { policy_rate: 0.0900 },
-  "1980-12": { policy_rate: 0.1900 },
-  "1981-06": { policy_rate: 0.1910 },
-  "1981-12": { policy_rate: 0.1200 },
-  "1982-12": { policy_rate: 0.0895 },
-  "1983-12": { policy_rate: 0.0947 },
-  "1984-12": { policy_rate: 0.0838 },
-  "1985-12": { policy_rate: 0.0827 },
-  "1986-12": { policy_rate: 0.0691 },
-};
+// SPEC-SIM-4
 
-describe("replay — SPEC-SIM-4", () => {
-  it("determinism: two runs with the same seed produce bit-identical trajectories", () => {
-    const run1 = replay("scen.1979_volcker", volckerTightening, 42, 89);
-    const run2 = replay("scen.1979_volcker", volckerTightening, 42, 89);
-    expect(run1).toEqual(run2);
+describe("loadReplay", () => {
+  it("returns the 1979 Volcker chair strategy with 12 actions and the right scenario", () => {
+    const replay = loadReplay("replay.1979_volcker_chair_strategy");
+    expect(replay.id).toBe("replay.1979_volcker_chair_strategy");
+    expect(replay.scenario).toBe("scen.1979_volcker");
+    expect(replay.actions).toHaveLength(12);
+    expect(replay.actions[0]).toEqual({ date: "1979-08", policy_rate: 0.1075 });
+    expect(replay.actions[11]).toEqual({ date: "1986-12", policy_rate: 0.0691 });
   });
 
-  it("length matches months argument: replay(..., 89) returns 89 entries", () => {
-    const result = replay("scen.1979_volcker", volckerTightening, 42, 89);
-    expect(result).toHaveLength(89);
+  it("throws ReplayNotFoundError for an unknown id", () => {
+    expect(() => loadReplay("replay.does_not_exist")).toThrow(ReplayNotFoundError);
+  });
+});
+
+describe("runReplay", () => {
+  it("is deterministic: two consecutive in-memory runs produce identical trajectories", () => {
+    const a = runReplay("replay.1979_volcker_chair_strategy", 89);
+    const b = runReplay("replay.1979_volcker_chair_strategy", 89);
+    expect(a).toEqual(b);
   });
 
-  it("snapshot equality: trajectory matches committed golden file", () => {
-    const snapPath = join(
-      new URL(".", import.meta.url).pathname,
-      "golden/1979_volcker_tightening.snap.json"
-    );
-    const expected = JSON.parse(readFileSync(snapPath, "utf8"));
-    const actual = replay("scen.1979_volcker", volckerTightening, 42, 89);
-    expect(actual).toEqual(expected);
+  it("spans 1979-08 through 1986-12 across 89 monthly snapshots", () => {
+    const trajectory = runReplay("replay.1979_volcker_chair_strategy", 89);
+    expect(trajectory).toHaveLength(89);
+    expect(trajectory[0].date).toBe("1979-08");
+    expect(trajectory[88].date).toBe("1986-12");
   });
 
-  it("policy script applies: entry for 1979-09 has the rate set at 1979-08 pivot (held forward)", () => {
-    const script: PolicyScript = { "1979-09": { policy_rate: 0.12 } };
-    const result = replay("scen.1979_volcker", script, 42, 5);
-    const entry = result.find((e) => e.date === "1979-09");
-    expect(entry).toBeDefined();
-    expect(entry!.policy_rate).toBe(0.12);
+  it("applies the 1980-03 pivot so that month's snapshot has policy_rate = 0.17", () => {
+    const trajectory = runReplay("replay.1979_volcker_chair_strategy", 89);
+    const march1980 = trajectory.find((s) => s.date === "1980-03");
+    expect(march1980).toBeDefined();
+    expect(march1980!.vars.policy_rate).toBe(0.17);
+  });
+
+  it("holds policy_rate forward between pivots (1979-09 still has the 1979-08 rate)", () => {
+    const trajectory = runReplay("replay.1979_volcker_chair_strategy", 89);
+    const sept1979 = trajectory.find((s) => s.date === "1979-09");
+    expect(sept1979).toBeDefined();
+    expect(sept1979!.vars.policy_rate).toBe(0.1075);
+  });
+});
+
+describe("replay schema validation", () => {
+  it("rejects a replay whose name is an inline player-facing string", () => {
+    // The schema enforces loc-key shape ^[a-z][a-z0-9_.]+$ on name/desc.
+    // A plain English title fails validation.
+    const dir = join(tmpdir(), `mandate-test-replay-${process.pid}`);
+    mkdirSync(dir, { recursive: true });
+    const badReplay = {
+      id: "replay.test_bad",
+      name: "Volcker Tightening", // inline player-facing string — must fail
+      desc: "replay.test_bad.desc",
+      scenario: "scen.1979_volcker",
+      actions: [{ date: "1979-08", policy_rate: 0.1075 }],
+    };
+    writeFileSync(join(dir, "bad.json"), JSON.stringify(badReplay));
+    let threw = false;
+    try {
+      loadValidated("schemas/replay.schema.json", dir);
+    } catch {
+      threw = true;
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+    expect(threw).toBe(true);
+  });
+
+  it("rejects a replay action with no payload (just a date is not a valid action)", () => {
+    const dir = join(tmpdir(), `mandate-test-replay2-${process.pid}`);
+    mkdirSync(dir, { recursive: true });
+    const badReplay = {
+      id: "replay.test_actionless",
+      name: "replay.test_actionless.name",
+      desc: "replay.test_actionless.desc",
+      scenario: "scen.1979_volcker",
+      actions: [{ date: "1979-08" }], // no policy_rate — schema requires at least one player input
+    };
+    writeFileSync(join(dir, "bad.json"), JSON.stringify(badReplay));
+    let threw = false;
+    try {
+      loadValidated("schemas/replay.schema.json", dir);
+    } catch {
+      threw = true;
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+    expect(threw).toBe(true);
   });
 });

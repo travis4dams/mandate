@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mandate.dev/schemas/replay.schema.json",
+  "title": "Replay",
+  "description": "A committed player-strategy artifact: a structured capture of the player's actions (policy pivots) that can be replayed headlessly against the current engine. Engine-computed values (inflation, credibility, expectations_anchor) must NOT appear here.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "name", "desc", "scenario", "actions"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^replay\\.[a-z0-9_]+$",
+      "description": "Stable unique id, e.g. replay.1979_volcker_chair_strategy."
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_.]+$",
+      "description": "Localization key for the replay title, e.g. replay.1979_volcker_chair_strategy.name."
+    },
+    "desc": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_.]+$",
+      "description": "Localization key for the replay description, e.g. replay.1979_volcker_chair_strategy.desc."
+    },
+    "scenario": {
+      "type": "string",
+      "pattern": "^scen\\.[a-z0-9_]+$",
+      "description": "Scenario id this strategy is played against, e.g. scen.1979_volcker."
+    },
+    "actions": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Ordered list of player actions (policy pivots). Only player-controlled inputs — no engine-computed values.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["date"],
+        "minProperties": 2,
+        "properties": {
+          "date": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-[0-9]{2}$",
+            "description": "ISO year-month when this action takes effect, e.g. 1979-08."
+          },
+          "policy_rate": {
+            "type": "number",
+            "description": "Target federal funds rate as a decimal, e.g. 0.1075 for 10.75%."
+          }
+        }
+      }
+    }
+  }
+}
