@@ -27,6 +27,15 @@ export class ReplayNotFoundError extends Error {
   }
 }
 
+// Thrown when a replay's actions are not strictly increasing by date.
+// Loading guards this so Array.find() can never silently match the wrong action.
+export class ReplayActionOrderError extends Error {
+  constructor(replayId: string, badDate: string, prevDate: string) {
+    super(`Replay "${replayId}": action date ${badDate} is not strictly after ${prevDate}.`);
+    this.name = "ReplayActionOrderError";
+  }
+}
+
 const REPLAYS_DIR = join(
   new URL(".", import.meta.url).pathname,
   "../../content/replays"
@@ -47,6 +56,11 @@ export function loadReplay(id: string): Replay {
   const replay = replays.find((r) => r.id === id);
   if (!replay) {
     throw new ReplayNotFoundError(id);
+  }
+  for (let i = 1; i < replay.actions.length; i++) {
+    if (replay.actions[i].date <= replay.actions[i - 1].date) {
+      throw new ReplayActionOrderError(id, replay.actions[i].date, replay.actions[i - 1].date);
+    }
   }
   return replay;
 }

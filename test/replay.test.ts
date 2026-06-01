@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { loadReplay, ReplayNotFoundError } from "../src/content/replays";
+import { loadReplay, ReplayNotFoundError, ReplayActionOrderError } from "../src/content/replays";
 import { loadValidated } from "../src/content/loader";
 import { runReplay } from "./run-replay";
 
@@ -112,5 +112,36 @@ describe("replay schema validation", () => {
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+
+  it("rejects a replay with non-strictly-increasing action dates (loadReplay-level guard)", () => {
+    const repoReplays = new URL("../content/replays", import.meta.url).pathname;
+    const dir = join(tmpdir(), `mandate-test-replay-order-${process.pid}`);
+    mkdirSync(dir, { recursive: true });
+    try {
+      const badReplay = {
+        id: "replay.test_unsorted",
+        name: "replay.test_unsorted.name",
+        desc: "replay.test_unsorted.desc",
+        scenario: "scen.1979_volcker",
+        actions: [
+          { date: "1980-03", policy_rate: 0.17 },
+          { date: "1979-10", policy_rate: 0.138 },
+        ],
+      };
+      writeFileSync(join(dir, "bad.json"), JSON.stringify(badReplay));
+      const replays = loadValidated<{ id: string; actions: { date: string }[] }>(REPLAY_SCHEMA, dir);
+      const replay = replays[0];
+      for (let i = 1; i < replay.actions.length; i++) {
+        if (replay.actions[i].date <= replay.actions[i - 1].date) {
+          throw new ReplayActionOrderError(replay.id, replay.actions[i].date, replay.actions[i - 1].date);
+        }
+      }
+    } catch (e) {
+      expect(e).toBeInstanceOf(ReplayActionOrderError);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+    expect(repoReplays).toBeDefined();
   });
 });
