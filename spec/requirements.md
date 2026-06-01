@@ -12,7 +12,7 @@ Tag meanings: `[testable]` = must be covered by an automated test;
 - **SPEC-SIM-1** `[testable]` The simulation is deterministic: same seed + inputs reproduce a run exactly. Engine code never calls `Math.random()` or reads the wall clock.
 - **SPEC-SIM-2** `[design]` The full financial network is the single source of truth; all dashboards and the fractal-zoom map are read-only views derived from it.
 - **SPEC-SIM-3** `[testable]` A pure `tick(state, months)` advances `state.date` by N months on the `YYYY-MM` calendar and maintains a bounded `state.history: GameStateSnapshot[]` (size from `content/engine/params.json#tick.history_size`). By convention `state.history` excludes the current state; `history[0]` is the most-recent prior snapshot (`date − 1 month` after a 1-month tick). The function returns a new `GameState` and does not mutate the input.
-- **SPEC-SIM-4** `[design]` A golden-replay test utility `replay(scenarioId, policyScript, seed, months)` runs a seeded scenario through canned policy applications and returns the true trajectory. At least one committed snapshot (`test/golden/1979_volcker_tightening.snap.json`) is bit-identical across runs. *(Slice-1 Phase 4: implementing PR upgrades to testable.)*
+- **SPEC-SIM-4** `[testable]` A golden-replay test utility `replay(scenarioId, policyScript, seed, months)` runs a seeded scenario through canned policy applications and returns the true trajectory. At least one committed snapshot (`test/golden/1979_volcker_tightening.snap.json`) is bit-identical across runs.
 
 ## Credibility & expectations
 - **SPEC-CRED-1** `[testable]` Dissents and market surprises reduce credibility; on-target outcomes raise it; the value is clamped to [0, 100].
