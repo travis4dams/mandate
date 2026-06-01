@@ -7,6 +7,12 @@
     "expectations_anchor": { "noise_scale": 0.003, "lag_months": 3 },
     "gdp":                 { "noise_scale": 0,     "lag_months": 1 }
   },
-  "credibility": {},
+  "credibility": {
+    "anchor_threshold": 60,
+    "consecutive_months": 3,
+    "drift_per_period": 0.005,
+    "recovery_rate": 0.002,
+    "target_inflation": 0.02
+  },
   "committee": {}
 }
