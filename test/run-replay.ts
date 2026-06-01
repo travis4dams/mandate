@@ -23,26 +23,28 @@ import type { GameState } from "../src/engine/state.js";
  * @param months   - Number of monthly snapshots to return.
  */
 export function runReplay(replayId: string, months: number): GameState[] {
+  if (months <= 0) {
+    throw new Error(`runReplay: months must be > 0 (got ${months})`);
+  }
   const replay = loadReplay(replayId);
-  let state = loadScenario(replay.scenario);
+  let state: GameState;
+  try {
+    state = loadScenario(replay.scenario);
+  } catch (e) {
+    throw new Error(`runReplay("${replayId}"): scenario "${replay.scenario}" failed to load — ${(e as Error).message}`);
+  }
 
   const trajectory: GameState[] = [];
 
   for (let m = 0; m < months; m++) {
-    // Apply any player action for the current date.
     const action = replay.actions.find((a) => a.date === state.date);
     if (action !== undefined) {
-      const vars: Record<string, number> = { ...state.vars };
-      if (action.policy_rate !== undefined) {
-        vars.policy_rate = action.policy_rate;
-      }
-      state = { ...state, vars };
+      state = { ...state, vars: { ...state.vars, policy_rate: action.policy_rate } };
     }
 
-    // Record the state (shallow copy so each entry is independent).
-    trajectory.push({ ...state, vars: { ...state.vars }, flags: { ...state.flags }, history: state.history });
+    // Independent snapshot — history is copied so consumers can mutate freely.
+    trajectory.push({ ...state, vars: { ...state.vars }, flags: { ...state.flags }, history: [...state.history] });
 
-    // Advance by one month (pure — returns new state, never mutates).
     state = tick(state, 1);
   }
 

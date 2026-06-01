@@ -8,7 +8,7 @@ import { loadValidated } from "./loader.js";
 
 export interface ReplayAction {
   date: string;
-  policy_rate?: number;
+  policy_rate: number;
 }
 
 export interface Replay {

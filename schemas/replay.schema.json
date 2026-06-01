@@ -34,8 +34,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["date"],
-        "minProperties": 2,
+        "required": ["date", "policy_rate"],
         "properties": {
           "date": {
             "type": "string",

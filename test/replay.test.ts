@@ -24,7 +24,7 @@ describe("loadReplay", () => {
 });
 
 describe("runReplay", () => {
-  it("is deterministic: two consecutive in-memory runs produce identical trajectories", () => {
+  it("is same-process idempotent: two consecutive in-memory runs produce identical trajectories (cross-process determinism leans on SPEC-SIM-1)", () => {
     const a = runReplay("replay.1979_volcker_chair_strategy", 89);
     const b = runReplay("replay.1979_volcker_chair_strategy", 89);
     expect(a).toEqual(b);
