@@ -21,7 +21,23 @@
     "fog": {
       "type": "object",
       "description": "Per-series fog parameters. Populated by SPEC-FOG-1.",
-      "additionalProperties": true
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["noise_scale", "lag_months"],
+        "properties": {
+          "noise_scale": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Standard deviation of Gaussian noise added to the observed value."
+          },
+          "lag_months": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "How many months behind current state the observation is drawn from. 0 = current."
+          }
+        }
+      }
     },
     "credibility": {
       "type": "object",

@@ -2,6 +2,7 @@ export * from "./engine/state.js";
 export * from "./engine/rng.js";
 export * from "./engine/credibility.js";
 export * from "./engine/clock.js";
+export * from "./engine/fog.js";
 export * from "./content/conditions.js";
 export * from "./content/effects.js";
 export * from "./content/loader.js";
