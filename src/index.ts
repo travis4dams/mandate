@@ -5,3 +5,4 @@ export * from "./engine/clock.js";
 export * from "./content/conditions.js";
 export * from "./content/effects.js";
 export * from "./content/loader.js";
+export * from "./content/scenarios.js";
