@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mandate.dev/schemas/committee.schema.json",
+  "title": "Committee",
+  "description": "An FOMC-style committee. Logic only — name and desc are localization keys, not inline player-facing strings.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "name", "desc", "members"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^comm\\.[a-z0-9_]+$",
+      "description": "Stable unique id, e.g. comm.fomc_1979."
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_.]+$",
+      "description": "Localization key for the committee name, e.g. comm.fomc_1979.name."
+    },
+    "desc": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_.]+$",
+      "description": "Localization key for the committee description, e.g. comm.fomc_1979.desc."
+    },
+    "members": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Voting members of the committee.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "name", "lean", "competence"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^member\\.[a-z0-9_]+$",
+            "description": "Stable unique member id, e.g. member.volcker."
+          },
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.]+$",
+            "description": "Localization key for the member name, e.g. member.volcker.name."
+          },
+          "lean": {
+            "type": "string",
+            "enum": ["hawkish", "dovish", "neutral"],
+            "description": "Policy preference lean of the member."
+          },
+          "competence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Member competence score in [0, 1]."
+          }
+        }
+      }
+    }
+  }
+}

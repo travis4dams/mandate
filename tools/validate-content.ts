@@ -10,6 +10,7 @@ const checks = [
   { schema: "schemas/tech.schema.json", dir: "content/tech", label: "tech" },
   { schema: "schemas/scenario.schema.json", dir: "content/scenarios", label: "scenarios" },
   { schema: "schemas/replay.schema.json", dir: "content/replays", label: "replays" },
+  { schema: "schemas/committee.schema.json", dir: "content/committees", label: "committees" },
 ];
 
 let failed = false;
