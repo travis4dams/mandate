@@ -42,7 +42,29 @@
     "credibility": {
       "type": "object",
       "description": "Credibility spiral parameters. Populated by SPEC-CRED-4.",
-      "additionalProperties": true
+      "additionalProperties": false,
+      "required": ["consecutive_months", "drift_per_period", "recovery_rate", "target_inflation"],
+      "properties": {
+        "consecutive_months": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Ticks below ANCHOR_THRESHOLD required before the spiral activates."
+        },
+        "drift_per_period": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Per-month widening of the expectations gap once the spiral is active."
+        },
+        "recovery_rate": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Per-month recovery of expectations_anchor toward target_inflation."
+        },
+        "target_inflation": {
+          "type": "number",
+          "description": "Long-run inflation target that expectations_anchor converges to on recovery."
+        }
+      }
     },
     "committee": {
       "type": "object",
