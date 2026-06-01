@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import {
   vote,
   loadCommitteeParams,
@@ -7,6 +7,11 @@ import {
   type FomcVote,
   type CommitteeParams,
 } from "../src/engine/fomc";
+
+afterEach(() => {
+  // Reset module-level cache between tests so loadCommitteeParams() state never leaks.
+  _resetCommitteeParamsCache();
+});
 import { applyMeetingOutcome } from "../src/engine/credibility";
 import { makeState } from "../src/engine/state";
 import type { Committee } from "../src/content/committees";
@@ -150,13 +155,11 @@ describe("vote", () => {
     expect(() => vote(committee, 0.05, state, PARAMS)).toThrow(VoteMissingVarError);
   });
 
-  // SPEC-COMM-2: optional params default to loadCommitteeParams() — production callers can omit.
-  it("vote with no params argument resolves them from content via loadCommitteeParams()", () => {
-    _resetCommitteeParamsCache();
+  // SPEC-COMM-2: production callers resolve params via loadCommitteeParams() at the call site.
+  it("vote with params from loadCommitteeParams() works end-to-end against committed content", () => {
     const committee = makeCommittee(["neutral", "neutral"]);
     const state = makeState({ vars: { inflation: 0.02, unemployment: 0.04 } });
-    // Should not throw; gaps are zero so neutrals don't dissent regardless of content values
-    const result = vote(committee, 0.05, state);
+    const result = vote(committee, 0.05, state, loadCommitteeParams());
     expect(result.dissents).toBe(0);
     expect(result.decided).toBe(0.05);
   });
@@ -218,6 +221,37 @@ describe("vote", () => {
     const committee = makeCommittee(["dovish"]);
     const state = makeState({ vars: { inflation: 0.02, unemployment: Infinity } });
     expect(() => vote(committee, 0.05, state, PARAMS)).toThrow(VoteMissingVarError);
+  });
+
+  // SPEC-COMM-2: NaN/Infinity proposedRate must throw (silent dissents=0 / decided=NaN is the same attack surface).
+  it("throws when proposedRate is NaN", () => {
+    const committee = makeCommittee(["hawkish"]);
+    const state = makeState({ vars: { inflation: 0.05, unemployment: 0.04 } });
+    expect(() => vote(committee, NaN, state, PARAMS)).toThrow(/proposedRate .* not finite/);
+  });
+
+  it("throws when proposedRate is Infinity", () => {
+    const committee = makeCommittee(["dovish"]);
+    const state = makeState({ vars: { inflation: 0.05, unemployment: 0.04 } });
+    expect(() => vote(committee, Infinity, state, PARAMS)).toThrow(/proposedRate .* not finite/);
+  });
+
+  // SPEC-COMM-2: hawks must NOT respond to unemployment. Pass a large unemployment gap; hawkish member with zero inflation gap should still not dissent.
+  it("hawkish formula ignores the unemployment gap (lean isolation)", () => {
+    const committee = makeCommittee(["hawkish"]);
+    // gap_inflation = 0; gap_unemployment = 0.20 (huge); a hawk should still NOT dissent
+    const state = makeState({ vars: { inflation: 0.02, unemployment: 0.24 } });
+    const result = vote(committee, 0.05, state, PARAMS);
+    expect(result.dissents).toBe(0);
+  });
+
+  // SPEC-COMM-2: doves must NOT respond to inflation. Pass a large inflation gap; dovish member with zero unemployment gap should still not dissent.
+  it("dovish formula ignores the inflation gap (lean isolation)", () => {
+    const committee = makeCommittee(["dovish"]);
+    // gap_inflation = 0.20 (huge); gap_unemployment = 0; a dove should still NOT dissent
+    const state = makeState({ vars: { inflation: 0.22, unemployment: 0.04 } });
+    const result = vote(committee, 0.05, state, PARAMS);
+    expect(result.dissents).toBe(0);
   });
 });
 

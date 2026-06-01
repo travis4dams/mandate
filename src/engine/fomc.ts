@@ -6,7 +6,7 @@ import type { GameState } from "./state.js";
 // FOMC vote engine — SPEC-COMM-2. Pure: returns a new FomcVote; never mutates state or committee.
 
 export interface FomcVote {
-  /** The enacted rate. In slice 1 this always equals proposedRate (Chair sets it); a future slice may let the committee override. */
+  /** The enacted rate. Always equals proposedRate in slice 1 (the committee has no override power yet); a future slice may add majority-override. */
   decided: number;
   /** Count of members preferring a rate outside the dissent tolerance band. */
   dissents: number;
@@ -65,13 +65,16 @@ function memberPreferred(
   }
 }
 
-/** Pure FOMC vote simulation. decided === proposedRate for slice 1. */
+/** Pure FOMC vote simulation. decided === proposedRate for slice 1. params is required; callers resolve via loadCommitteeParams() at call site (symmetric with applyMonthlySpiral / observe). */
 export function vote(
   committee: Committee,
   proposedRate: number,
   state: GameState,
-  params: CommitteeParams = loadCommitteeParams(),
+  params: CommitteeParams,
 ): FomcVote {
+  if (!Number.isFinite(proposedRate)) {
+    throw new Error(`vote: proposedRate ${proposedRate} is not finite — refusing to compute dissents.`);
+  }
   const inflation = state.vars.inflation;
   const unemployment = state.vars.unemployment;
   if (inflation === undefined) throw new VoteMissingVarError("inflation", "missing");
