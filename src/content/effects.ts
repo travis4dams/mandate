@@ -14,7 +14,7 @@ export interface ApplyResult {
 // SPEC-COND-2: effects are pure — they return a new state rather than mutating the
 // input, which keeps the simulation reproducible and easy to test.
 export function applyEffects(effects: Effect[], state: GameState): ApplyResult {
-  const next: GameState = { date: state.date, vars: { ...state.vars }, flags: { ...state.flags } };
+  const next: GameState = { date: state.date, vars: { ...state.vars }, flags: { ...state.flags }, history: state.history };
   const queuedEvents: string[] = [];
   for (const e of effects) {
     if ("set_flag" in e) { next.flags[e.set_flag] = e.value; continue; }

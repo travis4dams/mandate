@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mandate.dev/schemas/engine-params.schema.json",
+  "title": "EngineParams",
+  "description": "Consolidated engine-tunable knobs. Sections are added by each implementing SPEC (tick, fog, credibility, committee). Content-only — no engine logic here.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "tick": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["history_size"],
+      "properties": {
+        "history_size": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum number of prior snapshots retained in state.history. Default 24 (two years of monthly ticks)."
+        }
+      }
+    },
+    "fog": {
+      "type": "object",
+      "description": "Per-series fog parameters. Populated by SPEC-FOG-1.",
+      "additionalProperties": true
+    },
+    "credibility": {
+      "type": "object",
+      "description": "Credibility spiral parameters. Populated by SPEC-CRED-4.",
+      "additionalProperties": true
+    },
+    "committee": {
+      "type": "object",
+      "description": "FOMC committee parameters. Populated by SPEC-COMM-2.",
+      "additionalProperties": true
+    }
+  }
+}
