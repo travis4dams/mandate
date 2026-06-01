@@ -8,6 +8,7 @@
     "gdp":                 { "noise_scale": 0,     "lag_months": 1 }
   },
   "credibility": {
+    "anchor_threshold": 60,
     "consecutive_months": 3,
     "drift_per_period": 0.005,
     "recovery_rate": 0.002,

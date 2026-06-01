@@ -3,11 +3,19 @@ import {
   applyMeetingOutcome,
   expectationsAnchored,
   painMultiplier,
-  ANCHOR_THRESHOLD,
   applyMonthlySpiral,
   type CredibilityParams,
 } from "../src/engine/credibility";
 import { makeState } from "../src/engine/state";
+
+// Common SPEC-CRED-4 params used across tests (matches content/engine/params.json#credibility).
+const PARAMS: CredibilityParams = {
+  anchor_threshold: 60,
+  consecutive_months: 3,
+  drift_per_period: 0.005,
+  recovery_rate: 0.002,
+  target_inflation: 0.02,
+};
 
 describe("credibility", () => {
   // SPEC-CRED-1
@@ -22,10 +30,10 @@ describe("credibility", () => {
     expect(applyMeetingOutcome(99, { dissents: 0, surprisedMarkets: false, onTarget: true })).toBe(100);
   });
 
-  // SPEC-CRED-2
+  // SPEC-CRED-2: threshold now lives in content (anchor_threshold).
   it("anchors expectations only at or above the threshold", () => {
-    expect(expectationsAnchored(ANCHOR_THRESHOLD)).toBe(true);
-    expect(expectationsAnchored(ANCHOR_THRESHOLD - 1)).toBe(false);
+    expect(expectationsAnchored(PARAMS.anchor_threshold, PARAMS.anchor_threshold)).toBe(true);
+    expect(expectationsAnchored(PARAMS.anchor_threshold - 1, PARAMS.anchor_threshold)).toBe(false);
   });
 
   // SPEC-CRED-3
@@ -35,162 +43,119 @@ describe("credibility", () => {
     expect(painMultiplier(0)).toBe(3);
   });
 
-  // SPEC-CRED-4: de-anchoring spiral — below-threshold ticks increment counter
+  // SPEC-CRED-4
   it("below-threshold tick increments months_below_anchor counter", () => {
-    // SPEC-CRED-4
-    const params: CredibilityParams = {
-      consecutive_months: 3,
-      drift_per_period: 0.005,
-      recovery_rate: 0.002,
-      target_inflation: 0.02,
-    };
     const state0 = makeState({
       vars: {
-        credibility: ANCHOR_THRESHOLD - 1, // below threshold
+        credibility: PARAMS.anchor_threshold - 1,
         months_below_anchor: 0,
         expectations_anchor: 0.09,
       },
     });
 
-    const state1 = applyMonthlySpiral(state0, params);
+    const state1 = applyMonthlySpiral(state0, PARAMS);
     expect(state1.vars.months_below_anchor).toBe(1);
 
-    const state2 = applyMonthlySpiral(state1, params);
+    const state2 = applyMonthlySpiral(state1, PARAMS);
     expect(state2.vars.months_below_anchor).toBe(2);
   });
 
-  // SPEC-CRED-4: once consecutive_months is reached, expectations_anchor drifts away from target
+  // SPEC-CRED-4
   it("spiral activation widens the expectations gap once consecutive_months threshold is reached", () => {
-    // SPEC-CRED-4
-    const params: CredibilityParams = {
-      consecutive_months: 3,
-      drift_per_period: 0.005,
-      recovery_rate: 0.002,
-      target_inflation: 0.02,
-    };
-    // anchor is above target (0.09 > 0.02), so drift pushes it further away (upward)
     const state = makeState({
       vars: {
-        credibility: ANCHOR_THRESHOLD - 1,
-        months_below_anchor: params.consecutive_months - 1, // next tick triggers spiral
+        credibility: PARAMS.anchor_threshold - 1,
+        months_below_anchor: PARAMS.consecutive_months - 1,
         expectations_anchor: 0.09,
       },
     });
 
-    const next = applyMonthlySpiral(state, params);
-    // anchor was above target, drift should go further above target
+    const next = applyMonthlySpiral(state, PARAMS);
     expect(next.vars.expectations_anchor).toBeGreaterThan(0.09);
-    expect(next.vars.expectations_anchor).toBeCloseTo(0.09 + params.drift_per_period, 10);
+    expect(next.vars.expectations_anchor).toBeCloseTo(0.09 + PARAMS.drift_per_period, 10);
   });
 
-  // SPEC-CRED-4: drift also works when anchor is below target (pushed further below)
+  // SPEC-CRED-4
   it("spiral drift pushes anchor further below target when anchor is already below target", () => {
-    // SPEC-CRED-4
-    const params: CredibilityParams = {
-      consecutive_months: 3,
-      drift_per_period: 0.005,
-      recovery_rate: 0.002,
-      target_inflation: 0.02,
-    };
-    // anchor is below target (0.01 < 0.02), drift should push it further below
     const state = makeState({
       vars: {
-        credibility: ANCHOR_THRESHOLD - 1,
-        months_below_anchor: params.consecutive_months - 1,
+        credibility: PARAMS.anchor_threshold - 1,
+        months_below_anchor: PARAMS.consecutive_months - 1,
         expectations_anchor: 0.01,
       },
     });
 
-    const next = applyMonthlySpiral(state, params);
+    const next = applyMonthlySpiral(state, PARAMS);
     expect(next.vars.expectations_anchor).toBeLessThan(0.01);
-    expect(next.vars.expectations_anchor).toBeCloseTo(0.01 - params.drift_per_period, 10);
+    expect(next.vars.expectations_anchor).toBeCloseTo(0.01 - PARAMS.drift_per_period, 10);
   });
 
-  // SPEC-CRED-4: months_below_anchor is frozen (not reset) on recovery; anchor moves toward target
+  // SPEC-CRED-4: documents the anchor == target edge case (drift goes upward by convention)
+  it("spiral drift goes upward when anchor exactly equals target (anchor >= target ? +1 : -1)", () => {
+    const state = makeState({
+      vars: {
+        credibility: PARAMS.anchor_threshold - 1,
+        months_below_anchor: PARAMS.consecutive_months - 1,
+        expectations_anchor: PARAMS.target_inflation,
+      },
+    });
+
+    const next = applyMonthlySpiral(state, PARAMS);
+    expect(next.vars.expectations_anchor).toBeCloseTo(PARAMS.target_inflation + PARAMS.drift_per_period, 10);
+  });
+
+  // SPEC-CRED-4
   it("frozen counter on recovery: months_below_anchor stays, anchor recovers toward target", () => {
-    // SPEC-CRED-4
-    const params: CredibilityParams = {
-      consecutive_months: 3,
-      drift_per_period: 0.005,
-      recovery_rate: 0.002,
-      target_inflation: 0.02,
-    };
     const state = makeState({
       vars: {
-        credibility: ANCHOR_THRESHOLD, // at threshold = recovered
-        months_below_anchor: 12,       // was deep in spiral
-        expectations_anchor: 0.09,     // above target
-      },
-    });
-
-    const next = applyMonthlySpiral(state, params);
-    // counter is FROZEN, not reset
-    expect(next.vars.months_below_anchor).toBe(12);
-    // anchor moves toward target (0.02) by recovery_rate
-    expect(next.vars.expectations_anchor).toBeCloseTo(0.09 - params.recovery_rate, 10);
-  });
-
-  // SPEC-CRED-4: recovery saturates at target — no overshoot
-  it("recovery saturates at target_inflation and does not overshoot", () => {
-    // SPEC-CRED-4
-    const params: CredibilityParams = {
-      consecutive_months: 3,
-      drift_per_period: 0.005,
-      recovery_rate: 0.002,
-      target_inflation: 0.02,
-    };
-    // anchor is very close to target — gap smaller than recovery_rate
-    const state = makeState({
-      vars: {
-        credibility: ANCHOR_THRESHOLD,
+        credibility: PARAMS.anchor_threshold,
         months_below_anchor: 12,
-        expectations_anchor: 0.0205, // 0.0005 above target, less than recovery_rate of 0.002
+        expectations_anchor: 0.09,
       },
     });
 
-    const next = applyMonthlySpiral(state, params);
-    // should clamp to exactly target, not overshoot below
-    expect(next.vars.expectations_anchor).toBe(params.target_inflation);
-
-    // run another tick — already at target, should stay
-    const next2 = applyMonthlySpiral(next, params);
-    expect(next2.vars.expectations_anchor).toBe(params.target_inflation);
+    const next = applyMonthlySpiral(state, PARAMS);
+    expect(next.vars.months_below_anchor).toBe(12);
+    expect(next.vars.expectations_anchor).toBeCloseTo(0.09 - PARAMS.recovery_rate, 10);
   });
 
-  // SPEC-CRED-4: no-op when credibility >= threshold AND no gap exists
+  // SPEC-CRED-4
+  it("recovery saturates at target_inflation and does not overshoot", () => {
+    const state = makeState({
+      vars: {
+        credibility: PARAMS.anchor_threshold,
+        months_below_anchor: 12,
+        expectations_anchor: 0.0205,
+      },
+    });
+
+    const next = applyMonthlySpiral(state, PARAMS);
+    expect(next.vars.expectations_anchor).toBe(PARAMS.target_inflation);
+
+    const next2 = applyMonthlySpiral(next, PARAMS);
+    expect(next2.vars.expectations_anchor).toBe(PARAMS.target_inflation);
+  });
+
+  // SPEC-CRED-4
   it("no-op when credibility is high and anchor is already at target", () => {
-    // SPEC-CRED-4
-    const params: CredibilityParams = {
-      consecutive_months: 3,
-      drift_per_period: 0.005,
-      recovery_rate: 0.002,
-      target_inflation: 0.02,
-    };
     const state = makeState({
       vars: {
-        credibility: ANCHOR_THRESHOLD + 10,
+        credibility: PARAMS.anchor_threshold + 10,
         months_below_anchor: 0,
-        expectations_anchor: params.target_inflation,
+        expectations_anchor: PARAMS.target_inflation,
       },
     });
 
-    const next = applyMonthlySpiral(state, params);
+    const next = applyMonthlySpiral(state, PARAMS);
     expect(next.vars.months_below_anchor).toBe(0);
-    expect(next.vars.expectations_anchor).toBe(params.target_inflation);
+    expect(next.vars.expectations_anchor).toBe(PARAMS.target_inflation);
   });
 
-  // SPEC-CRED-4: pure function — does not mutate input state
+  // SPEC-CRED-4
   it("applyMonthlySpiral does not mutate the input state", () => {
-    // SPEC-CRED-4
-    const params: CredibilityParams = {
-      consecutive_months: 3,
-      drift_per_period: 0.005,
-      recovery_rate: 0.002,
-      target_inflation: 0.02,
-    };
     const state = makeState({
       vars: {
-        credibility: ANCHOR_THRESHOLD - 1,
+        credibility: PARAMS.anchor_threshold - 1,
         months_below_anchor: 5,
         expectations_anchor: 0.09,
       },
@@ -198,7 +163,7 @@ describe("credibility", () => {
     const originalMonths = state.vars.months_below_anchor;
     const originalAnchor = state.vars.expectations_anchor;
 
-    applyMonthlySpiral(state, params);
+    applyMonthlySpiral(state, PARAMS);
 
     expect(state.vars.months_below_anchor).toBe(originalMonths);
     expect(state.vars.expectations_anchor).toBe(originalAnchor);
