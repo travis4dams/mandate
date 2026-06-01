@@ -46,7 +46,7 @@ const SCHEMA_PATH = join(
 /**
  * Load a scenario by id and return the initial GameState.
  *
- * @param id          - The scenario id, e.g. "scen.1979_volcker".
+ * @param id          - The scenario id, e.g. "scen.1979_stagflation".
  * @param requiredVars - If provided, throws MissingVarsError if any key is absent
  *                       from the scenario's vars — preventing silent defaults to 0.
  */

@@ -10,7 +10,7 @@
     "id": {
       "type": "string",
       "pattern": "^scen\\.[a-z0-9_]+$",
-      "description": "Stable unique id, e.g. scen.1979_volcker."
+      "description": "Stable unique id, e.g. scen.1979_stagflation."
     },
     "date": {
       "type": "string",
@@ -20,12 +20,12 @@
     "name": {
       "type": "string",
       "pattern": "^[a-z][a-z0-9_.]+$",
-      "description": "Localization key for the scenario title, e.g. scen.1979_volcker.name."
+      "description": "Localization key for the scenario title, e.g. scen.1979_stagflation.name."
     },
     "desc": {
       "type": "string",
       "pattern": "^[a-z][a-z0-9_.]+$",
-      "description": "Localization key for the scenario description, e.g. scen.1979_volcker.desc."
+      "description": "Localization key for the scenario description, e.g. scen.1979_stagflation.desc."
     },
     "vars": {
       "type": "object",

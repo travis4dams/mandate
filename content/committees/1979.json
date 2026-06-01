@@ -4,44 +4,44 @@
   "desc": "comm.fomc_1979.desc",
   "members": [
     {
-      "id": "member.volcker",
-      "name": "member.volcker.name",
+      "id": "member.chair",
+      "name": "member.chair.name",
       "lean": "hawkish",
       "competence": 0.95
     },
     {
-      "id": "member.partee",
-      "name": "member.partee.name",
+      "id": "member.governor_a",
+      "name": "member.governor_a.name",
       "lean": "dovish",
       "competence": 0.78
     },
     {
-      "id": "member.wallich",
-      "name": "member.wallich.name",
+      "id": "member.governor_b",
+      "name": "member.governor_b.name",
       "lean": "hawkish",
       "competence": 0.82
     },
     {
-      "id": "member.rice",
-      "name": "member.rice.name",
+      "id": "member.governor_c",
+      "name": "member.governor_c.name",
       "lean": "neutral",
       "competence": 0.72
     },
     {
-      "id": "member.teeters",
-      "name": "member.teeters.name",
+      "id": "member.governor_d",
+      "name": "member.governor_d.name",
       "lean": "dovish",
       "competence": 0.75
     },
     {
-      "id": "member.coldwell",
-      "name": "member.coldwell.name",
+      "id": "member.regional_president_ny",
+      "name": "member.regional_president_ny.name",
       "lean": "hawkish",
       "competence": 0.70
     },
     {
-      "id": "member.schultz",
-      "name": "member.schultz.name",
+      "id": "member.regional_president_chicago",
+      "name": "member.regional_president_chicago.name",
       "lean": "neutral",
       "competence": 0.68
     }

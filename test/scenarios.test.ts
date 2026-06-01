@@ -17,8 +17,8 @@ const SLICE1_REQUIRED_VARS = [
 ];
 
 describe("loadScenario", () => {
-  it("loads 1979_volcker and returns a valid GameState", () => {
-    const state = loadScenario("scen.1979_volcker");
+  it("loads 1979_stagflation and returns a valid GameState", () => {
+    const state = loadScenario("scen.1979_stagflation");
     expect(state.date).toBe("1979-08");
     expect(state.history).toEqual([]);
     for (const key of SLICE1_REQUIRED_VARS) {
@@ -29,14 +29,14 @@ describe("loadScenario", () => {
 
   it("accepts requiredVars when all are present", () => {
     expect(() =>
-      loadScenario("scen.1979_volcker", ["inflation", "credibility"])
+      loadScenario("scen.1979_stagflation", ["inflation", "credibility"])
     ).not.toThrow();
   });
 
   it("throws MissingVarsError with .missing when a required var is absent", () => {
     let caught: unknown;
     try {
-      loadScenario("scen.1979_volcker", ["nonexistent_var"]);
+      loadScenario("scen.1979_stagflation", ["nonexistent_var"]);
     } catch (e) {
       caught = e;
     }

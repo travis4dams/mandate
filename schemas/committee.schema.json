@@ -34,12 +34,12 @@
           "id": {
             "type": "string",
             "pattern": "^member\\.[a-z0-9_]+$",
-            "description": "Stable unique member id, e.g. member.volcker."
+            "description": "Stable unique member id, e.g. member.chair."
           },
           "name": {
             "type": "string",
             "pattern": "^[a-z][a-z0-9_.]+$",
-            "description": "Localization key for the member name, e.g. member.volcker.name."
+            "description": "Localization key for the member name, e.g. member.chair.name."
           },
           "lean": {
             "type": "string",
