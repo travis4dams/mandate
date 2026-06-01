@@ -9,3 +9,7 @@ export * from "./content/loader.js";
 export * from "./content/scenarios.js";
 export * from "./content/replays.js";
 export * from "./content/committees.js";
+// Selective re-export: _resetCommitteeParamsCache is test-internal and intentionally
+// not part of the public barrel — external callers must not invalidate the cache.
+export { vote, loadCommitteeParams, VoteMissingVarError } from "./engine/fomc.js";
+export type { FomcVote, CommitteeParams } from "./engine/fomc.js";
