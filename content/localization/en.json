@@ -13,5 +13,14 @@
   "scen.1979_volcker.name": "Volcker Disinflation 1979",
   "scen.1979_volcker.desc": "Paul Volcker takes the chair in August 1979 with inflation at 11% and credibility shredded. Can you break expectations before the institution does?",
   "replay.1979_volcker_chair_strategy.name": "Volcker's Tightening",
-  "replay.1979_volcker_chair_strategy.desc": "Paul Volcker's 1979-1986 disinflation policy: ramp the fed funds rate to ~19% by mid-1981, then ease as inflation breaks. A canned strategy for testing the engine end-to-end."
+  "replay.1979_volcker_chair_strategy.desc": "Paul Volcker's 1979-1986 disinflation policy: ramp the fed funds rate to ~19% by mid-1981, then ease as inflation breaks. A canned strategy for testing the engine end-to-end.",
+  "comm.fomc_1979.name": "Federal Open Market Committee (1979)",
+  "comm.fomc_1979.desc": "The FOMC as constituted when Volcker took the chair in August 1979. A mix of hawks, doves, and centrists across the Board and regional banks.",
+  "member.volcker.name": "Paul Volcker",
+  "member.partee.name": "J. Charles Partee",
+  "member.wallich.name": "Henry Wallich",
+  "member.rice.name": "Emmett Rice",
+  "member.teeters.name": "Nancy Teeters",
+  "member.coldwell.name": "Philip Coldwell",
+  "member.schultz.name": "Frederick Schultz"
 }

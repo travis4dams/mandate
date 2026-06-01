@@ -1,0 +1,49 @@
+{
+  "id": "comm.fomc_1979",
+  "name": "comm.fomc_1979.name",
+  "desc": "comm.fomc_1979.desc",
+  "members": [
+    {
+      "id": "member.volcker",
+      "name": "member.volcker.name",
+      "lean": "hawkish",
+      "competence": 0.95
+    },
+    {
+      "id": "member.partee",
+      "name": "member.partee.name",
+      "lean": "dovish",
+      "competence": 0.78
+    },
+    {
+      "id": "member.wallich",
+      "name": "member.wallich.name",
+      "lean": "hawkish",
+      "competence": 0.82
+    },
+    {
+      "id": "member.rice",
+      "name": "member.rice.name",
+      "lean": "neutral",
+      "competence": 0.72
+    },
+    {
+      "id": "member.teeters",
+      "name": "member.teeters.name",
+      "lean": "dovish",
+      "competence": 0.75
+    },
+    {
+      "id": "member.coldwell",
+      "name": "member.coldwell.name",
+      "lean": "hawkish",
+      "competence": 0.70
+    },
+    {
+      "id": "member.schultz",
+      "name": "member.schultz.name",
+      "lean": "neutral",
+      "competence": 0.68
+    }
+  ]
+}
