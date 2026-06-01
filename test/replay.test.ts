@@ -6,6 +6,8 @@ import { loadReplay, ReplayNotFoundError } from "../src/content/replays";
 import { loadValidated } from "../src/content/loader";
 import { runReplay } from "./run-replay";
 
+const REPLAY_SCHEMA = new URL("../schemas/replay.schema.json", import.meta.url).pathname;
+
 // SPEC-SIM-4
 
 describe("loadReplay", () => {
@@ -50,52 +52,65 @@ describe("runReplay", () => {
     expect(sept1979).toBeDefined();
     expect(sept1979!.vars.policy_rate).toBe(0.1075);
   });
+
+  it("throws when months <= 0 (zero-length runs are a caller bug, not a silent empty trajectory)", () => {
+    expect(() => runReplay("replay.1979_volcker_chair_strategy", 0)).toThrow(/months must be > 0/);
+    expect(() => runReplay("replay.1979_volcker_chair_strategy", -3)).toThrow(/months must be > 0/);
+  });
+
+  it("ignores pivots beyond the requested months window (truncated run honors months arg)", () => {
+    const trajectory = runReplay("replay.1979_volcker_chair_strategy", 3);
+    expect(trajectory).toHaveLength(3);
+    expect(trajectory[0].date).toBe("1979-08");
+    expect(trajectory[2].date).toBe("1979-10");
+    expect(trajectory[2].vars.policy_rate).toBe(0.138);
+    expect(trajectory.find((s) => s.date === "1980-03")).toBeUndefined();
+  });
+
+  it("snapshots are independent: mutating one entry does not corrupt others", () => {
+    const trajectory = runReplay("replay.1979_volcker_chair_strategy", 5);
+    const originalRate = trajectory[2].vars.policy_rate;
+    trajectory[0].vars.policy_rate = 99;
+    trajectory[0].flags.tampered = true;
+    expect(trajectory[2].vars.policy_rate).toBe(originalRate);
+    expect(trajectory[2].flags.tampered).toBeUndefined();
+  });
 });
 
 describe("replay schema validation", () => {
   it("rejects a replay whose name is an inline player-facing string", () => {
-    // The schema enforces loc-key shape ^[a-z][a-z0-9_.]+$ on name/desc.
-    // A plain English title fails validation.
     const dir = join(tmpdir(), `mandate-test-replay-${process.pid}`);
     mkdirSync(dir, { recursive: true });
-    const badReplay = {
-      id: "replay.test_bad",
-      name: "Volcker Tightening", // inline player-facing string — must fail
-      desc: "replay.test_bad.desc",
-      scenario: "scen.1979_volcker",
-      actions: [{ date: "1979-08", policy_rate: 0.1075 }],
-    };
-    writeFileSync(join(dir, "bad.json"), JSON.stringify(badReplay));
-    let threw = false;
     try {
-      loadValidated("schemas/replay.schema.json", dir);
-    } catch {
-      threw = true;
+      const badReplay = {
+        id: "replay.test_bad",
+        name: "Volcker Tightening",
+        desc: "replay.test_bad.desc",
+        scenario: "scen.1979_volcker",
+        actions: [{ date: "1979-08", policy_rate: 0.1075 }],
+      };
+      writeFileSync(join(dir, "bad.json"), JSON.stringify(badReplay));
+      expect(() => loadValidated(REPLAY_SCHEMA, dir)).toThrow(/name/);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
-    expect(threw).toBe(true);
   });
 
-  it("rejects a replay action with no payload (just a date is not a valid action)", () => {
+  it("rejects a replay action missing policy_rate (schema required: [date, policy_rate])", () => {
     const dir = join(tmpdir(), `mandate-test-replay2-${process.pid}`);
     mkdirSync(dir, { recursive: true });
-    const badReplay = {
-      id: "replay.test_actionless",
-      name: "replay.test_actionless.name",
-      desc: "replay.test_actionless.desc",
-      scenario: "scen.1979_volcker",
-      actions: [{ date: "1979-08" }], // no policy_rate — schema requires at least one player input
-    };
-    writeFileSync(join(dir, "bad.json"), JSON.stringify(badReplay));
-    let threw = false;
     try {
-      loadValidated("schemas/replay.schema.json", dir);
-    } catch {
-      threw = true;
+      const badReplay = {
+        id: "replay.test_actionless",
+        name: "replay.test_actionless.name",
+        desc: "replay.test_actionless.desc",
+        scenario: "scen.1979_volcker",
+        actions: [{ date: "1979-08" }],
+      };
+      writeFileSync(join(dir, "bad.json"), JSON.stringify(badReplay));
+      expect(() => loadValidated(REPLAY_SCHEMA, dir)).toThrow(/policy_rate/);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
-    expect(threw).toBe(true);
   });
 });

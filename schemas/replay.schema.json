@@ -43,7 +43,9 @@
           },
           "policy_rate": {
             "type": "number",
-            "description": "Target federal funds rate as a decimal, e.g. 0.1075 for 10.75%."
+            "minimum": 0,
+            "maximum": 2.0,
+            "description": "Target federal funds rate as a decimal in [0, 2.0]. 0.1075 = 10.75%; 2.0 is a generous upper bound for hyperinflationary fictional scenarios."
           }
         }
       }
