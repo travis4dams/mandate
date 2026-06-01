@@ -1,11 +1,9 @@
-import { readFileSync } from "node:fs";
-import Ajv2020 from "ajv/dist/2020";
-import { loadValidated } from "../src/content/loader";
+import { loadValidated, loadValidatedFile } from "../src/content/loader";
 
 // Stand-alone content validator used by `npm run validate` and CI. Exits non-zero
 // on any schema violation so a bad content file blocks the merge.
 
-const checks = [
+const dirChecks = [
   { schema: "schemas/event.schema.json", dir: "content/events", label: "events" },
   { schema: "schemas/tech.schema.json", dir: "content/tech", label: "tech" },
   { schema: "schemas/scenario.schema.json", dir: "content/scenarios", label: "scenarios" },
@@ -13,30 +11,33 @@ const checks = [
   { schema: "schemas/committee.schema.json", dir: "content/committees", label: "committees" },
 ];
 
+const fileChecks = [
+  { schema: "schemas/tick.schema.json", file: "content/engine/tick.json", label: "tick" },
+  { schema: "schemas/fog.schema.json", file: "content/engine/fog.json", label: "fog" },
+  { schema: "schemas/credibility.schema.json", file: "content/engine/credibility.json", label: "credibility params" },
+  { schema: "schemas/committee-params.schema.json", file: "content/engine/committee.json", label: "committee params" },
+];
+
 let failed = false;
-for (const c of checks) {
+
+for (const c of dirChecks) {
   try {
     const items = loadValidated(c.schema, c.dir);
-    console.log(`\u2713 ${c.label}: ${items.length} valid`);
+    console.log(`✓ ${c.label}: ${items.length} valid`);
   } catch (e) {
     failed = true;
-    console.error(`\u2717 ${c.label}: ${(e as Error).message}`);
+    console.error(`✗ ${c.label}: ${(e as Error).message}`);
   }
 }
 
-// Single-file validation for content/engine/params.json against schemas/engine-params.schema.json.
-try {
-  const ajv = new Ajv2020({ allErrors: true, strict: false });
-  const schema = JSON.parse(readFileSync("schemas/engine-params.schema.json", "utf8"));
-  const validate = ajv.compile(schema);
-  const raw = JSON.parse(readFileSync("content/engine/params.json", "utf8"));
-  if (!validate(raw)) {
-    throw new Error(`content/engine/params.json: ${ajv.errorsText(validate.errors)}`);
+for (const c of fileChecks) {
+  try {
+    loadValidatedFile(c.schema, c.file);
+    console.log(`✓ ${c.label}: 1 valid`);
+  } catch (e) {
+    failed = true;
+    console.error(`✗ ${c.label}: ${(e as Error).message}`);
   }
-  console.log("\u2713 engine-params: valid");
-} catch (e) {
-  failed = true;
-  console.error(`\u2717 engine-params: ${(e as Error).message}`);
 }
 
 process.exit(failed ? 1 : 0);

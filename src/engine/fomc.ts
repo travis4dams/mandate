@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { loadValidated } from "../content/loader.js";
+import { loadValidatedFile } from "../content/loader.js";
 import type { Committee, CommitteeMember } from "../content/committees.js";
 import type { GameState } from "./state.js";
 
@@ -93,31 +93,19 @@ export function vote(
 }
 
 // Lazy-cached loader — mirrors loadCredibilityParams pattern.
-interface CommitteeParamsSection {
-  committee: CommitteeParams;
-}
-
-const PARAMS_DIR = join(new URL(".", import.meta.url).pathname, "../../content/engine");
-const SCHEMA_PATH = join(new URL(".", import.meta.url).pathname, "../../schemas/engine-params.schema.json");
+const SCHEMA_PATH = join(new URL(".", import.meta.url).pathname, "../../schemas/committee-params.schema.json");
+const FILE_PATH = join(new URL(".", import.meta.url).pathname, "../../content/engine/committee.json");
 
 let _cachedCommitteeParams: CommitteeParams | undefined;
 
-/** Lazy-loaded cached params from content/engine/params.json#committee. */
+/** Lazy-loaded cached params from content/engine/committee.json. */
 export function loadCommitteeParams(): CommitteeParams {
   if (_cachedCommitteeParams !== undefined) return _cachedCommitteeParams;
-  let loaded: CommitteeParamsSection[];
   try {
-    loaded = loadValidated<CommitteeParamsSection>(SCHEMA_PATH, PARAMS_DIR);
+    _cachedCommitteeParams = loadValidatedFile<CommitteeParams>(SCHEMA_PATH, FILE_PATH);
   } catch (e) {
-    throw new Error("Failed to load committee params from content/engine/params.json", { cause: e });
+    throw new Error("Failed to load committee params from content/engine/committee.json", { cause: e });
   }
-  if (!loaded[0]) {
-    throw new Error(`Engine params not found in ${PARAMS_DIR}`);
-  }
-  if (!loaded[0].committee) {
-    throw new Error(`Engine params at ${PARAMS_DIR} missing 'committee' section`);
-  }
-  _cachedCommitteeParams = loaded[0].committee;
   return _cachedCommitteeParams;
 }
 

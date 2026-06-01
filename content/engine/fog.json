@@ -1,0 +1,7 @@
+{
+  "inflation":           { "noise_scale": 0.002, "lag_months": 1 },
+  "unemployment":        { "noise_scale": 0.001, "lag_months": 2 },
+  "policy_rate":         { "noise_scale": 0,     "lag_months": 0 },
+  "expectations_anchor": { "noise_scale": 0.003, "lag_months": 3 },
+  "gdp":                 { "noise_scale": 0,     "lag_months": 1 }
+}
