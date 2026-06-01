@@ -5,4 +5,4 @@ coverage/
 .DS_Store
 .omc/state/
 .omc/sessions/
-.omc/drafts/
+.omc/drafts/.omc/project-memory.json
