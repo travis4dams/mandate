@@ -27,12 +27,14 @@ export interface CommitteeParams {
   target_unemployment: number;
 }
 
-// Thrown when vote() is called against a state that omits a required var.
-// Defaulting to 0 silently corrupts the dissent count (mirrors fog.ts's
-// missing-series guard).
+// Thrown when vote() is called against a state whose required vars are missing or non-finite.
+// Defaulting to 0 (or accepting NaN/Infinity through the dissent arithmetic) silently corrupts the dissent count.
 export class VoteMissingVarError extends Error {
-  constructor(public readonly seriesId: string) {
-    super(`vote: required state.vars["${seriesId}"] is missing — refusing to default to 0.`);
+  constructor(
+    public readonly seriesId: string,
+    public readonly reason: "missing" | "non_finite",
+  ) {
+    super(`vote: state.vars["${seriesId}"] is ${reason === "missing" ? "missing" : "not finite"} — refusing to compute dissents.`);
     this.name = "VoteMissingVarError";
   }
 }
@@ -72,8 +74,10 @@ export function vote(
 ): FomcVote {
   const inflation = state.vars.inflation;
   const unemployment = state.vars.unemployment;
-  if (inflation === undefined) throw new VoteMissingVarError("inflation");
-  if (unemployment === undefined) throw new VoteMissingVarError("unemployment");
+  if (inflation === undefined) throw new VoteMissingVarError("inflation", "missing");
+  if (unemployment === undefined) throw new VoteMissingVarError("unemployment", "missing");
+  if (!Number.isFinite(inflation)) throw new VoteMissingVarError("inflation", "non_finite");
+  if (!Number.isFinite(unemployment)) throw new VoteMissingVarError("unemployment", "non_finite");
   const gapInflation = inflation - params.target_inflation;
   const gapUnemployment = unemployment - params.target_unemployment;
 
@@ -104,8 +108,11 @@ export function loadCommitteeParams(): CommitteeParams {
   } catch (e) {
     throw new Error("Failed to load committee params from content/engine/params.json", { cause: e });
   }
-  if (!loaded[0] || !loaded[0].committee) {
-    throw new Error("Engine params content/engine/params.json missing committee section");
+  if (!loaded[0]) {
+    throw new Error(`Engine params not found in ${PARAMS_DIR}`);
+  }
+  if (!loaded[0].committee) {
+    throw new Error(`Engine params at ${PARAMS_DIR} missing 'committee' section`);
   }
   _cachedCommitteeParams = loaded[0].committee;
   return _cachedCommitteeParams;

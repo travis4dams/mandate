@@ -160,6 +160,65 @@ describe("vote", () => {
     expect(result.dissents).toBe(0);
     expect(result.decided).toBe(0.05);
   });
+
+  // SPEC-COMM-2: neutral formula with non-zero gaps actually exercises neutral_blend and (1 - neutral_blend).
+  it("neutral member with non-zero gaps applies neutral_blend on inflation and (1 - neutral_blend) on unemployment", () => {
+    // gap_inflation = 0.08 - 0.02 = 0.06; gap_unemployment = 0.07 - 0.04 = 0.03
+    // neutral preferred = 0.05 + 0.5 * 0.06 - 0.5 * 0.03 = 0.05 + 0.030 - 0.015 = 0.065
+    // |0.065 - 0.05| = 0.015 > 0.0075 → dissent
+    const committee = makeCommittee(["neutral"]);
+    const state = makeState({ vars: { inflation: 0.08, unemployment: 0.07 } });
+    const result = vote(committee, 0.05, state, PARAMS);
+    expect(result.dissents).toBe(1);
+  });
+
+  // SPEC-COMM-2: dovish formula with NEGATIVE unemployment gap (tight labor market)
+  // → dovish preferred rate goes ABOVE proposed (rare but the sign must be right).
+  it("dovish member with unemployment BELOW natural rate prefers a HIGHER rate (sign check)", () => {
+    // gap_unemployment = 0.02 - 0.04 = -0.02 (tight market)
+    // dovish preferred = 0.05 - 0.8 * (-0.02) = 0.05 + 0.016 = 0.066
+    // |0.066 - 0.05| = 0.016 > 0.0075 → dissent
+    const committee = makeCommittee(["dovish"]);
+    const state = makeState({ vars: { inflation: 0.02, unemployment: 0.02 } });
+    const result = vote(committee, 0.05, state, PARAMS);
+    expect(result.dissents).toBe(1);
+  });
+
+  // SPEC-COMM-2: mixed committee — verify all three lean branches fire independently in one vote().
+  it("mixed committee with partial dissent counts per-lean members correctly", () => {
+    // gap_inflation = 0.08 - 0.02 = 0.06; gap_unemployment = 0.07 - 0.04 = 0.03
+    // hawkish preferred = 0.05 + 1.5 * 0.06 = 0.140 → |0.090| > tolerance → dissent
+    // dovish preferred  = 0.05 - 0.8 * 0.03 = 0.026 → |0.024| > tolerance → dissent
+    // neutral preferred = 0.05 + 0.5*0.06 - 0.5*0.03 = 0.065 → |0.015| > tolerance → dissent
+    // All three dissent.
+    const committee = makeCommittee(["hawkish", "dovish", "neutral"]);
+    const state = makeState({ vars: { inflation: 0.08, unemployment: 0.07 } });
+    const result = vote(committee, 0.05, state, PARAMS);
+    expect(result.dissents).toBe(3);
+
+    // Now tune a mixed committee where only the neutral dissents:
+    // gap_inflation = 0.0225 - 0.02 = 0.0025; gap_unemployment = 0.07 - 0.04 = 0.03
+    // hawkish preferred = 0.05 + 1.5 * 0.0025 = 0.05375 → |0.00375| < tolerance → no
+    // dovish preferred  = 0.05 - 0.8 * 0.03 = 0.026     → |0.024| > tolerance → yes
+    // neutral preferred = 0.05 + 0.5*0.0025 - 0.5*0.03 = 0.03625 → |0.01375| > tolerance → yes
+    // Expected: 2 dissents (dovish, neutral). Hawk does not dissent.
+    const state2 = makeState({ vars: { inflation: 0.0225, unemployment: 0.07 } });
+    const result2 = vote(committee, 0.05, state2, PARAMS);
+    expect(result2.dissents).toBe(2);
+  });
+
+  // SPEC-COMM-2: NaN/Infinity guard — silent corruption attack surface closed.
+  it("throws VoteMissingVarError when inflation is NaN", () => {
+    const committee = makeCommittee(["hawkish"]);
+    const state = makeState({ vars: { inflation: NaN, unemployment: 0.04 } });
+    expect(() => vote(committee, 0.05, state, PARAMS)).toThrow(VoteMissingVarError);
+  });
+
+  it("throws VoteMissingVarError when unemployment is Infinity", () => {
+    const committee = makeCommittee(["dovish"]);
+    const state = makeState({ vars: { inflation: 0.02, unemployment: Infinity } });
+    expect(() => vote(committee, 0.05, state, PARAMS)).toThrow(VoteMissingVarError);
+  });
 });
 
 describe("loadCommitteeParams", () => {
