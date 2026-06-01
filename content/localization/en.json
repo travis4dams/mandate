@@ -1,0 +1,13 @@
+{
+  "evt.oil_shock.title": "Oil Shock",
+  "evt.oil_shock.desc": "Crude prices spike as overseas tensions flare. The supply shock will push headline inflation up regardless of what you do.",
+  "evt.oil_shock.opt.look_through": "Look through it (treat as transitory)",
+  "evt.oil_shock.opt.tighten": "Tighten pre-emptively",
+  "tech.applied.omo.name": "Open Market Operations",
+  "tech.applied.omo.desc": "Buying and selling government securities to steer the policy rate.",
+  "tech.applied.qe.name": "Large-Scale Asset Purchases",
+  "tech.applied.qe.desc": "Balance-sheet policy for when the policy rate is pinned at the lower bound.",
+  "tech.infrastructure.mainframe_computing.name": "Mainframe Computing",
+  "tech.infrastructure.mainframe_computing.desc": "Establishes the IT division and sharpens the data picture.",
+  "division.it": "Information Technology"
+}

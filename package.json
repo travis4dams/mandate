@@ -1,0 +1,22 @@
+{
+  "name": "mandate",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "A data-driven central-banking grand-strategy game. Engine code is content-agnostic; all game content lives in schema-governed data files.",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "validate": "tsx tools/validate-content.ts",
+    "spec:trace": "tsx tools/spec-trace.ts",
+    "check": "npm run typecheck && npm run validate && npm run spec:trace && npm test"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "ajv": "^8.17.1",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}

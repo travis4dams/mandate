@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mandate.dev/schemas/event.schema.json",
+  "title": "Event",
+  "description": "A weighted, condition-gated event. Logic only. All display text is referenced by localization key and lives in content/localization.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "category", "title", "options"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^evt\\.[a-z0-9_]+$", "description": "Stable unique id, e.g. evt.oil_shock." },
+    "category": { "enum": ["exogenous", "endogenous", "fiscal_political"], "description": "exogenous = weather unrelated to the player; endogenous = consequence of game state; fiscal_political = government/electoral." },
+    "title": { "type": "string", "description": "Localization key for the headline." },
+    "desc": { "type": "string", "description": "Localization key for the body text." },
+    "fires_once": { "type": "boolean", "default": false },
+    "trigger": { "$ref": "#/$defs/condition", "description": "Conditions under which the event is eligible to fire. Omit for always-eligible." },
+    "mean_time_to_happen": {
+      "type": "object", "additionalProperties": false, "required": ["base_days"],
+      "description": "Paradox-style MTTH. Lower effective days = more likely. Modifiers multiply base_days when their condition holds.",
+      "properties": {
+        "base_days": { "type": "number", "exclusiveMinimum": 0 },
+        "modifiers": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["condition", "factor"], "properties": { "condition": { "$ref": "#/$defs/condition" }, "factor": { "type": "number", "exclusiveMinimum": 0, "description": "Multiplier on base_days; <1 makes the event more likely." } } } }
+      }
+    },
+    "options": {
+      "type": "array", "minItems": 1, "description": "Player choices. Each applies a list of effects.",
+      "items": { "type": "object", "additionalProperties": false, "required": ["id", "name", "effects"], "properties": { "id": { "type": "string" }, "name": { "type": "string", "description": "Localization key for the button label." }, "effects": { "type": "array", "items": { "$ref": "#/$defs/effect" } } } }
+    }
+  },
+  "$defs": {
+    "condition": {
+      "description": "A boolean expression over game state. Combine with all/any/not.",
+      "oneOf": [
+        { "type": "object", "additionalProperties": false, "required": ["all"], "properties": { "all": { "type": "array", "items": { "$ref": "#/$defs/condition" } } } },
+        { "type": "object", "additionalProperties": false, "required": ["any"], "properties": { "any": { "type": "array", "items": { "$ref": "#/$defs/condition" } } } },
+        { "type": "object", "additionalProperties": false, "required": ["not"], "properties": { "not": { "$ref": "#/$defs/condition" } } },
+        { "type": "object", "additionalProperties": false, "required": ["var", "op", "value"], "properties": { "var": { "type": "string" }, "op": { "enum": [">", ">=", "<", "<=", "==", "!="] }, "value": { "type": "number" } } },
+        { "type": "object", "additionalProperties": false, "required": ["flag"], "properties": { "flag": { "type": "string" }, "value": { "type": "boolean" } } }
+      ]
+    },
+    "effect": {
+      "description": "A single mutation of game state.",
+      "oneOf": [
+        { "type": "object", "additionalProperties": false, "required": ["op", "target", "value"], "properties": { "op": { "enum": ["add", "sub", "mul", "set"] }, "target": { "type": "string" }, "value": { "type": "number" } } },
+        { "type": "object", "additionalProperties": false, "required": ["set_flag", "value"], "properties": { "set_flag": { "type": "string" }, "value": { "type": "boolean" } } },
+        { "type": "object", "additionalProperties": false, "required": ["trigger_event"], "properties": { "trigger_event": { "type": "string" } } }
+      ]
+    }
+  }
+}

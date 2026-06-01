@@ -1,0 +1,25 @@
+[
+  {
+    "id": "tech.applied.omo",
+    "tree": "applied",
+    "name": "tech.applied.omo.name",
+    "description": "tech.applied.omo.desc",
+    "prerequisites": [],
+    "cost": { "research_points": 100 },
+    "diffusion": { "external": false, "earliest": "1920-01" },
+    "unlocks": { "actions": ["action.open_market_operations"] }
+  },
+  {
+    "id": "tech.applied.qe",
+    "tree": "applied",
+    "name": "tech.applied.qe.name",
+    "description": "tech.applied.qe.desc",
+    "prerequisites": ["tech.applied.omo"],
+    "cost": { "research_points": 400 },
+    "diffusion": { "external": true, "earliest": "2008-09", "absorb_modifier_var": "division.research.strength" },
+    "unlocks": {
+      "actions": ["action.large_scale_asset_purchases"],
+      "modifiers": [ { "target": "lower_bound_effectiveness", "op": "add", "value": 0.2 } ]
+    }
+  }
+]

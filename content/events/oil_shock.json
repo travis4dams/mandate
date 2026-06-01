@@ -1,0 +1,28 @@
+[
+  {
+    "id": "evt.oil_shock",
+    "category": "exogenous",
+    "title": "evt.oil_shock.title",
+    "desc": "evt.oil_shock.desc",
+    "fires_once": false,
+    "trigger": { "all": [ { "var": "global_tension", "op": ">=", "value": 0.5 } ] },
+    "mean_time_to_happen": {
+      "base_days": 3650,
+      "modifiers": [
+        { "condition": { "var": "global_tension", "op": ">=", "value": 0.8 }, "factor": 0.4 }
+      ]
+    },
+    "options": [
+      {
+        "id": "look_through",
+        "name": "evt.oil_shock.opt.look_through",
+        "effects": [ { "op": "add", "target": "inflation", "value": 0.02 } ]
+      },
+      {
+        "id": "tighten",
+        "name": "evt.oil_shock.opt.tighten",
+        "effects": [ { "op": "add", "target": "policy_rate", "value": 0.005 }, { "op": "sub", "target": "growth", "value": 0.01 } ]
+      }
+    ]
+  }
+]

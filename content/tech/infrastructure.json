@@ -1,0 +1,15 @@
+[
+  {
+    "id": "tech.infrastructure.mainframe_computing",
+    "tree": "infrastructure",
+    "name": "tech.infrastructure.mainframe_computing.name",
+    "description": "tech.infrastructure.mainframe_computing.desc",
+    "prerequisites": [],
+    "cost": { "research_points": 250 },
+    "diffusion": { "external": true, "earliest": "1990-01", "absorb_modifier_var": "division.research.strength" },
+    "unlocks": {
+      "divisions": ["division.it"],
+      "modifiers": [ { "target": "data_fog", "op": "mul", "value": 0.7 } ]
+    }
+  }
+]

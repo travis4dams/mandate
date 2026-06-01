@@ -1,0 +1,309 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1780300529880,
+  "projectRoot": "/home/travis/Documents/mandate",
+  "techStack": {
+    "languages": [
+      {
+        "name": "JavaScript/TypeScript",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "package.json"
+        ]
+      },
+      {
+        "name": "TypeScript",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "tsconfig.json"
+        ]
+      }
+    ],
+    "frameworks": [
+      {
+        "name": "vitest",
+        "version": "2.1.0",
+        "category": "testing"
+      }
+    ],
+    "packageManager": "npm",
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": null,
+    "testCommand": "npm test",
+    "lintCommand": null,
+    "devCommand": null,
+    "scripts": {
+      "typecheck": "tsc --noEmit",
+      "test": "vitest run",
+      "test:watch": "vitest",
+      "validate": "tsx tools/validate-content.ts",
+      "spec:trace": "tsx tools/spec-trace.ts",
+      "check": "npm run typecheck && npm run validate && npm run spec:trace && npm test"
+    }
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": "*.test.ts",
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "spec",
+      "src",
+      "test"
+    ],
+    "gitBranches": null
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "content": {
+      "path": "content",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1780300529860,
+      "keyFiles": []
+    },
+    "schemas": {
+      "path": "schemas",
+      "purpose": "Schema definitions",
+      "fileCount": 2,
+      "lastAccessed": 1780300529867,
+      "keyFiles": [
+        "event.schema.json",
+        "tech.schema.json"
+      ]
+    },
+    "spec": {
+      "path": "spec",
+      "purpose": "Test specifications",
+      "fileCount": 3,
+      "lastAccessed": 1780300529872,
+      "keyFiles": [
+        "DESIGN.md",
+        "README.md",
+        "requirements.md"
+      ]
+    },
+    "src": {
+      "path": "src",
+      "purpose": "Source code",
+      "fileCount": 1,
+      "lastAccessed": 1780300529876,
+      "keyFiles": [
+        "index.ts"
+      ]
+    },
+    "test": {
+      "path": "test",
+      "purpose": "Test files",
+      "fileCount": 4,
+      "lastAccessed": 1780300529876,
+      "keyFiles": [
+        "conditions.test.ts",
+        "content.test.ts",
+        "credibility.test.ts",
+        "rng.test.ts"
+      ]
+    },
+    "tools": {
+      "path": "tools",
+      "purpose": null,
+      "fileCount": 2,
+      "lastAccessed": 1780300529876,
+      "keyFiles": [
+        "spec-trace.ts",
+        "validate-content.ts"
+      ]
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "spec/requirements.md",
+      "accessCount": 10,
+      "lastAccessed": 1780304236721,
+      "type": "file"
+    },
+    {
+      "path": "spec/DESIGN.md",
+      "accessCount": 3,
+      "lastAccessed": 1780303254035,
+      "type": "file"
+    },
+    {
+      "path": "src/engine/state.ts",
+      "accessCount": 3,
+      "lastAccessed": 1780303257950,
+      "type": "file"
+    },
+    {
+      "path": "src/engine/credibility.ts",
+      "accessCount": 3,
+      "lastAccessed": 1780303258458,
+      "type": "file"
+    },
+    {
+      "path": "tools/spec-trace.ts",
+      "accessCount": 3,
+      "lastAccessed": 1780303521638,
+      "type": "file"
+    },
+    {
+      "path": "src/engine/rng.ts",
+      "accessCount": 2,
+      "lastAccessed": 1780302956866,
+      "type": "file"
+    },
+    {
+      "path": "test/credibility.test.ts",
+      "accessCount": 2,
+      "lastAccessed": 1780303258952,
+      "type": "file"
+    },
+    {
+      "path": "package.json",
+      "accessCount": 2,
+      "lastAccessed": 1780303678706,
+      "type": "file"
+    },
+    {
+      "path": "docs/adr/0001-vertical-slice-1.md",
+      "accessCount": 2,
+      "lastAccessed": 1780304286718,
+      "type": "file"
+    },
+    {
+      "path": "README.md",
+      "accessCount": 1,
+      "lastAccessed": 1780300842178,
+      "type": "file"
+    },
+    {
+      "path": "AGENTS.md",
+      "accessCount": 1,
+      "lastAccessed": 1780300843786,
+      "type": "file"
+    },
+    {
+      "path": "spec/README.md",
+      "accessCount": 1,
+      "lastAccessed": 1780300849981,
+      "type": "file"
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "accessCount": 1,
+      "lastAccessed": 1780300850485,
+      "type": "file"
+    },
+    {
+      "path": "src/content/conditions.ts",
+      "accessCount": 1,
+      "lastAccessed": 1780300853004,
+      "type": "file"
+    },
+    {
+      "path": "src/content/effects.ts",
+      "accessCount": 1,
+      "lastAccessed": 1780300853522,
+      "type": "file"
+    },
+    {
+      "path": "src/content/loader.ts",
+      "accessCount": 1,
+      "lastAccessed": 1780300853672,
+      "type": "file"
+    },
+    {
+      "path": "schemas/event.schema.json",
+      "accessCount": 1,
+      "lastAccessed": 1780300858449,
+      "type": "file"
+    },
+    {
+      "path": "schemas/tech.schema.json",
+      "accessCount": 1,
+      "lastAccessed": 1780300859166,
+      "type": "file"
+    },
+    {
+      "path": "content/events/oil_shock.json",
+      "accessCount": 1,
+      "lastAccessed": 1780300859573,
+      "type": "file"
+    },
+    {
+      "path": "content/tech/applied.json",
+      "accessCount": 1,
+      "lastAccessed": 1780300860030,
+      "type": "file"
+    },
+    {
+      "path": "content/tech/infrastructure.json",
+      "accessCount": 1,
+      "lastAccessed": 1780300860533,
+      "type": "file"
+    },
+    {
+      "path": "content/localization/en.json",
+      "accessCount": 1,
+      "lastAccessed": 1780300861012,
+      "type": "file"
+    },
+    {
+      "path": "test/conditions.test.ts",
+      "accessCount": 1,
+      "lastAccessed": 1780300862572,
+      "type": "file"
+    },
+    {
+      "path": "test/rng.test.ts",
+      "accessCount": 1,
+      "lastAccessed": 1780300863053,
+      "type": "file"
+    },
+    {
+      "path": "test/content.test.ts",
+      "accessCount": 1,
+      "lastAccessed": 1780300863560,
+      "type": "file"
+    },
+    {
+      "path": "tools/validate-content.ts",
+      "accessCount": 1,
+      "lastAccessed": 1780300864593,
+      "type": "file"
+    },
+    {
+      "path": "src/index.ts",
+      "accessCount": 1,
+      "lastAccessed": 1780300867581,
+      "type": "file"
+    },
+    {
+      "path": "CLAUDE.md",
+      "accessCount": 1,
+      "lastAccessed": 1780302956935,
+      "type": "file"
+    },
+    {
+      "path": "LICENSE",
+      "accessCount": 1,
+      "lastAccessed": 1780304008595,
+      "type": "file"
+    },
+    {
+      "path": "docs/ralph-runbook.md",
+      "accessCount": 1,
+      "lastAccessed": 1780304031959,
+      "type": "file"
+    }
+  ],
+  "userDirectives": []
+}

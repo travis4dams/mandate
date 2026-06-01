@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mandate.dev/schemas/tech.schema.json",
+  "title": "Technology",
+  "description": "A strictly-beneficial unlock node in one of the three research trees. Adopting a tech never imposes a penalty; the only cost is the opportunity cost of research spent elsewhere.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "tree", "name", "cost"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^tech\\.(theory|applied|infrastructure)\\.[a-z0-9_]+$" },
+    "tree": { "enum": ["theory", "applied", "infrastructure"], "description": "theory = macro frameworks; applied = deployable tools/ops; infrastructure = data/computing that lifts the fog and speeds the other trees." },
+    "name": { "type": "string", "description": "Localization key." },
+    "description": { "type": "string", "description": "Localization key." },
+    "prerequisites": { "type": "array", "items": { "type": "string" }, "default": [] },
+    "cost": { "type": "object", "additionalProperties": false, "required": ["research_points"], "properties": { "research_points": { "type": "number", "exclusiveMinimum": 0 } } },
+    "diffusion": {
+      "type": "object", "additionalProperties": false, "required": ["external", "earliest"],
+      "properties": {
+        "external": { "type": "boolean", "description": "true = arrives from academia/peer central banks once developed in the world; false = the player can pioneer it." },
+        "earliest": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}$", "description": "Earliest in-game year-month the node can become available." },
+        "absorb_modifier_var": { "type": "string", "description": "State var whose value scales absorption speed for external techs." }
+      }
+    },
+    "unlocks": {
+      "type": "object", "additionalProperties": false, "description": "What becomes available. All entries are gains.",
+      "properties": {
+        "actions": { "type": "array", "items": { "type": "string" } },
+        "divisions": { "type": "array", "items": { "type": "string" }, "description": "Org-chart divisions this tech brings into existence, e.g. the IT division." },
+        "modifiers": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["target", "op", "value"], "properties": { "target": { "type": "string" }, "op": { "enum": ["add", "sub", "mul", "set"] }, "value": { "type": "number" } } } }
+      }
+    }
+  }
+}

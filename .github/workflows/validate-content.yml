@@ -1,0 +1,25 @@
+name: Validate Content
+
+# Runs the schema validator against every content file. A malformed event or tech
+# fails the merge, mirroring how Paradox's CWTools catches script errors.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - "content/**"
+      - "schemas/**"
+      - "src/content/**"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Validate content against schemas
+        run: npm run validate
