@@ -1,6 +1,7 @@
 // SPEC-MANDATE-1
 import { describe, it, expect } from "vitest";
 import { onTarget } from "../src/engine/mandate";
+import { VoteMissingVarError } from "../src/engine/fomc";
 import { makeState } from "../src/engine/state";
 import type { MandateParams } from "../src/engine/mandate";
 
@@ -94,6 +95,36 @@ describe("onTarget — purity", () => {
     const varsBefore = { ...state.vars };
     onTarget(state, DUAL_PARAMS);
     expect(state.vars).toEqual(varsBefore);
+  });
+});
+
+describe("onTarget — guard: missing or non-finite vars", () => {
+  // SPEC-MANDATE-1: missing inflation throws VoteMissingVarError.
+  it("throws VoteMissingVarError when inflation is missing", () => {
+    // SPEC-MANDATE-1
+    const state = makeState({ vars: { unemployment: 0.055 } });
+    expect(() => onTarget(state, DUAL_PARAMS)).toThrow(VoteMissingVarError);
+  });
+
+  // SPEC-MANDATE-1: non-finite inflation throws VoteMissingVarError.
+  it("throws VoteMissingVarError when inflation is NaN", () => {
+    // SPEC-MANDATE-1
+    const state = makeState({ vars: { inflation: NaN, unemployment: 0.055 } });
+    expect(() => onTarget(state, DUAL_PARAMS)).toThrow(VoteMissingVarError);
+  });
+
+  // SPEC-MANDATE-1: inflation ok but missing unemployment (dual) throws VoteMissingVarError.
+  it("throws VoteMissingVarError when unemployment is missing (dual mandate)", () => {
+    // SPEC-MANDATE-1
+    const state = makeState({ vars: { inflation: 0.02 } });
+    expect(() => onTarget(state, DUAL_PARAMS)).toThrow(VoteMissingVarError);
+  });
+
+  // SPEC-MANDATE-1: missing unemployment is NOT checked for single mandate.
+  it("does not throw when unemployment is missing and mandate_type is single", () => {
+    // SPEC-MANDATE-1
+    const state = makeState({ vars: { inflation: 0.02 } });
+    expect(() => onTarget(state, SINGLE_PARAMS)).not.toThrow();
   });
 });
 

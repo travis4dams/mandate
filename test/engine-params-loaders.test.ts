@@ -97,6 +97,13 @@ describe("mandate params loader (SPEC-MANDATE-1)", () => {
     expect(result.unemployment_target).toBeGreaterThan(0);
     expect(result.unemployment_band).toBeGreaterThan(0);
   });
+
+  it("returns the same object reference on repeated calls (cache)", () => {
+    // SPEC-MANDATE-1
+    const first = loadMandateParams();
+    const second = loadMandateParams();
+    expect(first).toBe(second);
+  });
 });
 
 describe("AJV compile cache (SPEC-PARAMS-1)", () => {

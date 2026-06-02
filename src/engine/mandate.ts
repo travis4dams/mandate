@@ -1,6 +1,8 @@
-// SPEC-MANDATE-1: pure mandate evaluator — no Math.random(), no Date.now(), no mutation.
+// SPEC-MANDATE-1: pure mandate evaluator — no Math.random(), no Date.now().
+// loadMandateParams mutates the module-level _cachedParams; onTarget is a pure function.
 import { join } from "node:path";
 import { loadValidatedFile } from "../content/loader.js";
+import { VoteMissingVarError } from "./fomc.js";
 import type { GameState } from "./state.js";
 
 export interface MandateParams {
@@ -32,9 +34,13 @@ export function _resetMandateParamsCache(): void {
 }
 
 export function onTarget(state: GameState, params: MandateParams): boolean {
-  const inflation = state.vars.inflation as number;
+  const inflation = state.vars.inflation;
+  if (inflation === undefined) throw new VoteMissingVarError("inflation", "missing");
+  if (!Number.isFinite(inflation)) throw new VoteMissingVarError("inflation", "non_finite");
   const inflationOnTarget = Math.abs(inflation - params.target_inflation) <= params.tolerance_band;
   if (params.mandate_type === "single") return inflationOnTarget;
-  const unemployment = state.vars.unemployment as number;
+  const unemployment = state.vars.unemployment;
+  if (unemployment === undefined) throw new VoteMissingVarError("unemployment", "missing");
+  if (!Number.isFinite(unemployment)) throw new VoteMissingVarError("unemployment", "non_finite");
   return inflationOnTarget && Math.abs(unemployment - params.unemployment_target) <= params.unemployment_band;
 }
