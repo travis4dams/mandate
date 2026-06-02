@@ -7,7 +7,7 @@
 function unreachable(symbol: string): never {
   throw new Error(
     `${symbol} called in browser bundle — engine content registry missed a registration. ` +
-      `Ensure web/src/engine-content.ts#registerEngineContent runs before any Session is constructed.`,
+      `Ensure web/src/engine-content.ts is imported before any Session is constructed.`,
   );
 }
 

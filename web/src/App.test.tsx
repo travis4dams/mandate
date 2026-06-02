@@ -34,4 +34,28 @@ describe("App", () => {
     });
     expect(container.textContent).toContain("1979-09");
   });
+
+  // SPEC-WEB-2: "Advance 3 months" jumps three months forward.
+  it("advances 3 months when the Advance 3 months button is clicked", () => {
+    // SPEC-WEB-2
+    const { container } = render(<App />);
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: "Advance 3 months" }));
+    });
+    expect(container.textContent).toContain("1979-11");
+  });
+
+  // SPEC-WEB-2: "Reset" restores the session to its initial snapshot.
+  it("resets the session to the initial date when Reset is clicked", () => {
+    // SPEC-WEB-2
+    const { container } = render(<App />);
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: "Advance 1 month" }));
+    });
+    expect(container.textContent).toContain("1979-09");
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: "Reset" }));
+    });
+    expect(container.textContent).toContain("1979-08");
+  });
 });
