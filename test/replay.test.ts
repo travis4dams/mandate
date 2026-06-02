@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { loadReplay, ReplayNotFoundError, ReplayActionOrderError } from "../src/content/replays";
 import { loadValidated } from "../src/content/loader";
 import { runReplay } from "./run-replay";
+import { UnconsumedReplayActionsError } from "../src/engine/replay";
 
 const REPLAY_SCHEMA = new URL("../schemas/replay.schema.json", import.meta.url).pathname;
 
@@ -58,21 +59,32 @@ describe("runReplay", () => {
     expect(() => runReplay("replay.1979_chair_tightening", -3)).toThrow(/months must be > 0/);
   });
 
-  it("ignores pivots beyond the requested months window (truncated run honors months arg)", () => {
-    const trajectory = runReplay("replay.1979_chair_tightening", 3);
-    expect(trajectory).toHaveLength(3);
-    expect(trajectory[0].date).toBe("1979-08");
-    expect(trajectory[2].date).toBe("1979-10");
-    expect(trajectory[2].vars.policy_rate).toBe(0.138);
-    expect(trajectory.find((s) => s.date === "1980-03")).toBeUndefined();
+  // SPEC-SIM-4: actions whose dates fall outside the simulated [0, months) window are
+  // surfaced as UnconsumedReplayActionsError. A typo like 1989-06 vs 1986-06 would
+  // otherwise produce a silently wrong trajectory. The previous "silent truncation"
+  // behavior was deliberately removed when this guard landed.
+  it("throws UnconsumedReplayActionsError when actions fall outside the months window", () => {
+    let caught: unknown;
+    try {
+      runReplay("replay.1979_chair_tightening", 3);
+    } catch (e) {
+      caught = e;
+    }
+    expect(caught).toBeInstanceOf(UnconsumedReplayActionsError);
+    const err = caught as UnconsumedReplayActionsError;
+    expect(err.replayId).toBe("replay.1979_chair_tightening");
+    expect(err.months).toBe(3);
+    expect(err.unconsumedDates.length).toBeGreaterThan(0);
+    // 1980-03 is the first pivot beyond the 3-month window — it must surface.
+    expect(err.unconsumedDates).toContain("1980-03");
   });
 
   it("snapshots survive cross-call independence: mutating a returned trajectory does not leak into a fresh run", () => {
-    const first = runReplay("replay.1979_chair_tightening", 3);
+    const first = runReplay("replay.1979_chair_tightening", 89);
     const baseline = first[0].vars.policy_rate;
     first[0].vars.policy_rate = 99;
     first[0].flags.tampered = true;
-    const second = runReplay("replay.1979_chair_tightening", 3);
+    const second = runReplay("replay.1979_chair_tightening", 89);
     expect(second[0].vars.policy_rate).toBe(baseline);
     expect(second[0].flags.tampered).toBeUndefined();
   });
