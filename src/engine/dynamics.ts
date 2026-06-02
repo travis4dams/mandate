@@ -26,14 +26,24 @@ export function loadDynamicsParams(): DynamicsParams {
   return _cachedParams;
 }
 
-// Update rule (one month):
-// inflation: persistence * current + (1-persistence) * expectations_anchor − phillips contribution
-// unemployment: current + rate effect (higher rate above neutral -> higher unemployment)
+/** Test-only: clear the cache so loaders compile and read again from disk. */
+export function _resetDynamicsParamsCache(): void {
+  _cachedParams = undefined;
+}
+
 export function applyMacroDynamics(state: GameState, params: DynamicsParams): GameState {
   const inflation = state.vars.inflation ?? 0;
   const unemployment = state.vars.unemployment ?? params.unemployment_natural_rate;
   const policyRate = state.vars.policy_rate ?? params.neutral_rate;
-  const expectationsAnchor = state.vars.expectations_anchor ?? 0;
+  // expectations_anchor is in Session.REQUIRED_VARS — guaranteed present at scenario
+  // load time. A silent fallback to 0 here would pull inflation toward 0% rather than
+  // toward the calibrated target, contradicting applyMonthlySpiral's behavior.
+  const expectationsAnchor = state.vars.expectations_anchor;
+  if (expectationsAnchor === undefined) {
+    throw new Error(
+      "applyMacroDynamics: state.vars.expectations_anchor is missing — should be guaranteed by Session.REQUIRED_VARS.",
+    );
+  }
 
   const unemploymentGap = unemployment - params.unemployment_natural_rate;
   const rateGap = policyRate - params.neutral_rate;

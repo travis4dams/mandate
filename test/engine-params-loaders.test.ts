@@ -46,6 +46,27 @@ describe("credibility loader (SPEC-PARAMS-1)", () => {
   });
 });
 
+describe("dynamics loader (SPEC-SIM-5)", () => {
+  it("loadValidatedFile returns dynamics params with all five fields finite and inflation_persistence in [0,1]", () => {
+    // SPEC-SIM-5
+    const result = loadValidatedFile<{
+      phillips_slope: number;
+      unemployment_natural_rate: number;
+      rate_sensitivity: number;
+      neutral_rate: number;
+      inflation_persistence: number;
+    }>("schemas/dynamics.schema.json", "content/engine/dynamics.json");
+    expect(Number.isFinite(result.phillips_slope)).toBe(true);
+    expect(Number.isFinite(result.unemployment_natural_rate)).toBe(true);
+    expect(Number.isFinite(result.rate_sensitivity)).toBe(true);
+    expect(Number.isFinite(result.neutral_rate)).toBe(true);
+    expect(Number.isFinite(result.inflation_persistence)).toBe(true);
+    // Schema-enforced upper bound — the only bounded param in DynamicsParams.
+    expect(result.inflation_persistence).toBeGreaterThanOrEqual(0);
+    expect(result.inflation_persistence).toBeLessThanOrEqual(1);
+  });
+});
+
 describe("committee params loader (SPEC-PARAMS-1)", () => {
   it("loadValidatedFile returns committee params with required fields", () => {
     const result = loadValidatedFile<{

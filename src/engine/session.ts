@@ -90,7 +90,7 @@ export class NotMeetingMonthError extends Error {
 export type ForwardGuidanceStance = "hawkish" | "dovish" | "neutral";
 
 // Required vars that every scenario must supply for the engine to function.
-const REQUIRED_VARS = ["policy_rate", "inflation", "unemployment", "credibility"] as const;
+const REQUIRED_VARS = ["policy_rate", "inflation", "unemployment", "credibility", "expectations_anchor"] as const;
 
 /**
  * A pure Session façade that wraps the slice-1 engine functions.
