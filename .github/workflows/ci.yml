@@ -15,7 +15,17 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      - name: Install web dependencies
+        run: npm run web:install
       - name: Typecheck
         run: npm run typecheck
+      - name: Web typecheck
+        run: cd web && tsc --noEmit
       - name: Test (TDD gate)
         run: npm test
+      - name: Test web
+        run: npm run web:test
+      - name: Build web (SPEC-WEB-1 deliverable)
+        run: npm run web:build
+      - name: Verify web/dist/index.html exists
+        run: test -f web/dist/index.html

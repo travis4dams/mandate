@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
 // Requirements traceability — the automated "level-set against the spec".
@@ -20,13 +20,19 @@ const referenced = new Set<string>();
 function walk(dir: string): void {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const p = join(dir, entry.name);
-    if (entry.isDirectory()) walk(p);
-    else if (entry.name.endsWith(".ts")) {
+    if (entry.isDirectory()) {
+      if (entry.name === "node_modules" || entry.name === "dist") continue;
+      walk(p);
+    } else if (entry.name.endsWith(".ts") || entry.name.endsWith(".tsx")) {
       for (const id of readFileSync(p, "utf8").match(ID_RE) ?? []) referenced.add(id);
     }
   }
 }
-walk("test");
+// Each walk root is existsSync-guarded so a missing directory (wrong CWD, renamed dir)
+// surfaces as a structured diagnostic, not an opaque ENOENT crash. node_modules and dist
+// subtrees are skipped inside walk() itself.
+if (existsSync("test")) walk("test");
+if (existsSync("web/src")) walk("web/src");
 
 const orphans = [...testable].filter((id) => !referenced.has(id));
 console.log(`Testable requirements: ${testable.size}`);
