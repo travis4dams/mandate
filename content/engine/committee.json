@@ -1,8 +1,9 @@
 {
-  "dissent_tolerance": 0.0075,
+  "dissent_tolerance": 0.02,
   "hawkish_inflation_weight": 1.5,
   "dovish_unemployment_weight": 0.8,
   "neutral_blend": 0.5,
+  "neutral_rate": 0.05,
   "target_inflation": 0.02,
   "target_unemployment": 0.04
 }

@@ -21,6 +21,8 @@ export interface CommitteeParams {
   dovish_unemployment_weight: number;
   /** Inflation's weight (0..1) in the neutral blend; the unemployment-gap term is subtracted with weight (1 - neutral_blend). */
   neutral_blend: number;
+  /** Anchor for every member's preferred-rate computation — what the committee would set at target inflation and natural unemployment. */
+  neutral_rate: number;
   /** Long-run inflation target. */
   target_inflation: number;
   /** Natural rate of unemployment the committee compares against. */
@@ -39,26 +41,30 @@ export class VoteMissingVarError extends Error {
   }
 }
 
+// Each member's preferred rate is a function of STATE (via the inflation and
+// unemployment gaps) anchored at params.neutral_rate. It does NOT depend on
+// what the Chair proposed — that was the old formula's bug, where every member's
+// preferred rate slid up and down with the proposal. With this rule, the Chair
+// can move their proposed rate toward a member's fixed preferred rate and the
+// |preferred - proposed| gap (the dissent metric) actually shrinks.
 function memberPreferred(
   member: CommitteeMember,
-  proposedRate: number,
   gapInflation: number,
   gapUnemployment: number,
   params: CommitteeParams,
 ): number {
   switch (member.lean) {
     case "hawkish":
-      return proposedRate + params.hawkish_inflation_weight * gapInflation;
+      return params.neutral_rate + params.hawkish_inflation_weight * gapInflation;
     case "dovish":
-      return proposedRate - params.dovish_unemployment_weight * gapUnemployment;
+      return params.neutral_rate - params.dovish_unemployment_weight * gapUnemployment;
     case "neutral":
       return (
-        proposedRate +
+        params.neutral_rate +
         params.neutral_blend * gapInflation -
         (1 - params.neutral_blend) * gapUnemployment
       );
     default: {
-      // Exhaustiveness guard: widening CommitteeMember.lean without updating the switch becomes a loud runtime error.
       const _exhaustive: never = member.lean;
       throw new Error(`vote: unhandled CommitteeMember.lean value ${JSON.stringify(_exhaustive)}.`);
     }
@@ -94,7 +100,7 @@ export function previewVote(
   const gapInflation = inflation - params.target_inflation;
   const gapUnemployment = unemployment - params.target_unemployment;
   const previews = committee.members.map((m) => {
-    const preferred = memberPreferred(m, proposedRate, gapInflation, gapUnemployment, params);
+    const preferred = memberPreferred(m, gapInflation, gapUnemployment, params);
     return {
       memberId: m.id,
       nameKey: m.name,
@@ -126,7 +132,7 @@ export function vote(
   const gapUnemployment = unemployment - params.target_unemployment;
 
   const dissents = committee.members.filter((m) => {
-    const preferred = memberPreferred(m, proposedRate, gapInflation, gapUnemployment, params);
+    const preferred = memberPreferred(m, gapInflation, gapUnemployment, params);
     return Math.abs(preferred - proposedRate) > params.dissent_tolerance;
   }).length;
 

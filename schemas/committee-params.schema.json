@@ -10,6 +10,7 @@
     "hawkish_inflation_weight",
     "dovish_unemployment_weight",
     "neutral_blend",
+    "neutral_rate",
     "target_inflation",
     "target_unemployment"
   ],
@@ -17,7 +18,12 @@
     "dissent_tolerance": {
       "type": "number",
       "minimum": 0,
-      "description": "Absolute rate difference above which a member is counted as dissenting."
+      "description": "Absolute rate difference between a member's preferred rate (state-only) and the Chair's proposed rate above which the member dissents."
+    },
+    "neutral_rate": {
+      "type": "number",
+      "minimum": 0,
+      "description": "The nominal policy rate the committee would set at target inflation and natural unemployment (the anchor for every member's preferred-rate computation)."
     },
     "hawkish_inflation_weight": {
       "type": "number",
