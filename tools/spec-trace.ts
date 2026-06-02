@@ -28,8 +28,10 @@ function walk(dir: string): void {
     }
   }
 }
-walk("test");
-// Also scan web/src for SPEC references when it exists (skip node_modules/dist via walk guard above).
+// Each walk root is existsSync-guarded so a missing directory (wrong CWD, renamed dir)
+// surfaces as a structured diagnostic, not an opaque ENOENT crash. node_modules and dist
+// subtrees are skipped inside walk() itself.
+if (existsSync("test")) walk("test");
 if (existsSync("web/src")) walk("web/src");
 
 const orphans = [...testable].filter((id) => !referenced.has(id));

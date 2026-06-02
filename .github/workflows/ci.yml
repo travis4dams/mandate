@@ -25,3 +25,7 @@ jobs:
         run: npm test
       - name: Test web
         run: npm run web:test
+      - name: Build web (SPEC-WEB-1 deliverable)
+        run: npm run web:build
+      - name: Verify web/dist/index.html exists
+        run: test -f web/dist/index.html
