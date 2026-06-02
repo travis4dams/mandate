@@ -6,6 +6,7 @@ import { loadValidatedFile } from "../content/loader.js";
 import { tick } from "./clock.js";
 import { vote, loadCommitteeParams } from "./fomc.js";
 import { applyMeetingOutcome, applyMonthlySpiral, getCredibility, loadCredibilityParams } from "./credibility.js";
+import { applyMacroDynamics, loadDynamicsParams } from "./dynamics.js";
 import type { GameState, GameStateSnapshot } from "./state.js";
 import type { FomcVote } from "./fomc.js";
 import type { Replay } from "../content/replays.js";
@@ -246,6 +247,8 @@ export class Session {
 
         this._state = tick(this._state, 1);
         this._state = applyMonthlySpiral(this._state, effectiveParams);
+        const dynamicsParams = loadDynamicsParams();
+        this._state = applyMacroDynamics(this._state, dynamicsParams);
 
         const snapshot = Session._snapshotOf(this._state);
         this._trajectoryInternal.push(snapshot);

@@ -1,0 +1,7 @@
+{
+  "phillips_slope": 0.05,
+  "unemployment_natural_rate": 0.06,
+  "rate_sensitivity": 0.02,
+  "neutral_rate": 0.05,
+  "inflation_persistence": 0.95
+}
