@@ -1,9 +1,11 @@
 // SPEC-WEB-2: dashboard for the engine. Shows current state, a small chart of the
-// trajectory so far, and controls to advance time. The dashboard is intentionally
-// minimal — SPEC-WEB-3 will replace the inline SVG chart with @observablehq/plot
-// and SPEC-WEB-4 will add the FOMC meeting panel.
+// trajectory so far, and controls to advance time. SPEC-WEB-4 adds the FOMC
+// meeting panel + advance-to-next-meeting / stance controls so the Chair has
+// actual levers, not just a time-advance button.
 
 import { useSession } from "./useSession";
+import { MeetingPanel } from "./MeetingPanel";
+import type { Session } from "../../src/engine/session";
 
 export function Dashboard(): JSX.Element {
   const { session, current, trajectory } = useSession(
@@ -49,14 +51,36 @@ export function Dashboard(): JSX.Element {
         <TrajectoryChart trajectory={trajectory} />
       </section>
 
-      <section style={{ display: "flex", gap: 8, margin: "16px 0" }}>
+      <MeetingPanel session={session} currentDate={current.date} />
+
+      <section style={{ display: "flex", flexWrap: "wrap", gap: 8, margin: "16px 0" }}>
         <button onClick={() => session.advance(1)}>Advance 1 month</button>
         <button onClick={() => session.advance(3)}>Advance 3 months</button>
         <button onClick={() => session.advance(12)}>Advance 12 months</button>
+        <button onClick={() => advanceToNextMeeting(session)}>Advance to next meeting</button>
         <button onClick={() => session.reset()}>Reset</button>
+      </section>
+
+      <section style={{ display: "flex", gap: 8, alignItems: "center", margin: "16px 0" }}>
+        <span style={{ fontSize: 13, color: "#666" }}>Forward-guidance stance:</span>
+        <button onClick={() => session.setForwardGuidanceStance("hawkish")}>Hawkish</button>
+        <button onClick={() => session.setForwardGuidanceStance("neutral")}>Neutral</button>
+        <button onClick={() => session.setForwardGuidanceStance("dovish")}>Dovish</button>
+        <span style={{ fontSize: 12, color: "#999" }}>
+          (Scales the credibility-recovery rate per SPEC-GUIDE-1; effect only fires once credibility ≥ 60.)
+        </span>
       </section>
     </div>
   );
+}
+
+function advanceToNextMeeting(session: Session): void {
+  // Tick forward one month at a time until isMeetingMonth() is true. Bounded at
+  // 12 to avoid runaway loops if the meeting calendar were ever empty.
+  for (let i = 0; i < 12; i++) {
+    session.advance(1);
+    if (session.isMeetingMonth()) return;
+  }
 }
 
 function Stat(props: { label: string; value: string }): JSX.Element {
