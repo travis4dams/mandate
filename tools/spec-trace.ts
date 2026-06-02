@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync, readdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
 // Requirements traceability — the automated "level-set against the spec".
@@ -21,12 +21,14 @@ function walk(dir: string): void {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const p = join(dir, entry.name);
     if (entry.isDirectory()) walk(p);
-    else if (entry.name.endsWith(".ts")) {
+    else if (entry.name.endsWith(".ts") || entry.name.endsWith(".tsx")) {
       for (const id of readFileSync(p, "utf8").match(ID_RE) ?? []) referenced.add(id);
     }
   }
 }
 walk("test");
+// Also scan web/ subdirectory for SPEC references when it exists.
+if (existsSync("web")) walk("web");
 
 const orphans = [...testable].filter((id) => !referenced.has(id));
 console.log(`Testable requirements: ${testable.size}`);

@@ -55,3 +55,7 @@ Tag meanings: `[testable]` = must be covered by an automated test;
 
 ## Calibration
 - **SPEC-CAL-1** `[testable]` Real FRED data for 1979-08 through 1986-12 is committed as `content/calibration/fred_1979_1986.json` and a calibration harness `tools/calibrate.ts` runs the canned 1979 chair-tightening replay through the engine and emits a CSV comparing engine output to FRED. A `npm run calibrate` script produces the comparison. Engine outputs that ship with slice 1 (true policy_rate per the replay; inflation/credibility/expectations_anchor are constants until forward-guidance/Phillips-curve work in slice 2) are compared without claiming convergence; the test only asserts the FRED data is loaded correctly and the harness runs deterministically.
+
+## Web UI
+
+- **SPEC-WEB-1** `[testable]` A Vite 5 + React 18.3 + TypeScript 5 scaffolding is set up in `web/` as a self-contained subdirectory with its own `package.json` (not npm workspaces). Root `package.json` gains `web:install`, `web:dev`, `web:build` script proxies. Root `npm run check` is extended to include `(cd web && tsc --noEmit)`. `npm run web:build` produces `web/dist/index.html`. `web/dist/` and `web/node_modules/` are gitignored.

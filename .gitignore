@@ -8,3 +8,5 @@ coverage/
 .omc/drafts/
 .omc/project-memory.json
 .claude/worktrees/
+web/dist/
+web/node_modules/

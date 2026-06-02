@@ -11,7 +11,10 @@
     "validate": "tsx tools/validate-content.ts",
     "spec:trace": "tsx tools/spec-trace.ts",
     "calibrate": "tsx tools/calibrate.ts",
-    "check": "npm run typecheck && npm run validate && npm run spec:trace && npm test"
+    "web:install": "cd web && npm ci",
+    "web:dev": "cd web && npm run dev",
+    "web:build": "cd web && npm run build",
+    "check": "npm run typecheck && (cd web && tsc --noEmit) && npm run validate && npm run spec:trace && npm test"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
