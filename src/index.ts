@@ -17,3 +17,5 @@ export * from "./engine/replay.js";
 // not part of the public barrel — external callers must not invalidate the cache.
 export { vote, loadCommitteeParams, VoteMissingVarError } from "./engine/fomc.js";
 export type { FomcVote, CommitteeParams } from "./engine/fomc.js";
+export { onTarget, loadMandateParams } from "./engine/mandate.js";
+export type { MandateParams } from "./engine/mandate.js";

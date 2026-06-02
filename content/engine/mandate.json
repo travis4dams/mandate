@@ -1,0 +1,7 @@
+{
+  "target_inflation": 0.02,
+  "tolerance_band": 0.005,
+  "mandate_type": "dual",
+  "unemployment_target": 0.055,
+  "unemployment_band": 0.01
+}

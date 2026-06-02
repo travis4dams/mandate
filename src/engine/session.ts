@@ -7,6 +7,7 @@ import { tick } from "./clock.js";
 import { vote, loadCommitteeParams } from "./fomc.js";
 import { applyMeetingOutcome, applyMonthlySpiral, getCredibility, loadCredibilityParams } from "./credibility.js";
 import { applyMacroDynamics, loadDynamicsParams } from "./dynamics.js";
+import { onTarget, loadMandateParams } from "./mandate.js";
 import type { GameState, GameStateSnapshot } from "./state.js";
 import type { FomcVote } from "./fomc.js";
 import type { Replay } from "../content/replays.js";
@@ -286,15 +287,14 @@ export class Session {
     const fomcVote = vote(committee, rate, this._state, params);
 
     // Apply the decided rate and compute new credibility.
-    // TODO: wire surprisedMarkets from forward-guidance-vs-decided delta and onTarget from
-    // a mandate evaluator in a future spec. SESSION-0 limitation: both are pinned to false,
-    // which permanently disables two of the three SPEC-CRED-1 credibility levers for this slice.
+    // TODO: wire surprisedMarkets from forward-guidance-vs-decided delta in a future spec. SESSION-0
+    // limitation: surprisedMarkets is pinned to false, disabling that SPEC-CRED-1 lever for this slice.
     const newCredibility = applyMeetingOutcome(
       getCredibility(this._state),
       {
         dissents: fomcVote.dissents,
         surprisedMarkets: false,
-        onTarget: false,
+        onTarget: onTarget(this._state, loadMandateParams()),
       },
     );
 

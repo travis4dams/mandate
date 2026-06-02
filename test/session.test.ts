@@ -381,6 +381,22 @@ describe("SPEC-SIM-5: macro dynamics wired into Session.advance()", () => {
   });
 });
 
+describe("SPEC-MANDATE-1: onTarget wired into Session.proposeRate()", () => {
+  // SPEC-MANDATE-1: the 1979 scenario starts with inflation=0.114 >> target=0.02, so onTarget
+  // is false. After proposeRate at a meeting month, credibility must NOT increase by exactly 3
+  // (the +3 gain only fires when onTarget is true). Verify no +3 gain occurs with high inflation.
+  it("credibility does not increase by exactly 3 after proposeRate when inflation is high (onTarget=false)", () => {
+    // SPEC-MANDATE-1
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    const credBefore = s.current.vars.credibility;
+    // 1979-08 is a meeting month; inflation=0.114 >> target=0.02 so onTarget is false.
+    s.proposeRate(0.1075);
+    const credAfter = s.current.vars.credibility;
+    // onTarget=false means the +3 lever is off; credibility must NOT be credBefore + 3.
+    expect(credAfter).not.toBe(credBefore + 3);
+  });
+});
+
 describe("SPEC-SESSION-1: FOMC meeting schedule", () => {
   // SPEC-SESSION-1: isMeetingMonth() with no arg uses _state.date.
   it("isMeetingMonth() returns true when _state.date is a meeting month (1979-08 = August = 8 ✓)", () => {
