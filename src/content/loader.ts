@@ -5,18 +5,66 @@ import { join } from "node:path";
 // Loads a directory of content files and validates every entity against its
 // JSON Schema before the engine ever sees it. A malformed content file fails
 // loudly here rather than corrupting a running game.
+//
+// SPEC-WEB-2: the loader also supports a pre-registered content registry so the
+// engine can run in a browser bundle. Browser code registers JSON via Vite static
+// imports before the engine starts; Node code falls back to readFileSync. The
+// registry lookup is keyed by the same path string callers already pass in.
+
+const _fileRegistry = new Map<string, unknown>();
+const _dirRegistry = new Map<string, unknown[]>();
+
+/** Normalize a path to its project-relative form starting at the LAST `schemas/`
+ *  or `content/` segment. Absolute paths produced by `join(import.meta.url-pathname,
+ *  "../../content/...")` and Vite-resolved bundler paths collapse to the same key —
+ *  letting the browser content bundle register once and have every engine loader
+ *  find the data. The "last segment" rule matters because absolute paths like
+ *  `/home/.../src/content/../../schemas/foo.json` contain BOTH `content/` and
+ *  `schemas/` — a leftmost-match regex would key on the wrong anchor. */
+function registryKey(path: string): string {
+  const segments = path.split("/");
+  for (let i = segments.length - 1; i >= 0; i--) {
+    if (segments[i] === "schemas" || segments[i] === "content") {
+      return segments.slice(i).join("/");
+    }
+  }
+  return path;
+}
+
+/** Register a JSON file (schema or content) in the registry so subsequent
+ *  loadValidated*[File] calls for this path skip readFileSync. The browser
+ *  content bundle calls this before constructing any Session. */
+export function registerContentFile(filePath: string, content: unknown): void {
+  _fileRegistry.set(registryKey(filePath), content);
+}
+
+/** Register the JSON entities found under a content directory (e.g. content/scenarios)
+ *  so subsequent loadValidated calls for dir skip readdirSync + readFileSync. */
+export function registerContentDir(dir: string, items: unknown[]): void {
+  _dirRegistry.set(registryKey(dir), items);
+}
+
+function readJsonFile(filePath: string): unknown {
+  const cached = _fileRegistry.get(registryKey(filePath));
+  if (cached !== undefined) return cached;
+  return JSON.parse(readFileSync(filePath, "utf8"));
+}
 
 export function loadValidated<T>(schemaPath: string, dir: string): T[] {
   const ajv = new Ajv2020({ allErrors: true, strict: false });
-  const schema = JSON.parse(readFileSync(schemaPath, "utf8"));
-  const validate = ajv.compile(schema);
+  const schema = readJsonFile(schemaPath);
+  const validate = ajv.compile(schema as object);
   const out: T[] = [];
-  for (const file of readdirSync(dir).filter((f) => f.endsWith(".json"))) {
-    const raw = JSON.parse(readFileSync(join(dir, file), "utf8"));
-    const items = Array.isArray(raw) ? raw : [raw];
-    for (const item of items) {
+  const registeredItems = _dirRegistry.get(registryKey(dir));
+  const items: unknown[] = registeredItems
+    ?? readdirSync(dir)
+      .filter((f) => f.endsWith(".json"))
+      .map((file) => JSON.parse(readFileSync(join(dir, file), "utf8")));
+  for (const raw of items) {
+    const expanded = Array.isArray(raw) ? raw : [raw];
+    for (const item of expanded) {
       if (!validate(item)) {
-        throw new Error(`${file}: ${ajv.errorsText(validate.errors)}`);
+        throw new Error(`${dir}: ${ajv.errorsText(validate.errors)}`);
       }
       out.push(item as T);
     }
@@ -34,11 +82,11 @@ const _validateCache = new Map<string, ValidateFunction>();
 export function loadValidatedFile<T>(schemaPath: string, filePath: string): T {
   let validate = _validateCache.get(schemaPath);
   if (validate === undefined) {
-    const schema = JSON.parse(readFileSync(schemaPath, "utf8"));
-    validate = _ajv.compile(schema);
+    const schema = readJsonFile(schemaPath);
+    validate = _ajv.compile(schema as object);
     _validateCache.set(schemaPath, validate);
   }
-  const raw = JSON.parse(readFileSync(filePath, "utf8")) as unknown;
+  const raw = readJsonFile(filePath);
   if (!validate(raw)) {
     throw new Error(`${filePath}: ${_ajv.errorsText(validate.errors)}`);
   }
@@ -49,7 +97,7 @@ export function loadValidatedFile<T>(schemaPath: string, filePath: string): T {
  *  so subsequent calls re-invoke ajv.compile cleanly. */
 export function _resetValidateFileCache(): void {
   for (const schemaPath of _validateCache.keys()) {
-    const raw = JSON.parse(readFileSync(schemaPath, "utf8")) as { $id?: string };
+    const raw = readJsonFile(schemaPath) as { $id?: string };
     if (raw.$id) {
       _ajv.removeSchema(raw.$id);
     }

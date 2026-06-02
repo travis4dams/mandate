@@ -1,4 +1,7 @@
-// SPEC-WEB-1: placeholder app — renders the game title.
-export function App() {
-  return <h1>MANDATE</h1>;
+// SPEC-WEB-2: App renders the live Dashboard, which subscribes to a Session via
+// useSession + useSyncExternalStore and exposes engine state + advance/reset controls.
+import { Dashboard } from "./Dashboard";
+
+export function App(): JSX.Element {
+  return <Dashboard />;
 }

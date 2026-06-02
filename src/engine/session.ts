@@ -119,9 +119,6 @@ export class Session {
   // Replay to apply actions from (null when constructed from scenario only).
   private readonly _replay: Replay | null;
 
-  // Stored seed for future stochastic mechanics (SESSION-0: unused in dynamics).
-  private readonly _seed: number;
-
   // Committee id used by proposeRate; passed as a required factory argument.
   private readonly _committeeId: string;
 
@@ -134,8 +131,10 @@ export class Session {
   // Snapshot of the initial state so reset() can restore it without re-loading content.
   private readonly _initialState: GameState;
 
-  private constructor(initialState: GameState, seed: number, replay: Replay | null, committeeId: string) {
-    this._seed = seed;
+  // The `_seed` parameter is accepted positionally to preserve the public factory
+  // signatures (SPEC-SESSION-0: `fromScenario(scenarioId, seed, committeeId)`). It is
+  // currently unused — a future spec will wire stochastic mechanics through it.
+  private constructor(initialState: GameState, _seed: number, replay: Replay | null, committeeId: string) {
     this._replay = replay;
     this._committeeId = committeeId;
     this._initialState = initialState;

@@ -66,8 +66,10 @@ export function loadReplay(id: string, dir: string = DEFAULT_REPLAYS_DIR): Repla
     throw new ReplayNotFoundError(id);
   }
   for (let i = 1; i < replay.actions.length; i++) {
-    if (replay.actions[i].date <= replay.actions[i - 1].date) {
-      throw new ReplayActionOrderError(id, replay.actions[i].date, replay.actions[i - 1].date);
+    const cur = replay.actions[i]!;
+    const prev = replay.actions[i - 1]!;
+    if (cur.date <= prev.date) {
+      throw new ReplayActionOrderError(id, cur.date, prev.date);
     }
   }
   return replay;
