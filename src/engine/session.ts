@@ -295,10 +295,11 @@ export class Session {
     // performance over many meetings is what actually moves the anchor.
     // TODO: wire `surprisedMarkets` from forward-guidance-vs-decided delta in a
     // future spec.
-    const inflation = this._state.vars.inflation;
+    // vote() already threw VoteMissingVarError if inflation was missing/non-finite,
+    // so by this point we know it's a finite number. Re-asserting (vs. silently
+    // falling back to onTarget=false) keeps the two code paths symmetric.
+    const inflation = this._state.vars.inflation as number;
     const onTarget =
-      inflation !== undefined &&
-      Number.isFinite(inflation) &&
       Math.abs(inflation - credParams.target_inflation) < credParams.on_target_tolerance;
     const newCredibility = applyMeetingOutcome(
       getCredibility(this._state),

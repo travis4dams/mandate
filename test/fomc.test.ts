@@ -94,7 +94,7 @@ describe("vote", () => {
     const c = committeeOf([member("a"), member("b"), member("c")]);
     const state = macroState({ inflation: 0.05, unemployment: 0.05, policy_rate: 0.06 });
     // Member preferred = 0.88 * 0.06 + 0.12 * (0.05 + 1.7 * 0.03 - 0.4 * 0.01)
-    //                  = 0.0528 + 0.12 * 0.0972 = 0.0528 + 0.011664 = 0.064464
+    //                  = 0.0528 + 0.12 * 0.097 = 0.0528 + 0.01164 = 0.06444
     const result = vote(c, 0.0645, state, PARAMS);
     expect(result.dissents).toBe(0);
   });
