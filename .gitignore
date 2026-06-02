@@ -7,3 +7,4 @@ coverage/
 .omc/sessions/
 .omc/drafts/
 .omc/project-memory.json
+.claude/worktrees/
