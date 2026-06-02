@@ -1,5 +1,5 @@
 export * from "./engine/state.js";
-export { Session } from "./engine/session.js";
+export { Session, NotMeetingMonthError } from "./engine/session.js";
 export type { ForwardGuidanceStance } from "./engine/session.js";
 export * from "./engine/rng.js";
 export * from "./engine/credibility.js";

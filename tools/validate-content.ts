@@ -16,6 +16,7 @@ const fileChecks = [
   { schema: "schemas/fog.schema.json", file: "content/engine/fog.json", label: "fog" },
   { schema: "schemas/credibility.schema.json", file: "content/engine/credibility.json", label: "credibility params" },
   { schema: "schemas/committee-params.schema.json", file: "content/engine/committee.json", label: "committee params" },
+  { schema: "schemas/meeting-schedule.schema.json", file: "content/engine/meeting-schedule.json", label: "meeting schedule" },
 ];
 
 let failed = false;

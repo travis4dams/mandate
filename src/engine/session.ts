@@ -1,6 +1,8 @@
+import { join } from "node:path";
 import { loadScenario } from "../content/scenarios.js";
 import { loadReplay } from "../content/replays.js";
 import { loadCommittee } from "../content/committees.js";
+import { loadValidatedFile } from "../content/loader.js";
 import { tick } from "./clock.js";
 import { vote, loadCommitteeParams } from "./fomc.js";
 import { applyMeetingOutcome, getCredibility } from "./credibility.js";
@@ -11,6 +13,34 @@ import type { Replay } from "../content/replays.js";
 // SPEC-SESSION-0: skeleton Session façade.
 // Wraps tick + vote + applyMeetingOutcome with identity-stable getters and a subscribe protocol.
 // TODO: a future spec will replace internals with the full macro-dynamics chain.
+
+// SPEC-SESSION-1: FOMC meeting schedule gate.
+const MEETING_SCHEDULE_SCHEMA = join(
+  new URL(".", import.meta.url).pathname,
+  "../../schemas/meeting-schedule.schema.json"
+);
+const MEETING_SCHEDULE_FILE = join(
+  new URL(".", import.meta.url).pathname,
+  "../../content/engine/meeting-schedule.json"
+);
+
+interface MeetingSchedule {
+  meeting_months: readonly number[];
+}
+
+// Eager module-level load mirrors clock.ts: any malformed meeting-schedule.json
+// fails fast at boot rather than the first proposeRate() call.
+const MEETING_SCHEDULE: MeetingSchedule = loadValidatedFile<MeetingSchedule>(
+  MEETING_SCHEDULE_SCHEMA,
+  MEETING_SCHEDULE_FILE,
+);
+
+export class NotMeetingMonthError extends Error {
+  constructor(public readonly date: string) {
+    super(`Session.proposeRate: ${date} is not a scheduled FOMC meeting month.`);
+    this.name = "NotMeetingMonthError";
+  }
+}
 
 /**
  * The three forward-guidance stances the Chair can adopt.
@@ -115,6 +145,27 @@ export class Session {
     return this._trajectoryCache;
   }
 
+  // --- SPEC-SESSION-1: FOMC schedule gate ---
+
+  /**
+   * Returns true iff the given date's month falls in the loaded meeting schedule.
+   * When `date` is omitted, uses `this._state.date`. Parses the month via string
+   * slicing — no `new Date(...)` constructor (engine purity).
+   *
+   * @param date Optional explicit YYYY-MM date. The format is strict: non-conforming
+   *   strings throw rather than silently returning false, which prevents a typo like
+   *   `"1979-8"` (no zero-pad) from misclassifying a real meeting month.
+   * @throws {Error} when `date` is supplied but does not match `^\d{4}-\d{2}$`.
+   */
+  isMeetingMonth(date?: string): boolean {
+    const d = date ?? this._state.date;
+    if (!/^\d{4}-\d{2}$/.test(d)) {
+      throw new Error(`Session.isMeetingMonth: expected YYYY-MM, got "${d}".`);
+    }
+    const month = parseInt(d.slice(5, 7), 10);
+    return MEETING_SCHEDULE.meeting_months.includes(month);
+  }
+
   // --- Mutators ---
 
   /**
@@ -161,11 +212,17 @@ export class Session {
 
   /**
    * Propose a rate for the current month's FOMC meeting.
-   * SESSION-0: every month is meeting-eligible (SESSION-1 wires the actual schedule).
+   * SESSION-1 gates this on `isMeetingMonth()` — calling `proposeRate` in a month
+   * that is not on the loaded FOMC schedule throws `NotMeetingMonthError` before
+   * any rate-validity check runs.
    * Returns the FomcVote for the meeting.
-   * @throws {Error} if rate is not finite.
+   * @throws {NotMeetingMonthError} if the current month is not a scheduled meeting month.
+   * @throws {Error} if `rate` is not finite (only checked once the meeting-month gate passes).
    */
   proposeRate(rate: number): FomcVote {
+    if (!this.isMeetingMonth()) {
+      throw new NotMeetingMonthError(this._state.date);
+    }
     if (!Number.isFinite(rate)) {
       throw new Error(`Session.proposeRate: rate ${rate} is not finite.`);
     }

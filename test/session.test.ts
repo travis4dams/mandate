@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { Session } from "../src/engine/session.js";
+import { Session, NotMeetingMonthError } from "../src/engine/session.js";
 import type { ForwardGuidanceStance } from "../src/engine/session.js";
 
 // SPEC-SESSION-0
@@ -81,6 +81,18 @@ describe("Session.reset correctness", () => {
     expect(s.trajectory.length).toBe(1);
     expect(s.current.date).toBe("1979-08");
   });
+
+  // SPEC-SESSION-1: reset() must also restore meeting-eligibility — after advancing to a
+  // non-meeting month and resetting, isMeetingMonth() should be true again because the
+  // initial scenario date (1979-08) is a meeting month.
+  it("after advance into a non-meeting month then reset(), isMeetingMonth() returns to true", () => {
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    s.advance(2); // 1979-08 -> 1979-10 (non-meeting)
+    expect(s.isMeetingMonth()).toBe(false);
+    s.reset();
+    expect(s.current.date).toBe("1979-08");
+    expect(s.isMeetingMonth()).toBe(true);
+  });
 });
 
 describe("Session.proposeRate guards", () => {
@@ -109,6 +121,30 @@ describe("Session.proposeRate guards", () => {
     expect(vote.decided).toBe(0.15);
     expect(Number.isInteger(vote.dissents)).toBe(true);
     expect(vote.dissents).toBeGreaterThanOrEqual(0);
+  });
+
+  // SPEC-SESSION-1: meeting-month gate runs BEFORE finite-rate check.
+  // Calling proposeRate(NaN) from a non-meeting month must surface as NotMeetingMonthError,
+  // not the generic finite-rate Error — swapping the two guards would change the observable
+  // error type silently.
+  it("proposeRate(NaN) from a non-meeting month throws NotMeetingMonthError (not the finite-rate Error)", async () => {
+    const { NotMeetingMonthError } = await import("../src/engine/session.js");
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    s.advance(2); // 1979-08 -> 1979-10, October is NOT a meeting month
+    expect(s.isMeetingMonth()).toBe(false);
+    expect(() => s.proposeRate(NaN)).toThrow(NotMeetingMonthError);
+  });
+
+  // SPEC-SESSION-1: proposeRate works at a meeting month later in the schedule, not only
+  // at the initial 1979-08. Without this a regression that only checked the initial state
+  // would pass all existing tests.
+  it("proposeRate(0.12) succeeds at 1979-11 (later meeting month)", () => {
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    s.advance(3); // 1979-08 -> 1979-11
+    expect(s.current.date).toBe("1979-11");
+    expect(s.isMeetingMonth()).toBe(true);
+    const vote = s.proposeRate(0.12);
+    expect(vote.decided).toBe(0.12);
   });
 });
 
@@ -238,5 +274,85 @@ describe("ForwardGuidanceStance type", () => {
     for (const stance of stances) {
       expect(() => s.setForwardGuidanceStance(stance)).not.toThrow();
     }
+  });
+});
+
+describe("SPEC-SESSION-1: FOMC meeting schedule", () => {
+  // SPEC-SESSION-1: isMeetingMonth() with no arg uses _state.date.
+  it("isMeetingMonth() returns true when _state.date is a meeting month (1979-08 = August = 8 ✓)", () => {
+    // SPEC-SESSION-1
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    // Scenario starts at 1979-08; August is month 8, which is in the schedule.
+    expect(s.current.date).toBe("1979-08");
+    expect(s.isMeetingMonth()).toBe(true);
+  });
+
+  it("isMeetingMonth() returns false for October (month 10) and true for November (month 11)", () => {
+    // SPEC-SESSION-1
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    // advance 2 months from 1979-08 → 1979-10 (October = month 10, not in schedule).
+    s.advance(2);
+    expect(s.current.date).toBe("1979-10");
+    expect(s.isMeetingMonth()).toBe(false);
+    // advance 1 month → 1979-11 (November = month 11, in schedule).
+    s.advance(1);
+    expect(s.current.date).toBe("1979-11");
+    expect(s.isMeetingMonth()).toBe(true);
+  });
+
+  it("isMeetingMonth() returns false for February (month 2, non-meeting month)", () => {
+    // SPEC-SESSION-1
+    // advance 6 months from 1979-08 → 1980-02 (February = month 2, not in schedule).
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    s.advance(6);
+    expect(s.current.date).toBe("1980-02");
+    expect(s.isMeetingMonth()).toBe(false);
+  });
+
+  // SPEC-SESSION-1: isMeetingMonth(date) with explicit date argument.
+  it("isMeetingMonth('1979-02') returns false (February = month 2, not in schedule)", () => {
+    // SPEC-SESSION-1
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    expect(s.isMeetingMonth("1979-02")).toBe(false);
+  });
+
+  it("isMeetingMonth('1979-03') returns true (March = month 3, in schedule)", () => {
+    // SPEC-SESSION-1
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    expect(s.isMeetingMonth("1979-03")).toBe(true);
+  });
+
+  // SPEC-SESSION-1: proposeRate throws NotMeetingMonthError outside a meeting month.
+  it("proposeRate(0.11) throws NotMeetingMonthError when current date is not a meeting month", () => {
+    // SPEC-SESSION-1
+    // advance 6 months from 1979-08 → 1980-02 (February = not a meeting month).
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    s.advance(6);
+    expect(s.current.date).toBe("1980-02");
+    expect(() => s.proposeRate(0.11)).toThrow(NotMeetingMonthError);
+  });
+
+  it("NotMeetingMonthError.date reflects the current YYYY-MM when thrown", () => {
+    // SPEC-SESSION-1
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    s.advance(6);
+    expect(s.current.date).toBe("1980-02");
+    let caught: NotMeetingMonthError | undefined;
+    try {
+      s.proposeRate(0.11);
+    } catch (e) {
+      caught = e as NotMeetingMonthError;
+    }
+    expect(caught).toBeInstanceOf(NotMeetingMonthError);
+    expect(caught?.date).toBe("1980-02");
+  });
+
+  // SPEC-SESSION-1: proposeRate does NOT throw when current date is a meeting month.
+  it("proposeRate(0.11) does not throw when current date is a meeting month (1979-08 = August ✓)", () => {
+    // SPEC-SESSION-1
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    // Scenario starts at 1979-08 which is a meeting month.
+    expect(s.current.date).toBe("1979-08");
+    expect(() => s.proposeRate(0.11)).not.toThrow();
   });
 });

@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mandate.dev/schemas/meeting-schedule.schema.json",
+  "title": "MeetingSchedule",
+  "description": "FOMC meeting schedule: the set of months in which a meeting can occur. SPEC-SESSION-1.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["meeting_months"],
+  "properties": {
+    "meeting_months": {
+      "type": "array",
+      "description": "Month numbers (1=January … 12=December) that are scheduled FOMC meeting months.",
+      "items": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 12
+      },
+      "minItems": 1,
+      "maxItems": 12,
+      "uniqueItems": true
+    }
+  }
+}
