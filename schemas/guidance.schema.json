@@ -9,19 +9,16 @@
   "properties": {
     "hawkish_multiplier": {
       "type": "number",
-      "minimum": 0,
       "exclusiveMinimum": 0,
       "description": "Recovery-rate multiplier when the Chair adopts a hawkish forward-guidance stance."
     },
     "neutral_multiplier": {
       "type": "number",
-      "minimum": 0,
       "exclusiveMinimum": 0,
       "description": "Recovery-rate multiplier when the Chair adopts a neutral forward-guidance stance."
     },
     "dovish_multiplier": {
       "type": "number",
-      "minimum": 0,
       "exclusiveMinimum": 0,
       "description": "Recovery-rate multiplier when the Chair adopts a dovish forward-guidance stance."
     }

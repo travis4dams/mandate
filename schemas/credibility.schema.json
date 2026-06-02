@@ -25,8 +25,8 @@
     },
     "recovery_rate": {
       "type": "number",
-      "minimum": 0,
-      "description": "Per-month recovery of expectations_anchor toward target_inflation."
+      "exclusiveMinimum": 0,
+      "description": "Per-month recovery of expectations_anchor toward target_inflation. Must be > 0 — a zero rate would silently disable spiral recovery (recovery_rate * stanceMultiplier always 0)."
     },
     "target_inflation": {
       "type": "number",

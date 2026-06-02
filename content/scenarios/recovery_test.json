@@ -1,0 +1,15 @@
+{
+  "id": "scen.recovery_test",
+  "date": "1979-08",
+  "name": "scen.recovery_test.name",
+  "desc": "scen.recovery_test.desc",
+  "vars": {
+    "inflation": 0.04,
+    "unemployment": 0.05,
+    "credibility": 80,
+    "expectations_anchor": 0.05,
+    "policy_rate": 0.05,
+    "months_below_anchor": 0
+  },
+  "flags": {}
+}

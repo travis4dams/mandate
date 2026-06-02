@@ -40,17 +40,41 @@ interface GuidanceParams {
   neutral_multiplier: number;
   dovish_multiplier: number;
 }
-const GUIDANCE_SCHEMA = join(new URL(".", import.meta.url).pathname, "../../schemas/guidance.schema.json");
-const GUIDANCE_FILE = join(new URL(".", import.meta.url).pathname, "../../content/engine/guidance.json");
-let _guidanceParams: GuidanceParams | null = null;
+const GUIDANCE_SCHEMA = join(
+  new URL(".", import.meta.url).pathname,
+  "../../schemas/guidance.schema.json",
+);
+const GUIDANCE_FILE = join(
+  new URL(".", import.meta.url).pathname,
+  "../../content/engine/guidance.json",
+);
+let _cachedGuidanceParams: GuidanceParams | undefined;
 function loadGuidanceParams(): GuidanceParams {
-  return (_guidanceParams ??= loadValidatedFile<GuidanceParams>(GUIDANCE_SCHEMA, GUIDANCE_FILE));
+  if (_cachedGuidanceParams !== undefined) return _cachedGuidanceParams;
+  try {
+    _cachedGuidanceParams = loadValidatedFile<GuidanceParams>(GUIDANCE_SCHEMA, GUIDANCE_FILE);
+  } catch (e) {
+    throw new Error(
+      "Failed to load guidance params from content/engine/guidance.json",
+      { cause: e },
+    );
+  }
+  return _cachedGuidanceParams;
 }
 
 function stanceMultiplier(stance: ForwardGuidanceStance, p: GuidanceParams): number {
-  if (stance === "hawkish") return p.hawkish_multiplier;
-  if (stance === "dovish") return p.dovish_multiplier;
-  return p.neutral_multiplier;
+  switch (stance) {
+    case "hawkish":
+      return p.hawkish_multiplier;
+    case "dovish":
+      return p.dovish_multiplier;
+    case "neutral":
+      return p.neutral_multiplier;
+    default: {
+      const _exhaustive: never = stance;
+      throw new Error(`stanceMultiplier: unknown stance "${String(_exhaustive)}".`);
+    }
+  }
 }
 
 export class NotMeetingMonthError extends Error {
@@ -198,6 +222,16 @@ export class Session {
     const checkpointState = this._state;
     const checkpointTrajectoryLength = this._trajectoryInternal.length;
 
+    // SPEC-GUIDE-1: loaders + effectiveParams are loop-invariant — both are cached
+    // singletons and the stance is fixed for the duration of advance(). Hoisting
+    // makes that obvious to readers and removes any hint of per-month re-resolution.
+    const credParams = loadCredibilityParams();
+    const guidanceP = loadGuidanceParams();
+    const effectiveParams = {
+      ...credParams,
+      recovery_rate: credParams.recovery_rate * stanceMultiplier(this._stance, guidanceP),
+    };
+
     try {
       for (let i = 0; i < months; i++) {
         if (this._replay !== null) {
@@ -211,11 +245,6 @@ export class Session {
         }
 
         this._state = tick(this._state, 1);
-
-        // SPEC-GUIDE-1: apply monthly spiral with stance-scaled recovery rate.
-        const credParams = loadCredibilityParams();
-        const guidanceP = loadGuidanceParams();
-        const effectiveParams = { ...credParams, recovery_rate: credParams.recovery_rate * stanceMultiplier(this._stance, guidanceP) };
         this._state = applyMonthlySpiral(this._state, effectiveParams);
 
         const snapshot = Session._snapshotOf(this._state);
