@@ -2,14 +2,12 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://mandate.dev/schemas/committee-params.schema.json",
   "title": "CommitteeParams",
-  "description": "FOMC committee vote parameters. SPEC-COMM-2: dissent tolerance and lean weights.",
+  "description": "FOMC committee vote parameters. SPEC-COMM-3: the per-member preferred-rate formula is `inertia * lagged_rate + (1 - inertia) * (neutral_rate + inflation_coef * gap_inflation - output_coef * gap_unemployment)`. Per-member coefficients live on each CommitteeMember; this file holds only the committee-wide constants.",
   "type": "object",
   "additionalProperties": false,
   "required": [
     "dissent_tolerance",
-    "hawkish_inflation_weight",
-    "dovish_unemployment_weight",
-    "neutral_blend",
+    "neutral_rate",
     "target_inflation",
     "target_unemployment"
   ],
@@ -17,33 +15,22 @@
     "dissent_tolerance": {
       "type": "number",
       "minimum": 0,
-      "description": "Absolute rate difference above which a member is counted as dissenting."
+      "description": "Absolute rate difference (decimal, e.g. 0.005 = 50 bp) between a member's preferred rate and the Chair's proposed rate above which the member dissents. Empirical 1979-82 dissent rate of 1-3 per meeting suggests this should be tight enough that dots far from the proposal dissent and members within a couple of standard deviations vote yes."
     },
-    "hawkish_inflation_weight": {
+    "neutral_rate": {
       "type": "number",
       "minimum": 0,
-      "description": "Factor by which hawkish members scale the inflation gap when computing preferred rate."
-    },
-    "dovish_unemployment_weight": {
-      "type": "number",
-      "minimum": 0,
-      "description": "Factor by which dovish members scale the unemployment gap when computing preferred rate."
-    },
-    "neutral_blend": {
-      "type": "number",
-      "minimum": 0,
-      "maximum": 1,
-      "description": "Weight of the inflation gap in the neutral member blend (0..1); unemployment weight is 1 - neutral_blend."
+      "description": "The nominal policy rate the committee would set at target inflation and natural unemployment. Anchors every member's preferred-rate computation."
     },
     "target_inflation": {
       "type": "number",
       "minimum": 0,
-      "description": "Long-run inflation target used by all member types when computing gap_inflation."
+      "description": "Long-run inflation target used by all members when computing the inflation gap."
     },
     "target_unemployment": {
       "type": "number",
       "minimum": 0,
-      "description": "Natural rate of unemployment used by all member types when computing gap_unemployment."
+      "description": "Natural rate of unemployment used by all members when computing the unemployment gap."
     }
   }
 }

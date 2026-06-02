@@ -7,7 +7,6 @@ import { tick } from "./clock.js";
 import { vote, loadCommitteeParams } from "./fomc.js";
 import { applyMeetingOutcome, applyMonthlySpiral, getCredibility, loadCredibilityParams } from "./credibility.js";
 import { applyMacroDynamics, loadDynamicsParams } from "./dynamics.js";
-import { onTarget, loadMandateParams } from "./mandate.js";
 import type { GameState, GameStateSnapshot } from "./state.js";
 import type { FomcVote } from "./fomc.js";
 import type { Replay } from "../content/replays.js";
@@ -273,10 +272,6 @@ export class Session {
    * Returns the FomcVote for the meeting.
    * @throws {NotMeetingMonthError} if the current month is not a scheduled meeting month.
    * @throws {Error} if `rate` is not finite (only checked once the meeting-month gate passes).
-   * @throws {VoteMissingVarError} if `onTarget()` (SPEC-MANDATE-1) cannot read the
-   *   required state vars for the loaded mandate — `inflation` for any mandate, and
-   *   additionally `unemployment` when `mandate_type` is `dual`. The check is invoked
-   *   per meeting to determine the credibility delta.
    */
   proposeRate(rate: number): FomcVote {
     if (!this.isMeetingMonth()) {
@@ -288,17 +283,29 @@ export class Session {
 
     const committee = loadCommittee(this._committeeId);
     const params = loadCommitteeParams();
+    const credParams = loadCredibilityParams();
     const fomcVote = vote(committee, rate, this._state, params);
 
-    // Apply the decided rate and compute new credibility.
-    // TODO: wire surprisedMarkets from forward-guidance-vs-decided delta in a future spec. SESSION-0
-    // limitation: surprisedMarkets is pinned to false, disabling that SPEC-CRED-1 lever for this slice.
+    // SPEC-CRED-5: a meeting where inflation is within `on_target_tolerance` of the
+    // long-run target counts as on-target — credibility climbs. This wires the
+    // previously-hardcoded `onTarget: false` to a real check so credibility is no
+    // longer a one-way ratchet down. The Goodfriend-King finding (a single on-target
+    // outcome doesn't re-anchor expectations) is handled by the small +3 gain in
+    // applyMeetingOutcome combined with the slow spiral recovery — sustained
+    // performance over many meetings is what actually moves the anchor.
+    // TODO: wire `surprisedMarkets` from forward-guidance-vs-decided delta in a
+    // future spec.
+    const inflation = this._state.vars.inflation;
+    const onTarget =
+      inflation !== undefined &&
+      Number.isFinite(inflation) &&
+      Math.abs(inflation - credParams.target_inflation) < credParams.on_target_tolerance;
     const newCredibility = applyMeetingOutcome(
       getCredibility(this._state),
       {
         dissents: fomcVote.dissents,
         surprisedMarkets: false,
-        onTarget: onTarget(this._state, loadMandateParams()),
+        onTarget,
       },
     );
 

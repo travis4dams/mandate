@@ -2,13 +2,20 @@ import { join } from "node:path";
 import { loadValidated } from "./loader.js";
 
 // Committee content type — mirrors schemas/committee.schema.json.
-// A Committee defines the voting members of an FOMC-style body: their policy
-// lean, competence score, and localization-key name. No engine logic here.
+// SPEC-COMM-3: each member carries continuous Taylor-rule reaction coefficients
+// rather than the old hawkish/dovish/neutral trichotomy. Empirical anchors and
+// the rationale for the coefficient ranges are in
+// docs/research/2026-06-02-fomc-empirical-anchors.md.
 
 export interface CommitteeMember {
   id: string;
   name: string;
-  lean: "hawkish" | "dovish" | "neutral";
+  /** Per-member weight on the inflation gap (target ≈ 1.7, hawks 1.8-2.0, doves 1.4-1.6). */
+  inflation_coef: number;
+  /** Per-member weight on the unemployment-gap term (sign-inverted output gap). */
+  output_coef: number;
+  /** Smoothing on lagged policy rate (empirical 0.85-0.92). High inertia is what makes the dots cluster. */
+  inertia: number;
   competence: number;
 }
 

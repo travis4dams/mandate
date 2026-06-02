@@ -5,19 +5,36 @@ import { tmpdir } from "node:os";
 import { loadCommittee, CommitteeNotFoundError, CommitteeDuplicateMemberError } from "../src/content/committees";
 import { loadValidated } from "../src/content/loader";
 
-// SPEC-COMM-1
+// SPEC-COMM-1 (schema) + SPEC-COMM-3 (per-member coefficient fields).
 
 const COMMITTEE_SCHEMA = new URL("../schemas/committee.schema.json", import.meta.url).pathname;
 
+// Default per-member coefficient fixture matching the empirical median.
+const M = (id: string, name: string, overrides: Partial<Record<string, unknown>> = {}): Record<string, unknown> => ({
+  id,
+  name,
+  inflation_coef: 1.7,
+  output_coef: 0.4,
+  inertia: 0.88,
+  competence: 0.9,
+  ...overrides,
+});
+
 describe("loadCommittee", () => {
-  it("loads the 1979 FOMC committee with ~7 members and valid fields", () => {
+  // SPEC-COMM-3: real FOMC has 12 voters (7 governors + NY permanent + 4 rotating regional presidents).
+  it("loads the 1979 FOMC committee with 12 members and valid Taylor-rule coefficients", () => {
     const committee = loadCommittee("comm.fomc_1979");
     expect(committee.id).toBe("comm.fomc_1979");
-    expect(committee.members.length).toBeGreaterThanOrEqual(7);
+    expect(committee.members).toHaveLength(12);
     for (const m of committee.members) {
       expect(typeof m.id).toBe("string");
       expect(typeof m.name).toBe("string");
-      expect(["hawkish", "dovish", "neutral"]).toContain(m.lean);
+      expect(m.inflation_coef).toBeGreaterThan(0);
+      expect(m.inflation_coef).toBeLessThanOrEqual(5);
+      expect(m.output_coef).toBeGreaterThan(0);
+      expect(m.output_coef).toBeLessThanOrEqual(5);
+      expect(m.inertia).toBeGreaterThanOrEqual(0);
+      expect(m.inertia).toBeLessThanOrEqual(1);
       expect(m.competence).toBeGreaterThanOrEqual(0);
       expect(m.competence).toBeLessThanOrEqual(1);
     }
@@ -36,8 +53,8 @@ describe("loadCommittee", () => {
         name: "comm.test_dup.name",
         desc: "comm.test_dup.desc",
         members: [
-          { id: "member.chair", name: "member.chair.name", lean: "hawkish", competence: 0.9 },
-          { id: "member.chair", name: "member.chair.name", lean: "hawkish", competence: 0.8 },
+          M("member.chair", "member.chair.name"),
+          M("member.chair", "member.chair.name"),
         ],
       };
       writeFileSync(join(dir, "dup.json"), JSON.stringify(dup));
@@ -57,14 +74,7 @@ describe("committee schema validation", () => {
         id: "comm.test_bad",
         name: "comm.test_bad.name",
         desc: "comm.test_bad.desc",
-        members: [
-          {
-            id: "member.chair",
-            name: "Dr. Eleanor Voss", // inline English — must fail schema
-            lean: "hawkish",
-            competence: 0.95,
-          },
-        ],
+        members: [M("member.chair", "Dr. Eleanor Voss")],
       };
       writeFileSync(join(dir, "bad.json"), JSON.stringify(bad));
       expect(() => loadValidated(COMMITTEE_SCHEMA, dir)).toThrow(/name/);
@@ -73,25 +83,37 @@ describe("committee schema validation", () => {
     }
   });
 
-  it("rejects a member with an invalid lean value", () => {
-    const dir = join(tmpdir(), `mandate-test-comm-lean-${process.pid}`);
+  // SPEC-COMM-3: inflation_coef has an upper bound (5) to keep authoring errors out of the engine.
+  it("rejects a member with inflation_coef out of range", () => {
+    const dir = join(tmpdir(), `mandate-test-comm-inf-${process.pid}`);
     mkdirSync(dir, { recursive: true });
     try {
       const bad = {
-        id: "comm.test_lean",
-        name: "comm.test_lean.name",
-        desc: "comm.test_lean.desc",
-        members: [
-          {
-            id: "member.chair",
-            name: "member.chair.name",
-            lean: "moderate", // not in enum
-            competence: 0.95,
-          },
-        ],
+        id: "comm.test_inf",
+        name: "comm.test_inf.name",
+        desc: "comm.test_inf.desc",
+        members: [M("member.chair", "member.chair.name", { inflation_coef: 50 })],
       };
       writeFileSync(join(dir, "bad.json"), JSON.stringify(bad));
-      expect(() => loadValidated(COMMITTEE_SCHEMA, dir)).toThrow(/lean/);
+      expect(() => loadValidated(COMMITTEE_SCHEMA, dir)).toThrow(/inflation_coef/);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  // SPEC-COMM-3: inertia is a smoothing weight in [0, 1].
+  it("rejects a member with inertia > 1", () => {
+    const dir = join(tmpdir(), `mandate-test-comm-inertia-${process.pid}`);
+    mkdirSync(dir, { recursive: true });
+    try {
+      const bad = {
+        id: "comm.test_inertia",
+        name: "comm.test_inertia.name",
+        desc: "comm.test_inertia.desc",
+        members: [M("member.chair", "member.chair.name", { inertia: 1.5 })],
+      };
+      writeFileSync(join(dir, "bad.json"), JSON.stringify(bad));
+      expect(() => loadValidated(COMMITTEE_SCHEMA, dir)).toThrow(/inertia/);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -105,28 +127,7 @@ describe("committee schema validation", () => {
         id: "comm.test_comp",
         name: "comm.test_comp.name",
         desc: "comm.test_comp.desc",
-        members: [
-          { id: "member.chair", name: "member.chair.name", lean: "hawkish", competence: 1.5 },
-        ],
-      };
-      writeFileSync(join(dir, "bad.json"), JSON.stringify(bad));
-      expect(() => loadValidated(COMMITTEE_SCHEMA, dir)).toThrow(/competence/);
-    } finally {
-      rmSync(dir, { recursive: true, force: true });
-    }
-  });
-
-  it("rejects a member with negative competence (< 0)", () => {
-    const dir = join(tmpdir(), `mandate-test-comm-neg-${process.pid}`);
-    mkdirSync(dir, { recursive: true });
-    try {
-      const bad = {
-        id: "comm.test_neg",
-        name: "comm.test_neg.name",
-        desc: "comm.test_neg.desc",
-        members: [
-          { id: "member.chair", name: "member.chair.name", lean: "hawkish", competence: -0.1 },
-        ],
+        members: [M("member.chair", "member.chair.name", { competence: 1.5 })],
       };
       writeFileSync(join(dir, "bad.json"), JSON.stringify(bad));
       expect(() => loadValidated(COMMITTEE_SCHEMA, dir)).toThrow(/competence/);
@@ -159,10 +160,8 @@ describe("committee schema validation", () => {
       const bad = {
         id: "comm.test_desc",
         name: "comm.test_desc.name",
-        desc: "The 1979 Federal Open Market Committee.", // inline English — must fail
-        members: [
-          { id: "member.chair", name: "member.chair.name", lean: "hawkish", competence: 0.9 },
-        ],
+        desc: "The 1979 Federal Open Market Committee.",
+        members: [M("member.chair", "member.chair.name")],
       };
       writeFileSync(join(dir, "bad.json"), JSON.stringify(bad));
       expect(() => loadValidated(COMMITTEE_SCHEMA, dir)).toThrow(/desc/);
@@ -179,9 +178,7 @@ describe("committee schema validation", () => {
         id: "comm.test_id",
         name: "comm.test_id.name",
         desc: "comm.test_id.desc",
-        members: [
-          { id: "volcker", name: "member.chair.name", lean: "hawkish", competence: 0.9 },
-        ],
+        members: [M("hank", "member.chair.name")],
       };
       writeFileSync(join(dir, "bad.json"), JSON.stringify(bad));
       expect(() => loadValidated(COMMITTEE_SCHEMA, dir)).toThrow(/id/);

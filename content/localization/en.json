@@ -19,12 +19,17 @@
   "comm.fomc_1979.name": "Federal Open Market Committee (1979)",
   "comm.fomc_1979.desc": "The FOMC as constituted in August 1979. A mix of hawks, doves, and centrists across the Board and regional banks.",
   "member.chair.name": "Dr. Eleanor Voss",
+  "member.vice_chair.name": "Dr. Adeline Carrasco",
   "member.governor_a.name": "Marcus Reeves",
   "member.governor_b.name": "Dr. Sarah Okafor",
   "member.governor_c.name": "Liana Patel",
   "member.governor_d.name": "Owen Fitzgerald",
+  "member.governor_e.name": "Felix Onyango",
   "member.regional_president_ny.name": "Hannah Kim",
   "member.regional_president_chicago.name": "Dr. Antonio Reyes",
+  "member.regional_president_sf.name": "Dr. Maya Behrouz",
+  "member.regional_president_atlanta.name": "Tariq Whitlock",
+  "member.regional_president_cleveland.name": "Inez Volkov-Marsh",
   "cal.fred_1979_1986.name": "FRED 1979-1986 baseline",
   "cal.fred_1979_1986.desc": "Real Federal Reserve Economic Data for the 1979-1986 disinflation window: CPI YoY, unemployment, fed funds rate."
 }
