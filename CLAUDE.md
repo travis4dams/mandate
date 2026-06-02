@@ -41,3 +41,10 @@ against this file on every pull request.
 - The enforceable "what": `spec/requirements.md`.
 - The content contract: `schemas/`.
 - Worked examples to copy: `content/events/oil_shock.json`, `content/tech/*.json`.
+
+## Issue-driven autonomous work
+GitHub issues labelled **`agent-task`** are picked up by the recurring agent on
+its next 5-hour fire, in `created_at` order. The agent opens a PR titled
+`Fixes #N — …`, comments on the issue with the PR URL, and removes the
+`agent-task` label (the issue stays open until the user closes it as their
+verification step). See `docs/agent-task-workflow.md` for the full contract.
