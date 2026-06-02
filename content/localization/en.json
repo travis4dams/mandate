@@ -22,5 +22,7 @@
   "member.governor_c.name": "Liana Patel",
   "member.governor_d.name": "Owen Fitzgerald",
   "member.regional_president_ny.name": "Hannah Kim",
-  "member.regional_president_chicago.name": "Dr. Antonio Reyes"
+  "member.regional_president_chicago.name": "Dr. Antonio Reyes",
+  "cal.fred_1979_1986.name": "FRED 1979-1986 baseline",
+  "cal.fred_1979_1986.desc": "Real Federal Reserve Economic Data for the 1979-1986 disinflation window: CPI YoY, unemployment, fed funds rate."
 }

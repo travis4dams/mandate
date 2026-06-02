@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mandate.dev/schemas/calibration.schema.json",
+  "title": "Calibration",
+  "description": "A committed real-world time-series baseline used to compare engine output against historical data. No engine-computed values appear here — only observed economic data.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "name", "desc", "source", "series"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^cal\\.[a-z0-9_]+$",
+      "description": "Stable unique id, e.g. cal.fred_1979_1986."
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_.]+$",
+      "description": "Localization key for the calibration title."
+    },
+    "desc": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_.]+$",
+      "description": "Localization key for the calibration description."
+    },
+    "source": {
+      "type": "string",
+      "pattern": "^https?://",
+      "description": "Canonical URL for the data source. Pattern-enforced because AJV 8 strict mode silently ignores unknown formats and ajv-formats is not installed."
+    },
+    "series": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Monthly observations. Strict ascending order by `date` is enforced by `loadCalibration` at runtime, not by this schema.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["date", "inflation_yoy", "unemployment", "fed_funds_rate"],
+        "properties": {
+          "date": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-[0-9]{2}$",
+            "description": "ISO year-month, e.g. 1979-08."
+          },
+          "inflation_yoy": {
+            "type": "number",
+            "minimum": -0.5,
+            "maximum": 1.0,
+            "description": "Year-over-year CPI inflation rate as a decimal (e.g. 0.1184 = 11.84%)."
+          },
+          "unemployment": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Civilian unemployment rate as a decimal in [0, 1]."
+          },
+          "fed_funds_rate": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 2,
+            "description": "Effective federal funds rate as a decimal in [0, 2]."
+          }
+        }
+      }
+    }
+  }
+}

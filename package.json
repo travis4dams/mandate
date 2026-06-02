@@ -10,6 +10,7 @@
     "test:watch": "vitest",
     "validate": "tsx tools/validate-content.ts",
     "spec:trace": "tsx tools/spec-trace.ts",
+    "calibrate": "tsx tools/calibrate.ts",
     "check": "npm run typecheck && npm run validate && npm run spec:trace && npm test"
   },
   "devDependencies": {
