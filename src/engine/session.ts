@@ -6,6 +6,7 @@ import { loadValidatedFile } from "../content/loader.js";
 import { tick } from "./clock.js";
 import { vote, loadCommitteeParams } from "./fomc.js";
 import { applyMeetingOutcome, applyMonthlySpiral, getCredibility, loadCredibilityParams } from "./credibility.js";
+import { applyMacroDynamics, loadDynamicsParams } from "./dynamics.js";
 import type { GameState, GameStateSnapshot } from "./state.js";
 import type { FomcVote } from "./fomc.js";
 import type { Replay } from "../content/replays.js";
@@ -89,7 +90,7 @@ export class NotMeetingMonthError extends Error {
 export type ForwardGuidanceStance = "hawkish" | "dovish" | "neutral";
 
 // Required vars that every scenario must supply for the engine to function.
-const REQUIRED_VARS = ["policy_rate", "inflation", "unemployment", "credibility"] as const;
+const REQUIRED_VARS = ["policy_rate", "inflation", "unemployment", "credibility", "expectations_anchor"] as const;
 
 /**
  * A pure Session façade that wraps the slice-1 engine functions.
@@ -222,11 +223,12 @@ export class Session {
     const checkpointState = this._state;
     const checkpointTrajectoryLength = this._trajectoryInternal.length;
 
-    // SPEC-GUIDE-1: loaders + effectiveParams are loop-invariant — both are cached
-    // singletons and the stance is fixed for the duration of advance(). Hoisting
+    // SPEC-GUIDE-1 / SPEC-SIM-5: all three loaders + effectiveParams are loop-invariant —
+    // each is a cached singleton and stance is fixed for the duration of advance(). Hoisting
     // makes that obvious to readers and removes any hint of per-month re-resolution.
     const credParams = loadCredibilityParams();
     const guidanceP = loadGuidanceParams();
+    const dynamicsParams = loadDynamicsParams();
     const effectiveParams = {
       ...credParams,
       recovery_rate: credParams.recovery_rate * stanceMultiplier(this._stance, guidanceP),
@@ -246,6 +248,7 @@ export class Session {
 
         this._state = tick(this._state, 1);
         this._state = applyMonthlySpiral(this._state, effectiveParams);
+        this._state = applyMacroDynamics(this._state, dynamicsParams);
 
         const snapshot = Session._snapshotOf(this._state);
         this._trajectoryInternal.push(snapshot);

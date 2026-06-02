@@ -19,6 +19,7 @@ const fileChecks = [
   { schema: "schemas/committee-params.schema.json", file: "content/engine/committee.json", label: "committee params" },
   { schema: "schemas/meeting-schedule.schema.json", file: "content/engine/meeting-schedule.json", label: "meeting schedule" },
   { schema: "schemas/guidance.schema.json", file: "content/engine/guidance.json", label: "guidance params" },
+  { schema: "schemas/dynamics.schema.json", file: "content/engine/dynamics.json", label: "dynamics params" },
 ];
 
 let failed = false;

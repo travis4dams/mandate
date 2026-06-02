@@ -354,6 +354,33 @@ describe("SPEC-GUIDE-1: applyMonthlySpiral is called inside Session.advance()", 
   });
 });
 
+describe("SPEC-SIM-5: macro dynamics wired into Session.advance()", () => {
+  // SPEC-SIM-5: after advance(24) from 1979 scenario, unemployment rises above initial 0.058.
+  // policy_rate=0.1075 > neutral=0.05, so each month unemployment increases by 0.02 * (0.1075 - 0.05) = 0.00115.
+  // After 24 months: ~0.058 + 24 * 0.00115 ≈ 0.086 >> 0.058.
+  it("after advance(24), unemployment is higher than initial 0.058 (tight policy drives unemployment up)", () => {
+    // SPEC-SIM-5
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    expect(s.current.vars.unemployment).toBe(0.058);
+    s.advance(24);
+    expect(s.current.vars.unemployment).toBeGreaterThan(0.058);
+  });
+
+  // SPEC-SIM-5: after advance(24), inflation moves in the direction the model predicts.
+  // 1979 scenario: inflation=0.114, credibility=25 < anchor_threshold=60, so the spiral is
+  // in drift mode — expectations_anchor drifts UP (away from target=0.02) by drift_per_period
+  // each month. Over 24 months, anchor rises above current inflation, which pulls inflation
+  // UP via the (1-persistence)*anchor term. A direction-agnostic assertion (not.toBe(0.114))
+  // would pass even if the dynamics were wired backwards — this is the canary for sign errors.
+  it("after advance(24), inflation has risen above initial 0.114 (drift mode pulls anchor and inflation up)", () => {
+    // SPEC-SIM-5
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    expect(s.current.vars.inflation).toBe(0.114);
+    s.advance(24);
+    expect(s.current.vars.inflation).toBeGreaterThan(0.114);
+  });
+});
+
 describe("SPEC-SESSION-1: FOMC meeting schedule", () => {
   // SPEC-SESSION-1: isMeetingMonth() with no arg uses _state.date.
   it("isMeetingMonth() returns true when _state.date is a meeting month (1979-08 = August = 8 ✓)", () => {
