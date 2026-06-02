@@ -20,15 +20,17 @@ const referenced = new Set<string>();
 function walk(dir: string): void {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const p = join(dir, entry.name);
-    if (entry.isDirectory()) walk(p);
-    else if (entry.name.endsWith(".ts") || entry.name.endsWith(".tsx")) {
+    if (entry.isDirectory()) {
+      if (entry.name === "node_modules" || entry.name === "dist") continue;
+      walk(p);
+    } else if (entry.name.endsWith(".ts") || entry.name.endsWith(".tsx")) {
       for (const id of readFileSync(p, "utf8").match(ID_RE) ?? []) referenced.add(id);
     }
   }
 }
 walk("test");
-// Also scan web/ subdirectory for SPEC references when it exists.
-if (existsSync("web")) walk("web");
+// Also scan web/src for SPEC references when it exists (skip node_modules/dist via walk guard above).
+if (existsSync("web/src")) walk("web/src");
 
 const orphans = [...testable].filter((id) => !referenced.has(id));
 console.log(`Testable requirements: ${testable.size}`);
