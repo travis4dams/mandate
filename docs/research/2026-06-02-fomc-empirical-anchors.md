@@ -2,7 +2,9 @@
 
 Snapshot: 2026-06-02. Compiled from a research pass commissioned during the
 player-feedback round on PR #25 (committee spreads were absurd; credibility
-ratcheted only down).
+ratcheted only down). PR #27 implemented the first two follow-up specs
+(SPEC-COMM-3 and SPEC-CRED-5) based on these anchors; the remaining two
+(calibration test, UI integration test) are queued.
 
 ## 1. Dot-plot dispersion (modern, 2012-2025)
 
@@ -14,12 +16,16 @@ The SEP has 19 participants (7 Governors + 12 Reserve Bank Presidents). Dispersi
 - Standard deviation across dots: ~30-50bp at near horizons, 50-80bp at longer ones.
 
 **Game implication:** typical hawk-vs-dove spread at the same meeting is ~150bp,
-not 1500bp. The slice-2 model's preferred-rate spread (hawks @ 19%, doves @ 3.6%
-in 1979) is an order of magnitude too wide.
+not 1500bp. The slice-2 model produced a ~1550bp spread at the 1979 starting
+state (hawk preferred ≈ 19% vs dove preferred ≈ 3.6%, evaluated at the 5%
+neutral_rate; at the actual 10.75% starting policy rate the absolute numbers
+shift to ~24.9% / ~9.3% but the spread is roughly stable). The diagnostic to
+track is the spread itself, not the absolute numbers — they depend on what
+proposal anchors the math.
 
 ## 2. Reaction-function coefficients
 
-Modern empirical median FOMC participant (per BIS, Fed FEDS, Atlanta Fed):
+Modern empirical median FOMC participant:
 - Inflation coefficient: 1.5-2.0 (centered ~1.7, SD ~0.3)
 - Output-gap coefficient: 0.25-0.5 (centered ~0.4, SD ~0.2)
 - **Inertia (smoothing on lagged rate): ~0.85-0.92**
@@ -49,10 +55,15 @@ a small reaction term layered on. That's why dots cluster.
 - About half of the actual disinflation came from expectations re-anchoring,
   not from the direct demand channel.
 
-**Game implication:** the current credibility model only goes down. It needs:
-- A nonzero `onTarget` signal that fires when inflation is close to target.
-- Gating that re-anchoring requires sustained performance, not a single hit.
-- A smoothed credibility recovery rate (multi-year decay back to anchored).
+**Game implication:** the credibility model is sound at the
+`applyMeetingOutcome` level — it already applies `+3` on `onTarget: true`. The
+slice-2 bug was upstream: `src/engine/session.ts` hardcoded `onTarget: false`
+(a leftover SESSION-0 TODO), so the gain lever could never fire. SPEC-CRED-5
+wires the existing mechanic to a real check rather than introducing new math.
+Sustained-performance gating (Goodfriend-King "incredible disinflation"
+finding) emerges naturally because the +3 per meeting is small relative to
+the dissent erosion; getting credibility back to anchored takes many on-target
+meetings in a row, matching the historical 3-7 year window.
 
 ## 5. Volcker rate path (monthly fed funds, ~)
 
@@ -70,36 +81,60 @@ a small reaction term layered on. That's why dots cluster.
 | Jul 1982 | 11.5-12 (sustained easing begins) |
 | Dec 1982 | 9.0 |
 
-The committed replay (`content/replays/1979_chair_tightening.json`) only has 12
-action points and should be cross-checked against this trajectory; a calibration
-test that drives the engine through these monthly rates and compares to FRED is
-what the user is asking for.
+These are the high-frequency anchors from FRED + Fed historical narratives. The
+committed replay (`content/replays/1979_chair_tightening.json`) is a coarser
+12-point sequence sampled at meeting cadence; it deliberately omits some
+inflection months listed above (Sep 1979, Aug 1980, Nov 1981, Apr 1982) and
+rounds Mar 1980 to ~17.0% rather than 17.6%. Both representations are valid:
+the replay encodes Chair decisions at meeting boundaries, this table records
+the realised monthly fed-funds path. A calibration test should pick one source
+as its ground truth — driving the engine through the replay and comparing to
+FRED on aligned months — rather than treating this table as a per-month spec
+the replay must mirror.
 
 ## Application to MANDATE
 
-Concrete changes the engine needs (each its own SPEC):
+Concrete changes split into four follow-up SPECs. The first two ship with
+PR #27; the latter two remain queued.
 
-1. **SPEC-COMM-N (revised committee model)**: 12 members; per-member reaction
-   coefficients sampled from realistic distributions; high inertia on lagged
-   rate so preferred rates cluster. Drop the simple "hawkish | dovish | neutral"
-   trichotomy in favor of `(inflation_coef, output_coef, inertia)`.
-2. **SPEC-CRED-N (credibility two-way)**: wire `onTarget` to a real check
-   (e.g., `|inflation - target| < threshold`); require N consecutive on-target
-   months to count as anchored; smoothed re-anchor rate.
-3. **SPEC-CAL-N (Volcker validation)**: a calibration test that drives the
-   engine through the 1979-1982 monthly rate path and asserts inflation,
-   unemployment, and credibility evolve in roughly the historical direction
-   (loose tolerance: order of magnitude, not exact match).
-4. **SPEC-WEB-N (UI Volcker test)**: a vitest-jsdom test that drives the
-   Dashboard through the same rate path via the Propose Rate button and
-   asserts the displayed end-state matches the headless engine's end-state.
+1. **SPEC-COMM-3 (revised committee model)** *— shipped in PR #27.*
+   12 members; per-member reaction coefficients (`inflation_coef`,
+   `output_coef`, `inertia`) anchored at `neutral_rate`. Drops the old
+   hawkish/dovish/neutral trichotomy. **Schema migration required:**
+   `schemas/committee.schema.json` replaces the `lean` enum with three numeric
+   coefficient fields; `content/committees/1979.json` is rewritten with all 12
+   members; the dropped per-lean weights are removed from
+   `schemas/committee-params.schema.json`.
+
+2. **SPEC-CRED-5 (credibility two-way)** *— shipped in PR #27.*
+   Wires `Session.proposeRate` to compute `onTarget` from
+   `|inflation - target_inflation| < params.on_target_tolerance` instead of
+   the hardcoded `false`. The +3 per-on-target-meeting gain in
+   `applyMeetingOutcome` already exists; this just unlocks it. Sustained-
+   performance gating is emergent rather than explicit — the +3 is small
+   enough that re-anchoring naturally takes many meetings.
+
+3. **SPEC-CAL-2 (Volcker calibration test)** *— queued.*
+   A test that drives the engine through `content/replays/1979_chair_tightening.json`
+   and compares the resulting trajectory to the FRED 1979-1986 calibration
+   baseline (already committed at `content/calibration/fred_1979_1986.json`).
+   Pin RMSE thresholds (loose tolerance) on inflation, unemployment, and
+   policy_rate so calibration regressions surface as test failures.
+
+4. **SPEC-WEB-3 (UI Volcker integration test)** *— queued.*
+   A vitest-jsdom test that drives the Dashboard through the rate path via the
+   Propose Rate button and asserts the displayed end-state matches the
+   headless engine's end-state. Pins that the UI/engine wiring (SPEC-WEB-2
+   useSession + MeetingPanel SPEC-WEB-4) actually surfaces the engine's
+   trajectory, not a divergent copy of it.
 
 ## Sources
 
 - Federal Reserve Dec 2025 SEP (https://www.federalreserve.gov/monetarypolicy/fomcprojtabl20251210.htm)
-- BIS WP 1234 — Targeted Taylor Rules (https://www.bis.org/publ/work1234.pdf)
-- Fed FEDS 2023-070
-- Goodfriend & King NBER 11562 — "The Incredible Volcker Disinflation"
-- FRED FEDFUNDS series
-- St. Louis Fed Review — Managing a New Policy Framework (2021)
-- Kansas City Fed — Understanding Hawks and Doves (2018)
+- Clarida, Galí & Gertler (2000), "Monetary Policy Rules and Macroeconomic Stability"
+  (NBER 6442) — empirical Taylor-rule estimates with inertia.
+- Fed FEDS 2023-070 — modern reaction-function estimates with high inertia.
+- Goodfriend & King (2005), NBER 11562 — "The Incredible Volcker Disinflation".
+- FRED FEDFUNDS series (https://fred.stlouisfed.org/series/FEDFUNDS).
+- St. Louis Fed Review — Managing a New Policy Framework (2021).
+- Kansas City Fed — Understanding Hawks and Doves (2018).
