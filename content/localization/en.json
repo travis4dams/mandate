@@ -12,6 +12,8 @@
   "division.it": "Information Technology",
   "scen.1979_stagflation.name": "Late-1970s Stagflation",
   "scen.1979_stagflation.desc": "August 1979: inflation runs above 11% and institutional credibility is shredded. Tighten aggressively enough to break expectations — without breaking the economy.",
+  "scen.recovery_test.name": "Recovery Mode Test Fixture",
+  "scen.recovery_test.desc": "Test-only scenario with credibility above anchor_threshold so engine tests can exercise the SPEC-GUIDE-1 recovery path through Session.advance() without first having to traverse drift mode.",
   "replay.1979_chair_tightening.name": "1979 Chair Tightening",
   "replay.1979_chair_tightening.desc": "The 1979-1986 late-stagflation disinflation strategy: ramp the fed funds rate to ~19% by mid-1981, then ease as inflation breaks. A canned strategy for testing the engine end-to-end.",
   "comm.fomc_1979.name": "Federal Open Market Committee (1979)",

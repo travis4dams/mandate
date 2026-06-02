@@ -277,6 +277,83 @@ describe("ForwardGuidanceStance type", () => {
   });
 });
 
+describe("SPEC-GUIDE-1: applyMonthlySpiral is called inside Session.advance()", () => {
+  // SPEC-GUIDE-1: after advance(1), expectations_anchor must have changed from its initial value.
+  // The 1979 scenario starts with credibility=25 < anchor_threshold=60 and months_below_anchor=6
+  // (already past consecutive_months=3), so drift mode activates immediately.
+  // anchor (0.090) > target (0.02) => direction=+1, drift_per_period=0.005 => anchor becomes 0.095.
+  it("after advance(1), expectations_anchor has changed from initial 0.090 (drift mode active)", () => {
+    // SPEC-GUIDE-1
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    expect(s.current.vars.expectations_anchor).toBe(0.090);
+    s.advance(1);
+    // Spiral is in drift mode: anchor drifts away from target by drift_per_period=0.005 each month.
+    expect(s.current.vars.expectations_anchor).toBeCloseTo(0.095, 5);
+  });
+
+  // SPEC-GUIDE-1: hawkish session has expectations_anchor no further from target than neutral
+  // after advance(1) in drift mode. In drift mode, stance only affects recovery; drift is identical
+  // for all stances. Both sessions should have the same anchor after 1 month in drift mode.
+  it("in drift mode, hawkish and neutral stances produce identical expectations_anchor after advance(1)", () => {
+    // SPEC-GUIDE-1
+    const hawk = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    const neutral = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    hawk.setForwardGuidanceStance("hawkish");
+    neutral.setForwardGuidanceStance("neutral");
+    hawk.advance(1);
+    neutral.advance(1);
+    // Drift mode: recovery_rate multiplier has no effect; anchors must be equal.
+    expect(hawk.current.vars.expectations_anchor).toBe(neutral.current.vars.expectations_anchor);
+  });
+
+  // SPEC-GUIDE-1: in recovery mode (credibility >= anchor_threshold), the stance multiplier
+  // actually scales the per-month recovery step. Uses the scen.recovery_test fixture:
+  // credibility=80 (in recovery), anchor=0.05, target=0.02 → gap = -0.03 each month moves
+  // anchor toward target by recovery_rate * stance_multiplier. With recovery_rate=0.002,
+  // one month gives:
+  //   hawkish (×1.5) → anchor 0.05 - 0.003 = 0.047
+  //   neutral (×1.0) → anchor 0.05 - 0.002 = 0.048
+  //   dovish  (×0.7) → anchor 0.05 - 0.0014 = 0.0486
+  // This is the only test that actually verifies stanceMultiplier dispatch via Session.advance().
+  it("in recovery mode, stance multiplier scales the per-month recovery step", () => {
+    // SPEC-GUIDE-1
+    const make = (stance: ForwardGuidanceStance) => {
+      const s = Session.fromScenario("scen.recovery_test", 42, "comm.fomc_1979");
+      s.setForwardGuidanceStance(stance);
+      s.advance(1);
+      return s.current.vars.expectations_anchor;
+    };
+    const hawk = make("hawkish");
+    const neutral = make("neutral");
+    const dovish = make("dovish");
+
+    // Strict ordering: hawkish closes the gap fastest, dovish slowest.
+    expect(hawk).toBeCloseTo(0.047, 6);
+    expect(neutral).toBeCloseTo(0.048, 6);
+    expect(dovish).toBeCloseTo(0.0486, 6);
+
+    // |anchor - target| must shrink at hawk < neutral < dovish.
+    const target = 0.02;
+    expect(Math.abs(hawk - target)).toBeLessThan(Math.abs(neutral - target));
+    expect(Math.abs(neutral - target)).toBeLessThan(Math.abs(dovish - target));
+  });
+
+  // SPEC-GUIDE-1: reset() must restore stance to "neutral" so a fresh game is not
+  // contaminated by a prior session's setForwardGuidanceStance call. We probe this
+  // by setting hawkish, resetting, then advancing — the recovery step must match
+  // neutral, NOT hawkish.
+  it("reset() restores stance to 'neutral' (next advance uses neutral_multiplier)", () => {
+    // SPEC-GUIDE-1
+    const s = Session.fromScenario("scen.recovery_test", 42, "comm.fomc_1979");
+    s.setForwardGuidanceStance("hawkish");
+    s.reset();
+    s.advance(1);
+    // After reset, the next advance uses neutral_multiplier (×1.0) → anchor = 0.048,
+    // NOT hawkish (×1.5 → 0.047).
+    expect(s.current.vars.expectations_anchor).toBeCloseTo(0.048, 6);
+  });
+});
+
 describe("SPEC-SESSION-1: FOMC meeting schedule", () => {
   // SPEC-SESSION-1: isMeetingMonth() with no arg uses _state.date.
   it("isMeetingMonth() returns true when _state.date is a meeting month (1979-08 = August = 8 ✓)", () => {

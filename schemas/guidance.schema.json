@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mandate.dev/schemas/guidance.schema.json",
+  "title": "GuidanceParams",
+  "description": "Forward-guidance stance multipliers for the credibility-spiral recovery path.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["hawkish_multiplier", "neutral_multiplier", "dovish_multiplier"],
+  "properties": {
+    "hawkish_multiplier": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Recovery-rate multiplier when the Chair adopts a hawkish forward-guidance stance."
+    },
+    "neutral_multiplier": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Recovery-rate multiplier when the Chair adopts a neutral forward-guidance stance."
+    },
+    "dovish_multiplier": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Recovery-rate multiplier when the Chair adopts a dovish forward-guidance stance."
+    }
+  }
+}
