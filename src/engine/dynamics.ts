@@ -26,24 +26,22 @@ export function loadDynamicsParams(): DynamicsParams {
   return _cachedParams;
 }
 
-/** Test-only: clear the cache so loaders compile and read again from disk. */
+/** Test-only: clear the cache so the next loadDynamicsParams() re-reads and re-validates
+ *  the JSON. AJV's compiled validator is cached separately in loader.ts and is not affected. */
 export function _resetDynamicsParamsCache(): void {
   _cachedParams = undefined;
 }
 
+// All four inputs are in Session.REQUIRED_VARS, so loadScenario's MissingVarsError catches
+// any omission at scenario load time. Trust that boundary guard — adding silent `?? <default>`
+// fallbacks here would either inject a directional error (inflation pulled to 0, anchor pulled
+// to 0) or mask a real content authoring bug. Per CLAUDE.md: "Don't add error handling for
+// scenarios that can't happen."
 export function applyMacroDynamics(state: GameState, params: DynamicsParams): GameState {
-  const inflation = state.vars.inflation ?? 0;
-  const unemployment = state.vars.unemployment ?? params.unemployment_natural_rate;
-  const policyRate = state.vars.policy_rate ?? params.neutral_rate;
-  // expectations_anchor is in Session.REQUIRED_VARS — guaranteed present at scenario
-  // load time. A silent fallback to 0 here would pull inflation toward 0% rather than
-  // toward the calibrated target, contradicting applyMonthlySpiral's behavior.
-  const expectationsAnchor = state.vars.expectations_anchor;
-  if (expectationsAnchor === undefined) {
-    throw new Error(
-      "applyMacroDynamics: state.vars.expectations_anchor is missing — should be guaranteed by Session.REQUIRED_VARS.",
-    );
-  }
+  const inflation = state.vars.inflation as number;
+  const unemployment = state.vars.unemployment as number;
+  const policyRate = state.vars.policy_rate as number;
+  const expectationsAnchor = state.vars.expectations_anchor as number;
 
   const unemploymentGap = unemployment - params.unemployment_natural_rate;
   const rateGap = policyRate - params.neutral_rate;

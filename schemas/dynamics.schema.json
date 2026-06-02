@@ -15,7 +15,8 @@
     "unemployment_natural_rate": {
       "type": "number",
       "minimum": 0,
-      "description": "Long-run equilibrium unemployment rate (NAIRU)."
+      "maximum": 1,
+      "description": "Long-run equilibrium unemployment rate (NAIRU). Decimal in [0,1] — schema-rejects percentage-point notation like 6 (meant 0.06)."
     },
     "rate_sensitivity": {
       "type": "number",

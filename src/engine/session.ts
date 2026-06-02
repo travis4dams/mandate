@@ -223,8 +223,8 @@ export class Session {
     const checkpointState = this._state;
     const checkpointTrajectoryLength = this._trajectoryInternal.length;
 
-    // SPEC-GUIDE-1: loaders + effectiveParams are loop-invariant — both are cached
-    // singletons and the stance is fixed for the duration of advance(). Hoisting
+    // SPEC-GUIDE-1 / SPEC-SIM-5: all three loaders + effectiveParams are loop-invariant —
+    // each is a cached singleton and stance is fixed for the duration of advance(). Hoisting
     // makes that obvious to readers and removes any hint of per-month re-resolution.
     const credParams = loadCredibilityParams();
     const guidanceP = loadGuidanceParams();

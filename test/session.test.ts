@@ -366,14 +366,18 @@ describe("SPEC-SIM-5: macro dynamics wired into Session.advance()", () => {
     expect(s.current.vars.unemployment).toBeGreaterThan(0.058);
   });
 
-  // SPEC-SIM-5: after advance(24), inflation has changed from its initial value of 0.114.
-  // The dynamics evolve inflation each month, so after 24 months the value must differ.
-  it("after advance(24), inflation has changed from initial 0.114 (dynamics are running)", () => {
+  // SPEC-SIM-5: after advance(24), inflation moves in the direction the model predicts.
+  // 1979 scenario: inflation=0.114, credibility=25 < anchor_threshold=60, so the spiral is
+  // in drift mode — expectations_anchor drifts UP (away from target=0.02) by drift_per_period
+  // each month. Over 24 months, anchor rises above current inflation, which pulls inflation
+  // UP via the (1-persistence)*anchor term. A direction-agnostic assertion (not.toBe(0.114))
+  // would pass even if the dynamics were wired backwards — this is the canary for sign errors.
+  it("after advance(24), inflation has risen above initial 0.114 (drift mode pulls anchor and inflation up)", () => {
     // SPEC-SIM-5
     const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
     expect(s.current.vars.inflation).toBe(0.114);
     s.advance(24);
-    expect(s.current.vars.inflation).not.toBe(0.114);
+    expect(s.current.vars.inflation).toBeGreaterThan(0.114);
   });
 });
 
