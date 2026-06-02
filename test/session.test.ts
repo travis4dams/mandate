@@ -1,6 +1,7 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { Session, NotMeetingMonthError } from "../src/engine/session.js";
 import type { ForwardGuidanceStance } from "../src/engine/session.js";
+import * as mandateModule from "../src/engine/mandate.js";
 
 // SPEC-SESSION-0
 
@@ -382,18 +383,37 @@ describe("SPEC-SIM-5: macro dynamics wired into Session.advance()", () => {
 });
 
 describe("SPEC-MANDATE-1: onTarget wired into Session.proposeRate()", () => {
-  // SPEC-MANDATE-1: the 1979 scenario starts with inflation=0.114 >> target=0.02, so onTarget
-  // is false. After proposeRate at a meeting month, credibility must NOT increase by exactly 3
-  // (the +3 gain only fires when onTarget is true). Verify no +3 gain occurs with high inflation.
-  it("credibility does not increase by exactly 3 after proposeRate when inflation is high (onTarget=false)", () => {
+  afterEach(() => { vi.restoreAllMocks(); });
+
+  // SPEC-MANDATE-1: 1979 inflation=0.114 >> target=0.02 → onTarget=false → no +3 bonus.
+  // seed 42: credBefore=25, 7 dissents, no market surprise → credAfter = 25 - 14 = 11.
+  it("credibility changes by exact formula (no +3 bonus) when onTarget is false", () => {
     // SPEC-MANDATE-1
     const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
     const credBefore = s.current.vars.credibility;
-    // 1979-08 is a meeting month; inflation=0.114 >> target=0.02 so onTarget is false.
     s.proposeRate(0.1075);
     const credAfter = s.current.vars.credibility;
-    // onTarget=false means the +3 lever is off; credibility must NOT be credBefore + 3.
-    expect(credAfter).not.toBe(credBefore + 3);
+    expect(credBefore).toBe(25);
+    expect(credAfter).toBe(11); // 25 + 0 (onTarget=false) - 14 (dissent penalty)
+  });
+
+  // SPEC-MANDATE-1: when onTarget is true, the +3 lever fires — credAfter is exactly 3 higher.
+  // Mock mandate params so inflation=0.114 is "on target"; same seed → same vote → delta is +3.
+  it("credibility is exactly 3 higher when onTarget is true (positive path)", () => {
+    // SPEC-MANDATE-1
+    vi.spyOn(mandateModule, "loadMandateParams").mockReturnValue({
+      target_inflation: 0.114,
+      tolerance_band: 0.01,
+      mandate_type: "single",
+      unemployment_target: 0.055,
+      unemployment_band: 0.01,
+    });
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    const credBefore = s.current.vars.credibility;
+    s.proposeRate(0.1075);
+    const credAfter = s.current.vars.credibility;
+    expect(credBefore).toBe(25);
+    expect(credAfter).toBe(14); // 25 + 3 (onTarget=true) - 14 (dissent penalty)
   });
 });
 

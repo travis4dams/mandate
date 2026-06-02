@@ -67,6 +67,18 @@ describe("onTarget — single mandate", () => {
     });
     expect(onTarget(state, SINGLE_PARAMS)).toBe(true);
   });
+
+  // SPEC-MANDATE-1: inflation off target → single mandate returns false.
+  it("returns false when inflation is off target (single mandate)", () => {
+    // SPEC-MANDATE-1
+    const state = makeState({
+      vars: {
+        inflation: 0.114,
+        unemployment: 0.055,
+      },
+    });
+    expect(onTarget(state, SINGLE_PARAMS)).toBe(false);
+  });
 });
 
 describe("onTarget — purity", () => {
@@ -86,13 +98,12 @@ describe("onTarget — purity", () => {
 });
 
 describe("onTarget — tolerance boundary edge cases", () => {
-  // SPEC-MANDATE-1: inflation exactly at tolerance boundary → true.
-  // Use params with fp-exact boundary: target=0.02, band=0.004 so upper boundary=0.024.
-  // Math.abs(0.024 - 0.02) = 0.004 exactly in IEEE 754, so <= 0.004 returns true.
+  // SPEC-MANDATE-1: inflation at the computed boundary → true.
+  // boundary = target + band = 0.02 + 0.004 = 0.024; Math.abs(0.024 - 0.02) <= 0.004 returns true.
   it("returns true when inflation is exactly at the upper tolerance boundary", () => {
     // SPEC-MANDATE-1
     const BOUNDARY_PARAMS: MandateParams = { ...DUAL_PARAMS, tolerance_band: 0.004 };
-    const boundary = BOUNDARY_PARAMS.target_inflation + BOUNDARY_PARAMS.tolerance_band; // 0.024 (fp-exact)
+    const boundary = BOUNDARY_PARAMS.target_inflation + BOUNDARY_PARAMS.tolerance_band; // 0.024
     const state = makeState({
       vars: {
         inflation: boundary,
@@ -102,12 +113,12 @@ describe("onTarget — tolerance boundary edge cases", () => {
     expect(onTarget(state, BOUNDARY_PARAMS)).toBe(true);
   });
 
-  // SPEC-MANDATE-1: inflation one ulp above the exact boundary → false.
-  it("returns false when inflation is one ulp above the upper tolerance boundary", () => {
+  // SPEC-MANDATE-1: inflation strictly above the boundary → false.
+  it("returns false when inflation is strictly above the upper tolerance boundary", () => {
     // SPEC-MANDATE-1
     const BOUNDARY_PARAMS: MandateParams = { ...DUAL_PARAMS, tolerance_band: 0.004 };
-    const boundary = BOUNDARY_PARAMS.target_inflation + BOUNDARY_PARAMS.tolerance_band; // 0.024 (fp-exact)
-    // Smallest representable increment above the boundary.
+    const boundary = BOUNDARY_PARAMS.target_inflation + BOUNDARY_PARAMS.tolerance_band; // 0.024
+    // Any value strictly greater than boundary triggers false.
     const justOutside = boundary + Number.EPSILON * boundary;
     const state = makeState({
       vars: {

@@ -26,10 +26,15 @@ export function loadMandateParams(): MandateParams {
   return _cachedParams;
 }
 
+/** Test-only: clear the cached mandate params so subsequent calls re-load from disk. */
+export function _resetMandateParamsCache(): void {
+  _cachedParams = undefined;
+}
+
 export function onTarget(state: GameState, params: MandateParams): boolean {
-  const inflation = state.vars.inflation ?? 0;
+  const inflation = state.vars.inflation as number;
   const inflationOnTarget = Math.abs(inflation - params.target_inflation) <= params.tolerance_band;
   if (params.mandate_type === "single") return inflationOnTarget;
-  const unemployment = state.vars.unemployment ?? 0;
+  const unemployment = state.vars.unemployment as number;
   return inflationOnTarget && Math.abs(unemployment - params.unemployment_target) <= params.unemployment_band;
 }
