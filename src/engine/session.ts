@@ -273,6 +273,10 @@ export class Session {
    * Returns the FomcVote for the meeting.
    * @throws {NotMeetingMonthError} if the current month is not a scheduled meeting month.
    * @throws {Error} if `rate` is not finite (only checked once the meeting-month gate passes).
+   * @throws {VoteMissingVarError} if `onTarget()` (SPEC-MANDATE-1) cannot read the
+   *   required state vars for the loaded mandate — `inflation` for any mandate, and
+   *   additionally `unemployment` when `mandate_type` is `dual`. The check is invoked
+   *   per meeting to determine the credibility delta.
    */
   proposeRate(rate: number): FomcVote {
     if (!this.isMeetingMonth()) {

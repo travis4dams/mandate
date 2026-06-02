@@ -126,6 +126,15 @@ describe("onTarget — guard: missing or non-finite vars", () => {
     const state = makeState({ vars: { inflation: 0.02 } });
     expect(() => onTarget(state, SINGLE_PARAMS)).not.toThrow();
   });
+
+  // SPEC-MANDATE-1: non-finite unemployment (NaN/Infinity) throws VoteMissingVarError
+  // under dual mandate. The inflation side has paired missing+NaN guards; this closes
+  // the unemployment side.
+  it("throws VoteMissingVarError when unemployment is NaN (dual mandate)", () => {
+    // SPEC-MANDATE-1
+    const state = makeState({ vars: { inflation: 0.02, unemployment: NaN } });
+    expect(() => onTarget(state, DUAL_PARAMS)).toThrow(VoteMissingVarError);
+  });
 });
 
 describe("onTarget — tolerance boundary edge cases", () => {
