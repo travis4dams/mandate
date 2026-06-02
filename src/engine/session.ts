@@ -28,10 +28,12 @@ interface MeetingSchedule {
   meeting_months: readonly number[];
 }
 
-let _meetingSchedule: MeetingSchedule | null = null;
-function loadMeetingSchedule(): MeetingSchedule {
-  return (_meetingSchedule ??= loadValidatedFile<MeetingSchedule>(MEETING_SCHEDULE_SCHEMA, MEETING_SCHEDULE_FILE));
-}
+// Eager module-level load mirrors clock.ts: any malformed meeting-schedule.json
+// fails fast at boot rather than the first proposeRate() call.
+const MEETING_SCHEDULE: MeetingSchedule = loadValidatedFile<MeetingSchedule>(
+  MEETING_SCHEDULE_SCHEMA,
+  MEETING_SCHEDULE_FILE,
+);
 
 export class NotMeetingMonthError extends Error {
   constructor(public readonly date: string) {
@@ -145,13 +147,23 @@ export class Session {
 
   // --- SPEC-SESSION-1: FOMC schedule gate ---
 
-  // Returns true iff the given date's month falls in the loaded meeting schedule.
-  // When date is omitted, uses this._state.date.
-  // Parses month via string slicing — no new Date() constructor (engine purity).
+  /**
+   * Returns true iff the given date's month falls in the loaded meeting schedule.
+   * When `date` is omitted, uses `this._state.date`. Parses the month via string
+   * slicing — no `new Date(...)` constructor (engine purity).
+   *
+   * @param date Optional explicit YYYY-MM date. The format is strict: non-conforming
+   *   strings throw rather than silently returning false, which prevents a typo like
+   *   `"1979-8"` (no zero-pad) from misclassifying a real meeting month.
+   * @throws {Error} when `date` is supplied but does not match `^\d{4}-\d{2}$`.
+   */
   isMeetingMonth(date?: string): boolean {
     const d = date ?? this._state.date;
+    if (!/^\d{4}-\d{2}$/.test(d)) {
+      throw new Error(`Session.isMeetingMonth: expected YYYY-MM, got "${d}".`);
+    }
     const month = parseInt(d.slice(5, 7), 10);
-    return loadMeetingSchedule().meeting_months.includes(month);
+    return MEETING_SCHEDULE.meeting_months.includes(month);
   }
 
   // --- Mutators ---
@@ -200,9 +212,12 @@ export class Session {
 
   /**
    * Propose a rate for the current month's FOMC meeting.
-   * SESSION-0: every month is meeting-eligible (SESSION-1 wires the actual schedule).
+   * SESSION-1 gates this on `isMeetingMonth()` — calling `proposeRate` in a month
+   * that is not on the loaded FOMC schedule throws `NotMeetingMonthError` before
+   * any rate-validity check runs.
    * Returns the FomcVote for the meeting.
-   * @throws {Error} if rate is not finite.
+   * @throws {NotMeetingMonthError} if the current month is not a scheduled meeting month.
+   * @throws {Error} if `rate` is not finite (only checked once the meeting-month gate passes).
    */
   proposeRate(rate: number): FomcVote {
     if (!this.isMeetingMonth()) {
