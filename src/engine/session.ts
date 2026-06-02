@@ -3,7 +3,7 @@ import { loadReplay } from "../content/replays.js";
 import { loadCommittee } from "../content/committees.js";
 import { tick } from "./clock.js";
 import { vote, loadCommitteeParams } from "./fomc.js";
-import { applyMeetingOutcome } from "./credibility.js";
+import { applyMeetingOutcome, getCredibility } from "./credibility.js";
 import type { GameState, GameStateSnapshot } from "./state.js";
 import type { FomcVote } from "./fomc.js";
 import type { Replay } from "../content/replays.js";
@@ -19,7 +19,7 @@ import type { Replay } from "../content/replays.js";
 export type ForwardGuidanceStance = "hawkish" | "dovish" | "neutral";
 
 // Required vars that every scenario must supply for the engine to function.
-const REQUIRED_VARS = ["policy_rate", "inflation", "unemployment"] as const;
+const REQUIRED_VARS = ["policy_rate", "inflation", "unemployment", "credibility"] as const;
 
 /**
  * A pure Session façade that wraps the slice-1 engine functions.
@@ -127,24 +127,35 @@ export class Session {
       throw new Error(`Session.advance: months must be > 0, got ${months}.`);
     }
 
-    for (let i = 0; i < months; i++) {
-      // Apply matching replay action before the tick, if this is a replay session.
-      if (this._replay !== null) {
-        const action = this._replay.actions.find((a) => a.date === this._state.date);
-        if (action !== undefined) {
-          this._state = {
-            ...this._state,
-            vars: { ...this._state.vars, policy_rate: action.policy_rate },
-          };
+    // Checkpoint for mid-loop rollback (SF4): capture mutable state before we begin.
+    const checkpointState = this._state;
+    const checkpointTrajectoryLength = this._trajectoryInternal.length;
+
+    try {
+      for (let i = 0; i < months; i++) {
+        // Apply matching replay action before the tick, if this is a replay session.
+        if (this._replay !== null) {
+          const action = this._replay.actions.find((a) => a.date === this._state.date);
+          if (action !== undefined) {
+            this._state = {
+              ...this._state,
+              vars: { ...this._state.vars, policy_rate: action.policy_rate },
+            };
+          }
         }
+
+        // Advance engine state by one month (pure — returns new state).
+        this._state = tick(this._state, 1);
+
+        // Push snapshot of state AFTER the tick so current reflects the advanced date.
+        const snapshot = Session._snapshotOf(this._state);
+        this._trajectoryInternal.push(snapshot);
       }
-
-      // Advance engine state by one month (pure — returns new state).
-      this._state = tick(this._state, 1);
-
-      // Push snapshot of state AFTER the tick so current reflects the advanced date.
-      const snapshot = Session._snapshotOf(this._state);
-      this._trajectoryInternal.push(snapshot);
+    } catch (err) {
+      // Restore to pre-advance checkpoint so _state and _trajectoryInternal stay consistent.
+      this._state = checkpointState;
+      this._trajectoryInternal.length = checkpointTrajectoryLength;
+      throw err;
     }
 
     this._rebuildCaches();
@@ -167,8 +178,12 @@ export class Session {
     const fomcVote = vote(committee, rate, this._state, params);
 
     // Apply the decided rate and compute new credibility.
+    // TODO(SPEC-SESSION-1): wire surprisedMarkets from forward-guidance-vs-decided delta; wire onTarget from mandate evaluator.
+    // SESSION-0 limitation: surprisedMarkets and onTarget are both false until the meeting calendar
+    // and mandate evaluator are implemented in SESSION-1; this permanently disables two of the three
+    // SPEC-CRED-1 credibility levers for the current slice.
     const newCredibility = applyMeetingOutcome(
-      this._state.vars.credibility ?? 50,
+      getCredibility(this._state),
       {
         dissents: fomcVote.dissents,
         surprisedMarkets: false,
