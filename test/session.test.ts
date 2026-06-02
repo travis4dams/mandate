@@ -277,6 +277,36 @@ describe("ForwardGuidanceStance type", () => {
   });
 });
 
+describe("SPEC-GUIDE-1: applyMonthlySpiral is called inside Session.advance()", () => {
+  // SPEC-GUIDE-1: after advance(1), expectations_anchor must have changed from its initial value.
+  // The 1979 scenario starts with credibility=25 < anchor_threshold=60 and months_below_anchor=6
+  // (already past consecutive_months=3), so drift mode activates immediately.
+  // anchor (0.090) > target (0.02) => direction=+1, drift_per_period=0.005 => anchor becomes 0.095.
+  it("after advance(1), expectations_anchor has changed from initial 0.090 (drift mode active)", () => {
+    // SPEC-GUIDE-1
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    expect(s.current.vars.expectations_anchor).toBe(0.090);
+    s.advance(1);
+    // Spiral is in drift mode: anchor drifts away from target by drift_per_period=0.005 each month.
+    expect(s.current.vars.expectations_anchor).toBeCloseTo(0.095, 5);
+  });
+
+  // SPEC-GUIDE-1: hawkish session has expectations_anchor no further from target than neutral
+  // after advance(1) in drift mode. In drift mode, stance only affects recovery; drift is identical
+  // for all stances. Both sessions should have the same anchor after 1 month in drift mode.
+  it("in drift mode, hawkish and neutral stances produce identical expectations_anchor after advance(1)", () => {
+    // SPEC-GUIDE-1
+    const hawk = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    const neutral = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    hawk.setForwardGuidanceStance("hawkish");
+    neutral.setForwardGuidanceStance("neutral");
+    hawk.advance(1);
+    neutral.advance(1);
+    // Drift mode: recovery_rate multiplier has no effect; anchors must be equal.
+    expect(hawk.current.vars.expectations_anchor).toBe(neutral.current.vars.expectations_anchor);
+  });
+});
+
 describe("SPEC-SESSION-1: FOMC meeting schedule", () => {
   // SPEC-SESSION-1: isMeetingMonth() with no arg uses _state.date.
   it("isMeetingMonth() returns true when _state.date is a meeting month (1979-08 = August = 8 ✓)", () => {

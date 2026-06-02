@@ -5,14 +5,13 @@ import { loadCommittee } from "../content/committees.js";
 import { loadValidatedFile } from "../content/loader.js";
 import { tick } from "./clock.js";
 import { vote, loadCommitteeParams } from "./fomc.js";
-import { applyMeetingOutcome, getCredibility } from "./credibility.js";
+import { applyMeetingOutcome, applyMonthlySpiral, getCredibility, loadCredibilityParams } from "./credibility.js";
 import type { GameState, GameStateSnapshot } from "./state.js";
 import type { FomcVote } from "./fomc.js";
 import type { Replay } from "../content/replays.js";
 
 // SPEC-SESSION-0: skeleton Session façade.
 // Wraps tick + vote + applyMeetingOutcome with identity-stable getters and a subscribe protocol.
-// TODO: a future spec will replace internals with the full macro-dynamics chain.
 
 // SPEC-SESSION-1: FOMC meeting schedule gate.
 const MEETING_SCHEDULE_SCHEMA = join(
@@ -35,6 +34,25 @@ const MEETING_SCHEDULE: MeetingSchedule = loadValidatedFile<MeetingSchedule>(
   MEETING_SCHEDULE_FILE,
 );
 
+// SPEC-GUIDE-1: GuidanceParams loader and stance multiplier.
+interface GuidanceParams {
+  hawkish_multiplier: number;
+  neutral_multiplier: number;
+  dovish_multiplier: number;
+}
+const GUIDANCE_SCHEMA = join(new URL(".", import.meta.url).pathname, "../../schemas/guidance.schema.json");
+const GUIDANCE_FILE = join(new URL(".", import.meta.url).pathname, "../../content/engine/guidance.json");
+let _guidanceParams: GuidanceParams | null = null;
+function loadGuidanceParams(): GuidanceParams {
+  return (_guidanceParams ??= loadValidatedFile<GuidanceParams>(GUIDANCE_SCHEMA, GUIDANCE_FILE));
+}
+
+function stanceMultiplier(stance: ForwardGuidanceStance, p: GuidanceParams): number {
+  if (stance === "hawkish") return p.hawkish_multiplier;
+  if (stance === "dovish") return p.dovish_multiplier;
+  return p.neutral_multiplier;
+}
+
 export class NotMeetingMonthError extends Error {
   constructor(public readonly date: string) {
     super(`Session.proposeRate: ${date} is not a scheduled FOMC meeting month.`);
@@ -42,10 +60,8 @@ export class NotMeetingMonthError extends Error {
   }
 }
 
-/**
- * The three forward-guidance stances the Chair can adopt.
- * Stored internally; a future forward-guidance spec will wire the recovery-rate multiplier.
- */
+// SPEC-GUIDE-1: The three forward-guidance stances the Chair can adopt.
+// The stance scales the credibility-spiral recovery_rate via stanceMultiplier().
 export type ForwardGuidanceStance = "hawkish" | "dovish" | "neutral";
 
 // Required vars that every scenario must supply for the engine to function.
@@ -84,7 +100,7 @@ export class Session {
   // Committee id used by proposeRate; passed as a required factory argument.
   private readonly _committeeId: string;
 
-  // Stored stance; a future forward-guidance spec will wire it to dynamics.
+  // SPEC-GUIDE-1: stored stance; wired to the spiral recovery path in advance() via stanceMultiplier().
   private _stance: ForwardGuidanceStance = "neutral";
 
   // Subscriber set for the subscribe/unsubscribe protocol.
@@ -196,6 +212,12 @@ export class Session {
 
         this._state = tick(this._state, 1);
 
+        // SPEC-GUIDE-1: apply monthly spiral with stance-scaled recovery rate.
+        const credParams = loadCredibilityParams();
+        const guidanceP = loadGuidanceParams();
+        const effectiveParams = { ...credParams, recovery_rate: credParams.recovery_rate * stanceMultiplier(this._stance, guidanceP) };
+        this._state = applyMonthlySpiral(this._state, effectiveParams);
+
         const snapshot = Session._snapshotOf(this._state);
         this._trajectoryInternal.push(snapshot);
       }
@@ -277,13 +299,9 @@ export class Session {
     this._notifyListeners();
   }
 
-  /**
-   * Store the forward-guidance stance.
-   * SESSION-0: stored privately on the Session; the value is NOT written into state.vars,
-   * which is the SESSION-0 contract. A future forward-guidance spec will define the
-   * numeric encoding in content and wire the multiplier into dynamics.
-   * Fires listeners (downstream UI may want to reflect the stored stance).
-   */
+  // SPEC-GUIDE-1: Store the forward-guidance stance; wired to the spiral recovery path via stanceMultiplier().
+  // The value is NOT written into state.vars; the stance is a Session-level concern, not a var.
+  // Fires listeners (downstream UI may want to reflect the stored stance).
   setForwardGuidanceStance(stance: ForwardGuidanceStance): void {
     this._stance = stance;
     this._notifyListeners();
