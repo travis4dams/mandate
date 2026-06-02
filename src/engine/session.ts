@@ -10,11 +10,11 @@ import type { Replay } from "../content/replays.js";
 
 // SPEC-SESSION-0: skeleton Session façade.
 // Wraps tick + vote + applyMeetingOutcome with identity-stable getters and a subscribe protocol.
-// SPEC-SESSION-1 will replace internals with the full macro-dynamics chain.
+// TODO: a future spec will replace internals with the full macro-dynamics chain.
 
 /**
  * The three forward-guidance stances the Chair can adopt.
- * Stored internally; GUIDE-1 wires the recovery-rate multiplier.
+ * Stored internally; a future forward-guidance spec will wire the recovery-rate multiplier.
  */
 export type ForwardGuidanceStance = "hawkish" | "dovish" | "neutral";
 
@@ -54,7 +54,7 @@ export class Session {
   // Committee id used by proposeRate; passed as a required factory argument.
   private readonly _committeeId: string;
 
-  // Stored stance; wired to dynamics in GUIDE-1.
+  // Stored stance; a future forward-guidance spec will wire it to dynamics.
   private _stance: ForwardGuidanceStance = "neutral";
 
   // Subscriber set for the subscribe/unsubscribe protocol.
@@ -120,20 +120,19 @@ export class Session {
   /**
    * Advance the session by `months` months.
    * For each month, applies any matching replay action then calls tick().
-   * @throws {Error} if months <= 0.
+   * @throws {Error} if months is not a positive integer.
    */
   advance(months: number): void {
-    if (months <= 0) {
-      throw new Error(`Session.advance: months must be > 0, got ${months}.`);
+    if (!Number.isInteger(months) || months <= 0) {
+      throw new Error(`Session.advance: months must be a positive integer, got ${months}.`);
     }
 
-    // Checkpoint for mid-loop rollback (SF4): capture mutable state before we begin.
+    // Checkpoint for mid-loop rollback: capture mutable state before we begin.
     const checkpointState = this._state;
     const checkpointTrajectoryLength = this._trajectoryInternal.length;
 
     try {
       for (let i = 0; i < months; i++) {
-        // Apply matching replay action before the tick, if this is a replay session.
         if (this._replay !== null) {
           const action = this._replay.actions.find((a) => a.date === this._state.date);
           if (action !== undefined) {
@@ -144,17 +143,15 @@ export class Session {
           }
         }
 
-        // Advance engine state by one month (pure — returns new state).
         this._state = tick(this._state, 1);
 
-        // Push snapshot of state AFTER the tick so current reflects the advanced date.
         const snapshot = Session._snapshotOf(this._state);
         this._trajectoryInternal.push(snapshot);
       }
     } catch (err) {
-      // Restore to pre-advance checkpoint so _state and _trajectoryInternal stay consistent.
       this._state = checkpointState;
       this._trajectoryInternal.length = checkpointTrajectoryLength;
+      this._rebuildCaches();
       throw err;
     }
 
@@ -178,10 +175,9 @@ export class Session {
     const fomcVote = vote(committee, rate, this._state, params);
 
     // Apply the decided rate and compute new credibility.
-    // TODO(SPEC-SESSION-1): wire surprisedMarkets from forward-guidance-vs-decided delta; wire onTarget from mandate evaluator.
-    // SESSION-0 limitation: surprisedMarkets and onTarget are both false until the meeting calendar
-    // and mandate evaluator are implemented in SESSION-1; this permanently disables two of the three
-    // SPEC-CRED-1 credibility levers for the current slice.
+    // TODO: wire surprisedMarkets from forward-guidance-vs-decided delta and onTarget from
+    // a mandate evaluator in a future spec. SESSION-0 limitation: both are pinned to false,
+    // which permanently disables two of the three SPEC-CRED-1 credibility levers for this slice.
     const newCredibility = applyMeetingOutcome(
       getCredibility(this._state),
       {
@@ -226,19 +222,13 @@ export class Session {
 
   /**
    * Store the forward-guidance stance.
-   * SESSION-0: stored privately, no effect on dynamics. GUIDE-1 wires the multiplier.
-   * Fires listeners.
+   * SESSION-0: stored privately on the Session; the value is NOT written into state.vars,
+   * which is the SESSION-0 contract. A future forward-guidance spec will define the
+   * numeric encoding in content and wire the multiplier into dynamics.
+   * Fires listeners (downstream UI may want to reflect the stored stance).
    */
   setForwardGuidanceStance(stance: ForwardGuidanceStance): void {
     this._stance = stance;
-    this._state = {
-      ...this._state,
-      vars: {
-        ...this._state.vars,
-        forward_guidance_stance: stance === "hawkish" ? 1 : stance === "dovish" ? -1 : 0,
-      },
-    };
-    this._rebuildCaches();
     this._notifyListeners();
   }
 
@@ -262,11 +252,25 @@ export class Session {
     this._trajectoryCache = Object.freeze([...this._trajectoryInternal]);
   }
 
-  /** Fire all listeners synchronously. */
+  /**
+   * Fire all listeners synchronously.
+   * Snapshots the listener set first so that a listener that calls subscribe()
+   * during notification doesn't fire in the same tick. Errors from individual
+   * listeners are collected and re-thrown as an AggregateError once every
+   * listener has been invoked — a throwing listener must not starve later ones.
+   */
   private _notifyListeners(): void {
-    for (const listener of this._listeners) {
-      listener();
+    const snapshot = [...this._listeners];
+    const errors: unknown[] = [];
+    for (const listener of snapshot) {
+      try {
+        listener();
+      } catch (err) {
+        errors.push(err);
+      }
     }
+    if (errors.length === 1) throw errors[0];
+    if (errors.length > 1) throw new AggregateError(errors, "Session: one or more listeners threw during notification.");
   }
 
   /** Extract a GameStateSnapshot from a GameState. */

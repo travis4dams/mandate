@@ -64,6 +64,23 @@ describe("Session.advance integration", () => {
     const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
     expect(() => s.advance(-1)).toThrow();
   });
+
+  // SPEC-SESSION-0: non-integer months must throw, not silently truncate to floor.
+  it("advance(1.5) throws", () => {
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    expect(() => s.advance(1.5)).toThrow();
+  });
+});
+
+describe("Session.reset correctness", () => {
+  // SPEC-SESSION-0: reset() restores trajectory.length to 1 and current.date to scenario start.
+  it("after advance(3); reset() → trajectory.length === 1, current.date === '1979-08'", () => {
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    s.advance(3);
+    s.reset();
+    expect(s.trajectory.length).toBe(1);
+    expect(s.current.date).toBe("1979-08");
+  });
 });
 
 describe("Session.proposeRate guards", () => {
@@ -83,6 +100,15 @@ describe("Session.proposeRate guards", () => {
     const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
     s.proposeRate(0.15);
     expect(s.current.vars.policy_rate).toBe(0.15);
+  });
+
+  // SPEC-SESSION-0: proposeRate returns a FomcVote with the decided rate and dissent count.
+  it("proposeRate(0.15) returns FomcVote with decided === 0.15 and a finite dissent count", () => {
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    const vote = s.proposeRate(0.15);
+    expect(vote.decided).toBe(0.15);
+    expect(Number.isInteger(vote.dissents)).toBe(true);
+    expect(vote.dissents).toBeGreaterThanOrEqual(0);
   });
 });
 
@@ -104,6 +130,41 @@ describe("Session.subscribe protocol", () => {
     s.subscribe(listener);
     s.advance(1);
     expect(listener).toHaveBeenCalledTimes(1);
+  });
+
+  // SPEC-SESSION-0: a 3-month advance fires the listener once, not three times.
+  // Guards against the natural mistake of putting _notifyListeners inside the per-month loop.
+  it("listener fires exactly once on advance(3) (not per-month)", () => {
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    const listener = vi.fn();
+    s.subscribe(listener);
+    s.advance(3);
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
+
+  // SPEC-SESSION-0: two independently-subscribed listeners both fire on a mutation.
+  it("two listeners both fire on advance(1)", () => {
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    const a = vi.fn();
+    const b = vi.fn();
+    s.subscribe(a);
+    s.subscribe(b);
+    s.advance(1);
+    expect(a).toHaveBeenCalledTimes(1);
+    expect(b).toHaveBeenCalledTimes(1);
+  });
+
+  // SPEC-SESSION-0: a listener that throws must not starve subsequent listeners.
+  // The mutator should still re-throw, but every listener must see the notification.
+  it("throwing listener does not starve later listeners; error surfaces to caller", () => {
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    const a = vi.fn(() => { throw new Error("a"); });
+    const b = vi.fn();
+    s.subscribe(a);
+    s.subscribe(b);
+    expect(() => s.advance(1)).toThrow();
+    expect(a).toHaveBeenCalledTimes(1);
+    expect(b).toHaveBeenCalledTimes(1);
   });
 
   // SPEC-SESSION-0: listener fires on proposeRate.
@@ -132,6 +193,16 @@ describe("Session.subscribe protocol", () => {
     s.subscribe(listener);
     s.setForwardGuidanceStance("hawkish");
     expect(listener).toHaveBeenCalledTimes(1);
+  });
+
+  // SPEC-SESSION-0 contract: setForwardGuidanceStance does NOT write into state.vars.
+  // The numeric encoding belongs to the future forward-guidance spec, not SESSION-0.
+  it("setForwardGuidanceStance does not expose stance via state.vars", () => {
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    s.setForwardGuidanceStance("hawkish");
+    expect("forward_guidance_stance" in s.current.vars).toBe(false);
+    s.setForwardGuidanceStance("dovish");
+    expect("forward_guidance_stance" in s.current.vars).toBe(false);
   });
 
   // SPEC-SESSION-0: unsubscribe works — subsequent mutations do not fire the removed listener.
