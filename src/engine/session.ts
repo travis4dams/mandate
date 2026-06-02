@@ -228,6 +228,7 @@ export class Session {
     // makes that obvious to readers and removes any hint of per-month re-resolution.
     const credParams = loadCredibilityParams();
     const guidanceP = loadGuidanceParams();
+    const dynamicsParams = loadDynamicsParams();
     const effectiveParams = {
       ...credParams,
       recovery_rate: credParams.recovery_rate * stanceMultiplier(this._stance, guidanceP),
@@ -247,7 +248,6 @@ export class Session {
 
         this._state = tick(this._state, 1);
         this._state = applyMonthlySpiral(this._state, effectiveParams);
-        const dynamicsParams = loadDynamicsParams();
         this._state = applyMacroDynamics(this._state, dynamicsParams);
 
         const snapshot = Session._snapshotOf(this._state);

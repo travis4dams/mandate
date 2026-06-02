@@ -93,4 +93,38 @@ describe("applyMacroDynamics", () => {
     // rateGap = 0.0 - 0.05 = -0.05; change = 0.02 * -0.05 = -0.001; new = 0.001 - 0.001 = 0 (clamp)
     expect(result.vars.unemployment).toBeGreaterThanOrEqual(0);
   });
+
+  // SPEC-SIM-5: clamp — inflation cannot go below 0 in a severe deflationary scenario.
+  it("inflation is clamped to 0 in a deflationary scenario", () => {
+    // SPEC-SIM-5
+    const extremeParams = { ...BASE_PARAMS, inflation_persistence: 0, phillips_slope: 10 };
+    const state = makeState({
+      vars: {
+        policy_rate: BASE_PARAMS.neutral_rate,
+        inflation: 0.001,
+        unemployment: 0.99, // far above natural rate → large positive unemploymentGap
+        expectations_anchor: 0,
+      },
+    });
+    const result = applyMacroDynamics(state, extremeParams);
+    // newInflation = 0 * 0.001 + 1 * 0 - 10 * (0.99 - 0.06) ≈ -9.3 → clamped to 0
+    expect(result.vars.inflation).toBeGreaterThanOrEqual(0);
+  });
+
+  // SPEC-SIM-5: clamp — unemployment cannot exceed 1 under extreme tightening.
+  it("unemployment is clamped to 1 under extreme rate tightening", () => {
+    // SPEC-SIM-5
+    const extremeParams = { ...BASE_PARAMS, rate_sensitivity: 100 };
+    const state = makeState({
+      vars: {
+        policy_rate: 0.15, // far above neutral_rate of 0.05 → rateGap = 0.10
+        inflation: 0.02,
+        unemployment: 0.99,
+        expectations_anchor: 0.02,
+      },
+    });
+    const result = applyMacroDynamics(state, extremeParams);
+    // newUnemployment = 0.99 + 100 * 0.10 = 10.99 → clamped to 1
+    expect(result.vars.unemployment).toBeLessThanOrEqual(1);
+  });
 });

@@ -30,6 +30,7 @@
     "inflation_persistence": {
       "type": "number",
       "minimum": 0,
+      "maximum": 1,
       "description": "Weight on lagged inflation in the inflation update equation (0 = no persistence, 1 = full persistence)."
     }
   }

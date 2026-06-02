@@ -27,7 +27,7 @@ export function loadDynamicsParams(): DynamicsParams {
 }
 
 // Update rule (one month):
-// inflation: persistence * current + (1-persistence) * expectations_anchor + phillips contribution
+// inflation: persistence * current + (1-persistence) * expectations_anchor − phillips contribution
 // unemployment: current + rate effect (higher rate above neutral -> higher unemployment)
 export function applyMacroDynamics(state: GameState, params: DynamicsParams): GameState {
   const inflation = state.vars.inflation ?? 0;
