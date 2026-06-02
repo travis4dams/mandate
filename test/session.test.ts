@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { Session } from "../src/engine/session.js";
+import { Session, NotMeetingMonthError } from "../src/engine/session.js";
 import type { ForwardGuidanceStance } from "../src/engine/session.js";
 
 // SPEC-SESSION-0
@@ -238,5 +238,85 @@ describe("ForwardGuidanceStance type", () => {
     for (const stance of stances) {
       expect(() => s.setForwardGuidanceStance(stance)).not.toThrow();
     }
+  });
+});
+
+describe("SPEC-SESSION-1: FOMC meeting schedule", () => {
+  // SPEC-SESSION-1: isMeetingMonth() with no arg uses _state.date.
+  it("isMeetingMonth() returns true when _state.date is a meeting month (1979-08 = August = 8 ✓)", () => {
+    // SPEC-SESSION-1
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    // Scenario starts at 1979-08; August is month 8, which is in the schedule.
+    expect(s.current.date).toBe("1979-08");
+    expect(s.isMeetingMonth()).toBe(true);
+  });
+
+  it("isMeetingMonth() returns false for October (month 10) and true for November (month 11)", () => {
+    // SPEC-SESSION-1
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    // advance 2 months from 1979-08 → 1979-10 (October = month 10, not in schedule).
+    s.advance(2);
+    expect(s.current.date).toBe("1979-10");
+    expect(s.isMeetingMonth()).toBe(false);
+    // advance 1 month → 1979-11 (November = month 11, in schedule).
+    s.advance(1);
+    expect(s.current.date).toBe("1979-11");
+    expect(s.isMeetingMonth()).toBe(true);
+  });
+
+  it("isMeetingMonth() returns false for February (month 2, non-meeting month)", () => {
+    // SPEC-SESSION-1
+    // advance 6 months from 1979-08 → 1980-02 (February = month 2, not in schedule).
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    s.advance(6);
+    expect(s.current.date).toBe("1980-02");
+    expect(s.isMeetingMonth()).toBe(false);
+  });
+
+  // SPEC-SESSION-1: isMeetingMonth(date) with explicit date argument.
+  it("isMeetingMonth('1979-02') returns false (February = month 2, not in schedule)", () => {
+    // SPEC-SESSION-1
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    expect(s.isMeetingMonth("1979-02")).toBe(false);
+  });
+
+  it("isMeetingMonth('1979-03') returns true (March = month 3, in schedule)", () => {
+    // SPEC-SESSION-1
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    expect(s.isMeetingMonth("1979-03")).toBe(true);
+  });
+
+  // SPEC-SESSION-1: proposeRate throws NotMeetingMonthError outside a meeting month.
+  it("proposeRate(0.11) throws NotMeetingMonthError when current date is not a meeting month", () => {
+    // SPEC-SESSION-1
+    // advance 6 months from 1979-08 → 1980-02 (February = not a meeting month).
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    s.advance(6);
+    expect(s.current.date).toBe("1980-02");
+    expect(() => s.proposeRate(0.11)).toThrow(NotMeetingMonthError);
+  });
+
+  it("NotMeetingMonthError.date reflects the current YYYY-MM when thrown", () => {
+    // SPEC-SESSION-1
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    s.advance(6);
+    expect(s.current.date).toBe("1980-02");
+    let caught: NotMeetingMonthError | undefined;
+    try {
+      s.proposeRate(0.11);
+    } catch (e) {
+      caught = e as NotMeetingMonthError;
+    }
+    expect(caught).toBeInstanceOf(NotMeetingMonthError);
+    expect(caught?.date).toBe("1980-02");
+  });
+
+  // SPEC-SESSION-1: proposeRate does NOT throw when current date is a meeting month.
+  it("proposeRate(0.11) does not throw when current date is a meeting month (1979-08 = August ✓)", () => {
+    // SPEC-SESSION-1
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    // Scenario starts at 1979-08 which is a meeting month.
+    expect(s.current.date).toBe("1979-08");
+    expect(() => s.proposeRate(0.11)).not.toThrow();
   });
 });

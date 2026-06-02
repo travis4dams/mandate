@@ -1,6 +1,8 @@
+import { join } from "node:path";
 import { loadScenario } from "../content/scenarios.js";
 import { loadReplay } from "../content/replays.js";
 import { loadCommittee } from "../content/committees.js";
+import { loadValidatedFile } from "../content/loader.js";
 import { tick } from "./clock.js";
 import { vote, loadCommitteeParams } from "./fomc.js";
 import { applyMeetingOutcome, getCredibility } from "./credibility.js";
@@ -11,6 +13,32 @@ import type { Replay } from "../content/replays.js";
 // SPEC-SESSION-0: skeleton Session façade.
 // Wraps tick + vote + applyMeetingOutcome with identity-stable getters and a subscribe protocol.
 // TODO: a future spec will replace internals with the full macro-dynamics chain.
+
+// SPEC-SESSION-1: FOMC meeting schedule gate.
+const MEETING_SCHEDULE_SCHEMA = join(
+  new URL(".", import.meta.url).pathname,
+  "../../schemas/meeting-schedule.schema.json"
+);
+const MEETING_SCHEDULE_FILE = join(
+  new URL(".", import.meta.url).pathname,
+  "../../content/engine/meeting-schedule.json"
+);
+
+interface MeetingSchedule {
+  meeting_months: readonly number[];
+}
+
+let _meetingSchedule: MeetingSchedule | null = null;
+function loadMeetingSchedule(): MeetingSchedule {
+  return (_meetingSchedule ??= loadValidatedFile<MeetingSchedule>(MEETING_SCHEDULE_SCHEMA, MEETING_SCHEDULE_FILE));
+}
+
+export class NotMeetingMonthError extends Error {
+  constructor(public readonly date: string) {
+    super(`Session.proposeRate: ${date} is not a scheduled FOMC meeting month.`);
+    this.name = "NotMeetingMonthError";
+  }
+}
 
 /**
  * The three forward-guidance stances the Chair can adopt.
@@ -115,6 +143,17 @@ export class Session {
     return this._trajectoryCache;
   }
 
+  // --- SPEC-SESSION-1: FOMC schedule gate ---
+
+  // Returns true iff the given date's month falls in the loaded meeting schedule.
+  // When date is omitted, uses this._state.date.
+  // Parses month via string slicing — no new Date() constructor (engine purity).
+  isMeetingMonth(date?: string): boolean {
+    const d = date ?? this._state.date;
+    const month = parseInt(d.slice(5, 7), 10);
+    return loadMeetingSchedule().meeting_months.includes(month);
+  }
+
   // --- Mutators ---
 
   /**
@@ -166,6 +205,9 @@ export class Session {
    * @throws {Error} if rate is not finite.
    */
   proposeRate(rate: number): FomcVote {
+    if (!this.isMeetingMonth()) {
+      throw new NotMeetingMonthError(this._state.date);
+    }
     if (!Number.isFinite(rate)) {
       throw new Error(`Session.proposeRate: rate ${rate} is not finite.`);
     }
