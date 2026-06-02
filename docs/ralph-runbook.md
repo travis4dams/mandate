@@ -48,9 +48,16 @@ For each SPEC:
 
 ## Budget
 
-Three self-fix cycles per SPEC after a failed `npm run check` or an AI-reviewer `REQUEST_CHANGES` verdict. On the 4th failure, pause and post a diagnostic in the PR (or in a parent issue) describing what was tried and what failed. Never bypass hooks (`--no-verify`, `--no-gpg-sign`, etc.).
+**Two independent caps:**
 
-**Budget pauses when the loop parks.** Only `npm run check` failures or `REQUEST_CHANGES` consume retries. While ralph is parked awaiting AC-9 sign-off (see §Stop), the retry counter does not advance regardless of wall-clock time. If a `REQUEST_CHANGES` arrives while parked, it is queued — not consumed — until the user lifts the park.
+1. **3 self-fix cycles per `npm run check` failure** — if the local verifier fails, ralph (or a fix executor) gets 3 attempts to make it green. On the 4th failure, pause and post a diagnostic.
+2. **3 `REQUEST_CHANGES` rounds per PR** — count rounds where the AI PR reviewer (`claude-review` job) returns `VERDICT: REQUEST_CHANGES`. After the 3rd round, **stop iterating** and escalate to the user: append a STUCK note to `progress.txt`, post a summary comment on the PR, and exit. Do not keep pushing fixes — the reviewer is likely drilling into deeper layers and a manual judgement call is needed (merge with admin override, accept follow-up PR, redesign, etc.).
+
+The `--max-turns` budget on the `claude-review` job is set to 50 turns, giving each review pass enough budget to find multiple layers in a single round. This means each round costs more but rounds 3–5 of nit-finding are less likely.
+
+Never bypass hooks (`--no-verify`, `--no-gpg-sign`, etc.) and never use `--admin` to merge without explicit user authorization for that specific PR.
+
+**Budget pauses when the loop parks.** Only `npm run check` failures or `REQUEST_CHANGES` consume retries. While ralph is parked awaiting a user-gate sign-off (see §Stop), the retry counter does not advance regardless of wall-clock time. If a `REQUEST_CHANGES` arrives while parked, it is queued — not consumed — until the user lifts the park.
 
 ## Stop
 
