@@ -48,17 +48,15 @@ describe("loadCalibration", () => {
         ],
       };
       writeFileSync(join(dir, "bad.json"), JSON.stringify(bad));
-      let caught: unknown;
+      expect(() => loadCalibration("cal.test_out_of_order", dir)).toThrow(CalibrationSeriesOrderError);
       try {
         loadCalibration("cal.test_out_of_order", dir);
       } catch (e) {
-        caught = e;
+        const err = e as CalibrationSeriesOrderError;
+        expect(err.calibrationId).toBe("cal.test_out_of_order");
+        expect(err.badDate).toBe("1979-08");
+        expect(err.prevDate).toBe("1979-09");
       }
-      expect(caught).toBeInstanceOf(CalibrationSeriesOrderError);
-      const err = caught as CalibrationSeriesOrderError;
-      expect(err.calibrationId).toBe("cal.test_out_of_order");
-      expect(err.badDate).toBe("1979-08");
-      expect(err.prevDate).toBe("1979-09");
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -81,17 +79,15 @@ describe("loadCalibration", () => {
         ],
       };
       writeFileSync(join(dir, "bad.json"), JSON.stringify(bad));
-      let caught: unknown;
+      expect(() => loadCalibration("cal.test_dup_date", dir)).toThrow(CalibrationSeriesOrderError);
       try {
         loadCalibration("cal.test_dup_date", dir);
       } catch (e) {
-        caught = e;
+        const err = e as CalibrationSeriesOrderError;
+        expect(err.calibrationId).toBe("cal.test_dup_date");
+        expect(err.badDate).toBe("1979-08");
+        expect(err.prevDate).toBe("1979-08");
       }
-      expect(caught).toBeInstanceOf(CalibrationSeriesOrderError);
-      const err = caught as CalibrationSeriesOrderError;
-      expect(err.calibrationId).toBe("cal.test_dup_date");
-      expect(err.badDate).toBe("1979-08");
-      expect(err.prevDate).toBe("1979-08");
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

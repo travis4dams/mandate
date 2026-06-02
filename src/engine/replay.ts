@@ -7,7 +7,7 @@ import type { GameState, GameStateSnapshot } from "./state.js";
 export class UnconsumedReplayActionsError extends Error {
   constructor(
     public readonly replayId: string,
-    public readonly unconsumedDates: readonly string[],
+    public readonly unconsumedDates: readonly [string, ...string[]],
     public readonly months: number,
   ) {
     super(
@@ -70,7 +70,11 @@ export function runReplay(replayId: string, months: number): GameStateSnapshot[]
     .map((a) => a.date)
     .filter((d) => !consumed.has(d));
   if (unconsumed.length > 0) {
-    throw new UnconsumedReplayActionsError(replayId, unconsumed, months);
+    throw new UnconsumedReplayActionsError(
+      replayId,
+      unconsumed as [string, ...string[]],
+      months,
+    );
   }
 
   return trajectory;

@@ -64,19 +64,33 @@ describe("runReplay", () => {
   // otherwise produce a silently wrong trajectory. The previous "silent truncation"
   // behavior was deliberately removed when this guard landed.
   it("throws UnconsumedReplayActionsError when actions fall outside the months window", () => {
-    let caught: unknown;
+    expect(() => runReplay("replay.1979_chair_tightening", 3)).toThrow(UnconsumedReplayActionsError);
     try {
       runReplay("replay.1979_chair_tightening", 3);
     } catch (e) {
-      caught = e;
+      const err = e as UnconsumedReplayActionsError;
+      expect(err.replayId).toBe("replay.1979_chair_tightening");
+      expect(err.months).toBe(3);
+      // The canned replay has 12 actions; the 1979-08 and 1979-10 pivots fall inside
+      // the 3-month window [1979-08, 1979-10], so 10 actions (1980-03 onward) surface
+      // as unconsumed.
+      expect(err.unconsumedDates).toHaveLength(10);
+      expect(err.unconsumedDates).toContain("1980-03");
+      expect(err.unconsumedDates).toContain("1986-12");
     }
-    expect(caught).toBeInstanceOf(UnconsumedReplayActionsError);
-    const err = caught as UnconsumedReplayActionsError;
-    expect(err.replayId).toBe("replay.1979_chair_tightening");
-    expect(err.months).toBe(3);
-    expect(err.unconsumedDates.length).toBeGreaterThan(0);
-    // 1980-03 is the first pivot beyond the 3-month window — it must surface.
-    expect(err.unconsumedDates).toContain("1980-03");
+  });
+
+  // SPEC-SIM-4: the full 89-month window consumes every action — pins the upper boundary
+  // of the unconsumed-action guard so a regression that off-by-ones the window detection
+  // would surface as a test failure here rather than landing silently.
+  it("runReplay(89) consumes every replay action (boundary case for the unconsumed guard)", () => {
+    expect(() => runReplay("replay.1979_chair_tightening", 89)).not.toThrow();
+  });
+
+  // SPEC-SIM-4: error-wrapping path on a missing replay id — pins that the diagnostic
+  // message includes the offending replay id so a refactor of the catch block surfaces here.
+  it("throws with the offending replayId in the message when the replay is unknown", () => {
+    expect(() => runReplay("replay.does_not_exist", 89)).toThrow(/replay\.does_not_exist/);
   });
 
   it("snapshots survive cross-call independence: mutating a returned trajectory does not leak into a fresh run", () => {

@@ -16,7 +16,7 @@ export interface Calibration {
   name: string;
   desc: string;
   source: string;
-  series: CalibrationEntry[];
+  series: readonly CalibrationEntry[];
 }
 
 // Thrown when no calibration with the requested id is found.

@@ -6,8 +6,22 @@
 import { loadCalibration } from "../src/content/calibration.js";
 import { runReplay } from "../src/engine/replay.js";
 
-const cal = loadCalibration("cal.fred_1979_1986");
-const trajectory = runReplay("replay.1979_chair_tightening", 89);
+// Wrap the two highest-risk operations so any failure (file I/O, schema validation,
+// UnconsumedReplayActionsError, etc.) emits a structured message instead of a raw
+// Node.js stack trace — matching the rest of this script's error-handling contract.
+let cal, trajectory;
+try {
+  cal = loadCalibration("cal.fred_1979_1986");
+} catch (e) {
+  console.error(`calibrate: loadCalibration("cal.fred_1979_1986") failed: ${(e as Error).message}`);
+  process.exit(1);
+}
+try {
+  trajectory = runReplay("replay.1979_chair_tightening", 89);
+} catch (e) {
+  console.error(`calibrate: runReplay("replay.1979_chair_tightening", 89) failed: ${(e as Error).message}`);
+  process.exit(1);
+}
 
 if (cal.series.length !== trajectory.length) {
   console.error(
@@ -23,7 +37,7 @@ console.log(
 
 // Emit one CSV row per month; accumulate squared error for policy_rate.
 // inflation/unemployment RMSE is intentionally deferred — Phillips-curve / forward-guidance
-// mechanics arrive in slice 3+, at which point comparing those columns becomes meaningful.
+// mechanics arrive in slice 2, at which point comparing those columns becomes meaningful.
 let sumSqErr = 0;
 for (let i = 0; i < cal.series.length; i++) {
   const entry = cal.series[i];
@@ -73,5 +87,5 @@ if (!Number.isFinite(rmse)) {
 }
 console.error(`policy_rate RMSE: ${rmse.toFixed(4)} (n=${cal.series.length})`);
 console.error(
-  `Note: inflation/unemployment divergence is expected in slice 1 — Phillips-curve and forward-guidance mechanics arrive in slice 3+.`
+  `Note: inflation/unemployment divergence is expected in slice 1 — Phillips-curve and forward-guidance mechanics arrive in slice 2.`
 );
