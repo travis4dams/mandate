@@ -1,11 +1,14 @@
 // SPEC-WEB-4: FOMC meeting panel. Shows the current month's meeting eligibility,
-// the proposed-rate input, a vote button, and the most recent vote result. The
-// button is gated on Session.isMeetingMonth() — clicking proposeRate outside a
-// meeting month throws NotMeetingMonthError, which SESSION-1 enforces.
+// per-member preferred rates (so the Chair can see WHO would dissent and by how
+// much before voting), the proposed-rate input, the vote button, and the most
+// recent vote result with credibility delta.
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { Session } from "../../src/engine/session";
-import type { FomcVote } from "../../src/engine/fomc";
+import type { FomcVote, MemberVotePreview } from "../../src/engine/fomc";
+import en from "../../content/localization/en.json";
+
+const loc = en as Record<string, string>;
 
 export function MeetingPanel(props: { session: Session; currentDate: string }): JSX.Element {
   const { session, currentDate } = props;
@@ -17,16 +20,25 @@ export function MeetingPanel(props: { session: Session; currentDate: string }): 
   const [credibilityDelta, setCredibilityDelta] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const parsedRate = parseFloat(rateInput);
+  const briefing = useMemo(() => {
+    if (!Number.isFinite(parsedRate)) return null;
+    try {
+      return session.committeeBriefing(parsedRate);
+    } catch {
+      return null;
+    }
+  }, [session, parsedRate, currentDate]);
+
   function onPropose(): void {
     setError(null);
-    const value = parseFloat(rateInput);
-    if (!Number.isFinite(value)) {
+    if (!Number.isFinite(parsedRate)) {
       setError(`"${rateInput}" is not a finite number.`);
       return;
     }
     const credBefore = session.current.vars.credibility ?? 0;
     try {
-      const vote = session.proposeRate(value);
+      const vote = session.proposeRate(parsedRate);
       setLastVote(vote);
       const credAfter = session.current.vars.credibility ?? 0;
       setCredibilityDelta(credAfter - credBefore);
@@ -68,6 +80,15 @@ export function MeetingPanel(props: { session: Session; currentDate: string }): 
         </button>
       </div>
 
+      {briefing !== null && (
+        <CommitteeBriefing
+          previews={briefing.previews}
+          gapInflation={briefing.gapInflation}
+          gapUnemployment={briefing.gapUnemployment}
+          proposed={parsedRate}
+        />
+      )}
+
       {error !== null && (
         <p style={{ color: "#c92a2a", fontSize: 13, marginTop: 8 }}>{error}</p>
       )}
@@ -86,4 +107,63 @@ export function MeetingPanel(props: { session: Session; currentDate: string }): 
       )}
     </section>
   );
+}
+
+function CommitteeBriefing(props: {
+  previews: readonly MemberVotePreview[];
+  gapInflation: number;
+  gapUnemployment: number;
+  proposed: number;
+}): JSX.Element {
+  const dissents = props.previews.filter((p) => p.wouldDissent).length;
+  return (
+    <div style={{ marginTop: 12 }}>
+      <div style={{ fontSize: 12, color: "#666", marginBottom: 4 }}>
+        Inflation gap from target (2%): {(props.gapInflation * 100).toFixed(2)}pp ·{" "}
+        Unemployment gap from target (4%): {(props.gapUnemployment * 100).toFixed(2)}pp
+      </div>
+      <table style={{ width: "100%", fontSize: 13, borderCollapse: "collapse" }}>
+        <thead>
+          <tr style={{ background: "#f0f0f0", textAlign: "left" }}>
+            <th style={{ padding: "4px 6px" }}>Member</th>
+            <th style={{ padding: "4px 6px" }}>Lean</th>
+            <th style={{ padding: "4px 6px", textAlign: "right" }}>Preferred rate</th>
+            <th style={{ padding: "4px 6px", textAlign: "right" }}>Δ from proposed</th>
+            <th style={{ padding: "4px 6px" }}>Vote</th>
+          </tr>
+        </thead>
+        <tbody>
+          {props.previews.map((p) => {
+            const delta = p.preferred - props.proposed;
+            return (
+              <tr key={p.memberId} style={{ borderTop: "1px solid #eee" }}>
+                <td style={{ padding: "4px 6px" }}>{loc[p.nameKey] ?? p.nameKey}</td>
+                <td style={{ padding: "4px 6px", color: leanColor(p.lean) }}>{p.lean}</td>
+                <td style={{ padding: "4px 6px", textAlign: "right", fontFamily: "monospace" }}>
+                  {(p.preferred * 100).toFixed(2)}%
+                </td>
+                <td style={{ padding: "4px 6px", textAlign: "right", fontFamily: "monospace" }}>
+                  {delta >= 0 ? "+" : ""}
+                  {(delta * 100).toFixed(2)}pp
+                </td>
+                <td style={{ padding: "4px 6px", color: p.wouldDissent ? "#c92a2a" : "#2f9e44" }}>
+                  {p.wouldDissent ? "DISSENT" : "approve"}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      <div style={{ marginTop: 6, fontSize: 12, color: "#666" }}>
+        At this proposed rate: <strong>{dissents}</strong> of {props.previews.length} would dissent.
+        Each dissent reduces credibility per SPEC-CRED-1.
+      </div>
+    </div>
+  );
+}
+
+function leanColor(lean: "hawkish" | "dovish" | "neutral"): string {
+  if (lean === "hawkish") return "#c92a2a";
+  if (lean === "dovish") return "#1864ab";
+  return "#666";
 }

@@ -4,7 +4,7 @@ import { loadReplay } from "../content/replays.js";
 import { loadCommittee } from "../content/committees.js";
 import { loadValidatedFile } from "../content/loader.js";
 import { tick } from "./clock.js";
-import { vote, loadCommitteeParams } from "./fomc.js";
+import { vote, previewVote, loadCommitteeParams, type MemberVotePreview } from "./fomc.js";
 import { applyMeetingOutcome, applyMonthlySpiral, getCredibility, loadCredibilityParams } from "./credibility.js";
 import { applyMacroDynamics, loadDynamicsParams } from "./dynamics.js";
 import type { GameState, GameStateSnapshot } from "./state.js";
@@ -261,6 +261,22 @@ export class Session {
 
     this._rebuildCaches();
     this._notifyListeners();
+  }
+
+  /**
+   * Preview how the committee would vote at the supplied proposed rate, given the
+   * current state. Surfaces per-member preferred rates + dissent status so a UI
+   * can show the Chair which members are out of band BEFORE they cast the vote.
+   * Pure: does not mutate any state.
+   */
+  committeeBriefing(proposedRate: number): {
+    previews: readonly MemberVotePreview[];
+    gapInflation: number;
+    gapUnemployment: number;
+  } {
+    const committee = loadCommittee(this._committeeId);
+    const params = loadCommitteeParams();
+    return previewVote(committee, proposedRate, this._state, params);
   }
 
   /**

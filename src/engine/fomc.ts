@@ -65,6 +65,47 @@ function memberPreferred(
   }
 }
 
+/** Per-member preview of how an FOMC vote would land. Lets UIs (SPEC-WEB-4) surface
+ *  WHO would dissent and by how much, instead of only the aggregate dissent count.
+ *  Pure: returns a fresh array; does not mutate the committee or state. */
+export interface MemberVotePreview {
+  readonly memberId: string;
+  readonly nameKey: string;
+  readonly lean: "hawkish" | "dovish" | "neutral";
+  readonly preferred: number;
+  readonly wouldDissent: boolean;
+}
+
+export function previewVote(
+  committee: Committee,
+  proposedRate: number,
+  state: GameState,
+  params: CommitteeParams,
+): { previews: MemberVotePreview[]; gapInflation: number; gapUnemployment: number } {
+  if (!Number.isFinite(proposedRate)) {
+    throw new Error(`previewVote: proposedRate ${proposedRate} is not finite.`);
+  }
+  const inflation = state.vars.inflation;
+  const unemployment = state.vars.unemployment;
+  if (inflation === undefined) throw new VoteMissingVarError("inflation", "missing");
+  if (unemployment === undefined) throw new VoteMissingVarError("unemployment", "missing");
+  if (!Number.isFinite(inflation)) throw new VoteMissingVarError("inflation", "non_finite");
+  if (!Number.isFinite(unemployment)) throw new VoteMissingVarError("unemployment", "non_finite");
+  const gapInflation = inflation - params.target_inflation;
+  const gapUnemployment = unemployment - params.target_unemployment;
+  const previews = committee.members.map((m) => {
+    const preferred = memberPreferred(m, proposedRate, gapInflation, gapUnemployment, params);
+    return {
+      memberId: m.id,
+      nameKey: m.name,
+      lean: m.lean,
+      preferred,
+      wouldDissent: Math.abs(preferred - proposedRate) > params.dissent_tolerance,
+    };
+  });
+  return { previews, gapInflation, gapUnemployment };
+}
+
 /** Pure FOMC vote simulation. decided === proposedRate for slice 1. params is required; callers resolve via loadCommitteeParams() at call site (symmetric with applyMonthlySpiral / observe). */
 export function vote(
   committee: Committee,
