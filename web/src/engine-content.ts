@@ -50,6 +50,12 @@ function registerDirEntities(
   dirSuffix: string,
 ): void {
   const items: unknown[] = Object.values(modules).map((m) => m.default);
+  if (items.length === 0) {
+    throw new Error(
+      `engine-content: zero files matched for "${dirSuffix}" — ` +
+        `check the import.meta.glob pattern or Vite's server.fs.allow config.`,
+    );
+  }
   registerContentDir(dirSuffix, items);
 }
 

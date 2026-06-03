@@ -9,18 +9,18 @@ import { join } from "node:path";
 // SPEC-WEB-2: the loader also supports a pre-registered content registry so the
 // engine can run in a browser bundle. Browser code registers JSON via Vite static
 // imports before the engine starts; Node code falls back to readFileSync. The
-// registry lookup is keyed by the same path string callers already pass in.
+// registry lookup is keyed by the normalized project-relative path.
 
 const _fileRegistry = new Map<string, unknown>();
 const _dirRegistry = new Map<string, unknown[]>();
 
 /** Normalize a path to its project-relative form starting at the LAST `schemas/`
- *  or `content/` segment. Absolute paths produced by `join(import.meta.url-pathname,
+ *  or `content/` segment. Absolute paths produced by `join(import.meta.url pathname,
  *  "../../content/...")` and Vite-resolved bundler paths collapse to the same key —
  *  letting the browser content bundle register once and have every engine loader
  *  find the data. The "last segment" rule matters because absolute paths like
  *  `/home/.../src/content/../../schemas/foo.json` contain BOTH `content/` and
- *  `schemas/` — a leftmost-match regex would key on the wrong anchor. */
+ *  `schemas/` — a right-to-left scan anchors on the correct (rightmost) segment. */
 function registryKey(path: string): string {
   const segments = path.split("/");
   for (let i = segments.length - 1; i >= 0; i--) {
@@ -44,38 +44,62 @@ export function registerContentDir(dir: string, items: unknown[]): void {
   _dirRegistry.set(registryKey(dir), items);
 }
 
+/** Test-only: clear both content registries so subsequent calls re-populate from disk. */
+export function _resetRegistries(): void {
+  _fileRegistry.clear();
+  _dirRegistry.clear();
+}
+
 function readJsonFile(filePath: string): unknown {
   const cached = _fileRegistry.get(registryKey(filePath));
   if (cached !== undefined) return cached;
   return JSON.parse(readFileSync(filePath, "utf8"));
 }
 
+// Module-level AJV instance and compile cache shared by both loaders.
+// Keyed by schemaPath so the same schema is compiled at most once per process.
+const _ajv = new Ajv2020({ allErrors: true, strict: false });
+const _validateCache = new Map<string, ValidateFunction>();
+
 export function loadValidated<T>(schemaPath: string, dir: string): T[] {
-  const ajv = new Ajv2020({ allErrors: true, strict: false });
-  const schema = readJsonFile(schemaPath);
-  const validate = ajv.compile(schema as object);
+  let validate = _validateCache.get(schemaPath);
+  if (validate === undefined) {
+    const schema = readJsonFile(schemaPath);
+    try {
+      validate = _ajv.compile(schema as object);
+    } catch (err) {
+      throw new Error(`Failed to compile schema "${schemaPath}": ${(err as Error).message}`, { cause: err });
+    }
+    _validateCache.set(schemaPath, validate);
+  }
   const out: T[] = [];
   const registeredItems = _dirRegistry.get(registryKey(dir));
-  const items: unknown[] = registeredItems
-    ?? readdirSync(dir)
-      .filter((f) => f.endsWith(".json"))
-      .map((file) => JSON.parse(readFileSync(join(dir, file), "utf8")));
-  for (const raw of items) {
-    const expanded = Array.isArray(raw) ? raw : [raw];
-    for (const item of expanded) {
-      if (!validate(item)) {
-        throw new Error(`${dir}: ${ajv.errorsText(validate.errors)}`);
+  if (registeredItems !== undefined) {
+    // Browser path: items pre-registered; individual filenames not available.
+    for (const raw of registeredItems) {
+      const expanded = Array.isArray(raw) ? raw : [raw];
+      for (const item of expanded) {
+        if (!validate(item)) {
+          throw new Error(`${dir}: ${_ajv.errorsText(validate.errors)}`);
+        }
+        out.push(item as T);
       }
-      out.push(item as T);
+    }
+  } else {
+    // Node.js path: read files one-by-one to preserve filename in error messages.
+    for (const file of readdirSync(dir).filter((f) => f.endsWith(".json"))) {
+      const raw = JSON.parse(readFileSync(join(dir, file), "utf8")) as unknown;
+      const expanded = Array.isArray(raw) ? raw : [raw];
+      for (const item of expanded) {
+        if (!validate(item)) {
+          throw new Error(`${file}: ${_ajv.errorsText(validate.errors)}`);
+        }
+        out.push(item as T);
+      }
     }
   }
   return out;
 }
-
-// Module-level AJV instance and compile cache for loadValidatedFile.
-// Keyed by schemaPath so the same schema is compiled at most once per process.
-const _ajv = new Ajv2020({ allErrors: true, strict: false });
-const _validateCache = new Map<string, ValidateFunction>();
 
 // Validates a single JSON file against a schema. Throws on validation failure.
 // Re-uses the compiled ValidateFunction on repeated calls with the same schemaPath.
@@ -83,7 +107,11 @@ export function loadValidatedFile<T>(schemaPath: string, filePath: string): T {
   let validate = _validateCache.get(schemaPath);
   if (validate === undefined) {
     const schema = readJsonFile(schemaPath);
-    validate = _ajv.compile(schema as object);
+    try {
+      validate = _ajv.compile(schema as object);
+    } catch (err) {
+      throw new Error(`Failed to compile schema "${schemaPath}": ${(err as Error).message}`, { cause: err });
+    }
     _validateCache.set(schemaPath, validate);
   }
   const raw = readJsonFile(filePath);

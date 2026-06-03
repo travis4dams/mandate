@@ -8,6 +8,11 @@ import { useSession } from "./useSession";
 import { MeetingPanel } from "./MeetingPanel";
 import type { Session } from "../../src/engine/session";
 
+const fmtPercent = (n: number | undefined): string =>
+  n === undefined ? "—" : `${(n * 100).toFixed(2)}%`;
+const fmtPlain = (n: number | undefined, digits = 0): string =>
+  n === undefined ? "—" : n.toFixed(digits);
+
 export function Dashboard(): JSX.Element {
   const [btnError, setBtnError] = useState<string | null>(null);
   const { session, current, trajectory } = useSession(
@@ -15,11 +20,6 @@ export function Dashboard(): JSX.Element {
     42,
     "comm.fomc_1979",
   );
-
-  const fmtPercent = (n: number | undefined): string =>
-    n === undefined ? "—" : `${(n * 100).toFixed(2)}%`;
-  const fmtPlain = (n: number | undefined, digits = 0): string =>
-    n === undefined ? "—" : n.toFixed(digits);
 
   return (
     <div style={{ fontFamily: "system-ui, sans-serif", maxWidth: 960, margin: "0 auto", padding: "24px" }}>

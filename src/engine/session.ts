@@ -148,7 +148,7 @@ export class Session {
 
   /**
    * Construct a Session from a scenario content file.
-   * The seed is stored for future stochastic use (SESSION-0: deterministic substrate only).
+   * seed is accepted for API stability (SPEC-SESSION-0 factory signature); stochastic mechanics are not yet wired.
    * committeeId identifies the FOMC committee used by proposeRate (e.g. "comm.fomc_1979").
    */
   static fromScenario(scenarioId: string, seed: number, committeeId: string): Session {
@@ -218,7 +218,9 @@ export class Session {
       throw new Error(`Session.advance: months must be a positive integer, got ${months}.`);
     }
 
-    // Checkpoint for mid-loop rollback: capture mutable state before we begin.
+    // Checkpoint for mid-loop rollback: capture the current state reference.
+    // Safe because all tick/spiral/dynamics functions are pure (CLAUDE.md) — they
+    // return new GameState objects and never mutate in place, so this ref stays valid.
     const checkpointState = this._state;
     const checkpointTrajectoryLength = this._trajectoryInternal.length;
 
