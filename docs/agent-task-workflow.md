@@ -16,7 +16,7 @@ needing an interactive session.
 
 Each fire, before resuming the slice-2 PRD work, the agent:
 
-1. Runs `gh issue list --state open --label agent-task --sort created --json number,title,createdAt`.
+1. Runs `gh issue list --state open --label agent-task --sort created --json number,title,body,createdAt`.
 2. Picks the **oldest** issue and works only that one (no batching).
 3. Opens a PR titled with the issue number (e.g. `Fixes #42 — <short summary>`)
    and links the issue in the PR body.
