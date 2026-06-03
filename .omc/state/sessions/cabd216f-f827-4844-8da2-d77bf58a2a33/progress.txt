@@ -8,3 +8,11 @@ Fixed all blockers + warnings + the missing test + the simplification in a singl
 web-4-fresh. Waiting for next CI/claude-review cycle to confirm VERDICT: APPROVE.
 prd.json and progress.txt bootstrapped alongside this commit (first cycle for this session ID).
 Stories still passing=false: US-010, US-011 (in PR #28 awaiting re-review), US-012..US-019 (not started).
+
+== CYCLE 2 — 2026-06-03 ==
+Phase 0 (issue queue): empty — fell through to Phase 1.
+Phase 1: PR #28 (SPEC-WEB-4 + SPEC-WEB-5) confirmed merged (merged_at 2026-06-03T16:49:03Z).
+prd.json updated: US-010 and US-011 marked passes=true. No other open PRs found.
+Next story: US-012 (SPEC-WEB-3, time-series ChartsPanel via Observable Plot with fog overlay).
+Dispatched executor on branch spec-web-3-charts. Awaiting push + PR creation.
+Stories still passing=false: US-012..US-019.
