@@ -27,7 +27,15 @@ export function useSession(
   }
   const session = sessionRef.current;
 
-  const subscribe = session.subscribe.bind(session);
+  // Bind once and stash in a ref so `subscribe` is referentially stable across
+  // renders. Re-binding per render would make useSyncExternalStore unsubscribe
+  // and resubscribe on every commit, briefly missing notifications and tripping
+  // React 18 strict-mode warnings.
+  const subscribeRef = useRef<(listener: () => void) => () => void>(undefined);
+  if (subscribeRef.current === undefined) {
+    subscribeRef.current = session.subscribe.bind(session);
+  }
+  const subscribe = subscribeRef.current;
   // useSyncExternalStore requires identity-stable getSnapshot return values across
   // no-op reads. Session.current and Session.trajectory are referentially stable
   // (rebuilt only on mutation), which is the SPEC-SESSION-0 contract.

@@ -6,6 +6,7 @@
 
 import { useState } from "react";
 import { useSession } from "./useSession";
+import { t } from "./loc";
 
 const fmtPercent = (n: number | undefined): string =>
   n === undefined ? "—" : `${(n * 100).toFixed(2)}%`;
@@ -23,9 +24,9 @@ export function Dashboard(): JSX.Element {
   return (
     <div style={{ fontFamily: "system-ui, sans-serif", maxWidth: 960, margin: "0 auto", padding: "24px" }}>
       <header>
-        <h1 style={{ margin: 0 }}>MANDATE</h1>
+        <h1 style={{ margin: 0 }}>{t("ui.dashboard.title")}</h1>
         <p style={{ marginTop: 4, color: "#666" }}>
-          Scenario: <code>scen.1979_stagflation</code> · Seed 42
+          {t("ui.dashboard.scenario_label")} <code>scen.1979_stagflation</code> · {t("ui.dashboard.seed_label")} 42
         </p>
       </header>
 
@@ -37,26 +38,26 @@ export function Dashboard(): JSX.Element {
           margin: "16px 0",
         }}
       >
-        <Stat label="Date" value={current.date} />
-        <Stat label="Policy rate" value={fmtPercent(current.vars.policy_rate)} />
-        <Stat label="Inflation" value={fmtPercent(current.vars.inflation)} />
-        <Stat label="Unemployment" value={fmtPercent(current.vars.unemployment)} />
-        <Stat label="Credibility" value={fmtPlain(current.vars.credibility, 1)} />
-        <Stat label="Anchor" value={fmtPercent(current.vars.expectations_anchor)} />
-        <Stat label="Months below anchor" value={fmtPlain(current.vars.months_below_anchor, 0)} />
-        <Stat label="Months elapsed" value={String(trajectory.length - 1)} />
+        <Stat label={t("ui.dashboard.stat.date")} value={current.date} />
+        <Stat label={t("ui.dashboard.stat.policy_rate")} value={fmtPercent(current.vars.policy_rate)} />
+        <Stat label={t("ui.dashboard.stat.inflation")} value={fmtPercent(current.vars.inflation)} />
+        <Stat label={t("ui.dashboard.stat.unemployment")} value={fmtPercent(current.vars.unemployment)} />
+        <Stat label={t("ui.dashboard.stat.credibility")} value={fmtPlain(current.vars.credibility, 1)} />
+        <Stat label={t("ui.dashboard.stat.expectations_anchor")} value={fmtPercent(current.vars.expectations_anchor)} />
+        <Stat label={t("ui.dashboard.stat.months_below_anchor")} value={fmtPlain(current.vars.months_below_anchor, 0)} />
+        <Stat label={t("ui.dashboard.stat.months_elapsed")} value={String(trajectory.length - 1)} />
       </section>
 
       <section style={{ margin: "16px 0" }}>
-        <h2 style={{ fontSize: 16, marginBottom: 8 }}>Trajectory ({trajectory.length} snapshots)</h2>
+        <h2 style={{ fontSize: 16, marginBottom: 8 }}>{t("ui.dashboard.trajectory_heading")} ({trajectory.length})</h2>
         <TrajectoryChart trajectory={trajectory} />
       </section>
 
       <section style={{ display: "flex", gap: 8, margin: "16px 0" }}>
-        <button onClick={() => { try { session.advance(1); setBtnError(null); } catch (e) { setBtnError(e instanceof Error ? e.message : String(e)); } }}>Advance 1 month</button>
-        <button onClick={() => { try { session.advance(3); setBtnError(null); } catch (e) { setBtnError(e instanceof Error ? e.message : String(e)); } }}>Advance 3 months</button>
-        <button onClick={() => { try { session.advance(12); setBtnError(null); } catch (e) { setBtnError(e instanceof Error ? e.message : String(e)); } }}>Advance 12 months</button>
-        <button onClick={() => { try { session.reset(); setBtnError(null); } catch (e) { setBtnError(e instanceof Error ? e.message : String(e)); } }}>Reset</button>
+        <button onClick={() => { try { session.advance(1); setBtnError(null); } catch (e) { setBtnError(e instanceof Error ? e.message : String(e)); } }}>{t("ui.dashboard.button.advance_1")}</button>
+        <button onClick={() => { try { session.advance(3); setBtnError(null); } catch (e) { setBtnError(e instanceof Error ? e.message : String(e)); } }}>{t("ui.dashboard.button.advance_3")}</button>
+        <button onClick={() => { try { session.advance(12); setBtnError(null); } catch (e) { setBtnError(e instanceof Error ? e.message : String(e)); } }}>{t("ui.dashboard.button.advance_12")}</button>
+        <button onClick={() => { try { session.reset(); setBtnError(null); } catch (e) { setBtnError(e instanceof Error ? e.message : String(e)); } }}>{t("ui.dashboard.button.reset")}</button>
       </section>
 
       {btnError !== null && (
@@ -77,9 +78,9 @@ function Stat(props: { label: string; value: string }): JSX.Element {
 
 function TrajectoryChart(props: { trajectory: readonly { vars: Record<string, number | undefined> }[] }): JSX.Element {
   const series = [
-    { key: "inflation", color: "#c92a2a", label: "Inflation" },
-    { key: "unemployment", color: "#1864ab", label: "Unemployment" },
-    { key: "policy_rate", color: "#2b8a3e", label: "Policy rate" },
+    { key: "inflation", color: "#c92a2a", label: t("ui.dashboard.chart.legend.inflation") },
+    { key: "unemployment", color: "#1864ab", label: t("ui.dashboard.chart.legend.unemployment") },
+    { key: "policy_rate", color: "#2b8a3e", label: t("ui.dashboard.chart.legend.policy_rate") },
   ] as const;
 
   const width = 880;
