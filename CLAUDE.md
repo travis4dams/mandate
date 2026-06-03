@@ -44,7 +44,9 @@ against this file on every pull request.
 
 ## Issue-driven autonomous work
 GitHub issues labelled **`agent-task`** are picked up by the recurring agent on
-its next 5-hour fire, in `created_at` order. The agent opens a PR titled
-`Fixes #N — …`, comments on the issue with the PR URL, and removes the
-`agent-task` label (the issue stays open until the user closes it as their
-verification step). See `docs/agent-task-workflow.md` for the full contract.
+its next scheduled fire, in `created_at` order. The agent opens a PR titled
+`Fixes #N — …`, comments on the issue with the PR URL, and (only after both
+the PR-create and issue-comment steps succeed) removes the `agent-task` label.
+The issue stays open until the user closes it as their verification step. See
+`docs/agent-task-workflow.md` for the full contract including failure handling,
+dedup-check semantics, and retry behaviour.
