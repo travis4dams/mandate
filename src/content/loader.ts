@@ -65,7 +65,11 @@ export function loadValidated<T>(schemaPath: string, dir: string): T[] {
   let validate = _validateCache.get(schemaPath);
   if (validate === undefined) {
     const schema = readJsonFile(schemaPath);
-    validate = _ajv.compile(schema as object);
+    try {
+      validate = _ajv.compile(schema as object);
+    } catch (err) {
+      throw new Error(`Failed to compile schema "${schemaPath}": ${(err as Error).message}`, { cause: err });
+    }
     _validateCache.set(schemaPath, validate);
   }
   const out: T[] = [];
@@ -103,7 +107,11 @@ export function loadValidatedFile<T>(schemaPath: string, filePath: string): T {
   let validate = _validateCache.get(schemaPath);
   if (validate === undefined) {
     const schema = readJsonFile(schemaPath);
-    validate = _ajv.compile(schema as object);
+    try {
+      validate = _ajv.compile(schema as object);
+    } catch (err) {
+      throw new Error(`Failed to compile schema "${schemaPath}": ${(err as Error).message}`, { cause: err });
+    }
     _validateCache.set(schemaPath, validate);
   }
   const raw = readJsonFile(filePath);

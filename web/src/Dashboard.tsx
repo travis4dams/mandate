@@ -3,6 +3,7 @@
 // minimal — SPEC-WEB-3 will replace the inline SVG chart with @observablehq/plot
 // and SPEC-WEB-4 will add the FOMC meeting panel.
 
+import { useState } from "react";
 import { useSession } from "./useSession";
 
 const fmtPercent = (n: number | undefined): string =>
@@ -11,6 +12,7 @@ const fmtPlain = (n: number | undefined, digits = 0): string =>
   n === undefined ? "—" : n.toFixed(digits);
 
 export function Dashboard(): JSX.Element {
+  const [btnError, setBtnError] = useState<string | null>(null);
   const { session, current, trajectory } = useSession(
     "scen.1979_stagflation",
     42,
@@ -50,11 +52,15 @@ export function Dashboard(): JSX.Element {
       </section>
 
       <section style={{ display: "flex", gap: 8, margin: "16px 0" }}>
-        <button onClick={() => session.advance(1)}>Advance 1 month</button>
-        <button onClick={() => session.advance(3)}>Advance 3 months</button>
-        <button onClick={() => session.advance(12)}>Advance 12 months</button>
-        <button onClick={() => session.reset()}>Reset</button>
+        <button onClick={() => { try { session.advance(1); setBtnError(null); } catch (e) { setBtnError(e instanceof Error ? e.message : String(e)); } }}>Advance 1 month</button>
+        <button onClick={() => { try { session.advance(3); setBtnError(null); } catch (e) { setBtnError(e instanceof Error ? e.message : String(e)); } }}>Advance 3 months</button>
+        <button onClick={() => { try { session.advance(12); setBtnError(null); } catch (e) { setBtnError(e instanceof Error ? e.message : String(e)); } }}>Advance 12 months</button>
+        <button onClick={() => { try { session.reset(); setBtnError(null); } catch (e) { setBtnError(e instanceof Error ? e.message : String(e)); } }}>Reset</button>
       </section>
+
+      {btnError !== null && (
+        <p style={{ color: "#c92a2a", fontSize: 13, margin: "4px 0 12px" }}>{btnError}</p>
+      )}
     </div>
   );
 }
