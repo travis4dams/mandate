@@ -117,15 +117,8 @@ export function vote(
   state: GameState,
   params: CommitteeParams,
 ): FomcVote {
-  if (!Number.isFinite(proposedRate)) {
-    throw new Error(`vote: proposedRate ${proposedRate} is not finite — refusing to compute dissents.`);
-  }
-  const { laggedRate, gapInflation, gapUnemployment } = readGuardedVars(state, params);
-  const dissents = committee.members.filter((m) => {
-    const preferred = memberPreferred(m, laggedRate, gapInflation, gapUnemployment, params);
-    return Math.abs(preferred - proposedRate) > params.dissent_tolerance;
-  }).length;
-  return { decided: proposedRate, dissents };
+  const { previews } = previewVote(committee, proposedRate, state, params);
+  return { decided: proposedRate, dissents: previews.filter((p) => p.wouldDissent).length };
 }
 
 const SCHEMA_PATH = join(new URL(".", import.meta.url).pathname, "../../schemas/committee-params.schema.json");

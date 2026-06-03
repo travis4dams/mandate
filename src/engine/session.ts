@@ -273,6 +273,7 @@ export class Session {
    * Returns the FomcVote for the meeting.
    * @throws {NotMeetingMonthError} if the current month is not a scheduled meeting month.
    * @throws {Error} if `rate` is not finite (only checked once the meeting-month gate passes).
+   * @throws {VoteMissingVarError} if state vars (inflation, unemployment, policy_rate) are missing or non-finite (propagated from vote()).
    */
   proposeRate(rate: number): FomcVote {
     if (!this.isMeetingMonth()) {

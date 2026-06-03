@@ -2,9 +2,8 @@
 
 Snapshot: 2026-06-02. Compiled from a research pass commissioned during the
 player-feedback round on PR #25 (committee spreads were absurd; credibility
-ratcheted only down). PR #27 implemented the first two follow-up specs
-(SPEC-COMM-3 and SPEC-CRED-5) based on these anchors; the remaining two
-(calibration test, UI integration test) are queued.
+ratcheted only down). PR #27 implements SPEC-COMM-3 based on these anchors;
+the remaining three follow-up specs are queued.
 
 ## 1. Dot-plot dispersion (modern, 2012-2025)
 
@@ -94,8 +93,8 @@ the replay must mirror.
 
 ## Application to MANDATE
 
-Concrete changes split into four follow-up SPECs. The first two ship with
-PR #27; the latter two remain queued.
+Concrete changes split into four follow-up SPECs. The first ships with
+PR #27; the latter three remain queued.
 
 1. **SPEC-COMM-3 (revised committee model)** *— shipped in PR #27.*
    12 members; per-member reaction coefficients (`inflation_coef`,
@@ -106,13 +105,12 @@ PR #27; the latter two remain queued.
    members; the dropped per-lean weights are removed from
    `schemas/committee-params.schema.json`.
 
-2. **SPEC-CRED-5 (credibility two-way)** *— shipped in PR #27.*
-   Wires `Session.proposeRate` to compute `onTarget` from
-   `|inflation - target_inflation| < params.on_target_tolerance` instead of
-   the hardcoded `false`. The +3 per-on-target-meeting gain in
-   `applyMeetingOutcome` already exists; this just unlocks it. Sustained-
-   performance gating is emergent rather than explicit — the +3 is small
-   enough that re-anchoring naturally takes many meetings.
+2. **SPEC-CRED-5 (credibility two-way)** *— queued.*
+   The `onTarget` wiring in `Session.proposeRate` is already handled by
+   SPEC-MANDATE-1 (`src/engine/mandate.ts`). A future SPEC-CRED-5 can add
+   `on_target_tolerance` as a schema-governed param if the fixed 50bp
+   tolerance band needs to be content-tunable independently of the mandate
+   tolerance.
 
 3. **SPEC-CAL-2 (Volcker calibration test)** *— queued.*
    A test that drives the engine through `content/replays/1979_chair_tightening.json`
