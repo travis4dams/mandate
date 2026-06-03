@@ -79,7 +79,7 @@
       "id": "US-010",
       "spec": "SPEC-WEB-4",
       "title": "FOMC meeting panel: committee briefing table + propose-rate button",
-      "passes": false,
+      "passes": true,
       "pr": 28,
       "dependencies": ["US-007", "US-009"]
     },
@@ -87,7 +87,7 @@
       "id": "US-011",
       "spec": "SPEC-WEB-5",
       "title": "Control bar: forward-guidance stance buttons + advance-to-next-meeting",
-      "passes": false,
+      "passes": true,
       "pr": 28,
       "dependencies": ["US-007"]
     },
