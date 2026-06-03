@@ -192,6 +192,13 @@ describe("vote", () => {
     expect(() => vote(c, NaN, state, PARAMS)).toThrow(/proposedRate .* not finite/);
   });
 
+  it("previewVote throws when proposedRate is Infinity", () => {
+    // SPEC-COMM-3: symmetric guard with NaN — both are non-finite.
+    const c = committeeOf([member("a")]);
+    const state = macroState({ inflation: 0.05, unemployment: 0.04 });
+    expect(() => previewVote(c, Infinity, state, PARAMS)).toThrow(/proposedRate .* not finite/);
+  });
+
   // SPEC-COMM-3 / negotiation: moving proposed toward a member's preferred reduces their dissent gap linearly.
   // This is the player-facing behaviour: the Chair can negotiate.
   it("moving proposed toward a member's preferred makes them stop dissenting", () => {

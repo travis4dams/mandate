@@ -4,12 +4,12 @@ import { loadReplay } from "../content/replays.js";
 import { loadCommittee } from "../content/committees.js";
 import { loadValidatedFile } from "../content/loader.js";
 import { tick } from "./clock.js";
-import { vote, loadCommitteeParams } from "./fomc.js";
+import { vote, previewVote, loadCommitteeParams } from "./fomc.js";
 import { applyMeetingOutcome, applyMonthlySpiral, getCredibility, loadCredibilityParams } from "./credibility.js";
 import { applyMacroDynamics, loadDynamicsParams } from "./dynamics.js";
 import { onTarget, loadMandateParams } from "./mandate.js";
 import type { GameState, GameStateSnapshot } from "./state.js";
-import type { FomcVote } from "./fomc.js";
+import type { FomcVote, MemberVotePreview } from "./fomc.js";
 import type { Replay } from "../content/replays.js";
 
 // SPEC-SESSION-0: skeleton Session façade.
@@ -264,6 +264,33 @@ export class Session {
 
     this._rebuildCaches();
     this._notifyListeners();
+  }
+
+  /**
+   * Preview how the committee would vote at the given proposed rate without committing.
+   * Returns per-member preferred rates + dissent status, inflation/unemployment gaps, and
+   * the content targets so the UI can render dynamic gap labels.
+   * Pure: does not mutate any session state.
+   * @throws {Error} if proposedRate is not finite.
+   * @throws {VoteMissingVarError} if state vars (inflation, unemployment, policy_rate) are missing.
+   */
+  committeeBriefing(proposedRate: number): {
+    previews: readonly MemberVotePreview[];
+    gapInflation: number;
+    gapUnemployment: number;
+    inflationTarget: number;
+    unemploymentTarget: number;
+  } {
+    const committee = loadCommittee(this._committeeId);
+    const params = loadCommitteeParams();
+    const { previews, gapInflation, gapUnemployment } = previewVote(committee, proposedRate, this._state, params);
+    return {
+      previews,
+      gapInflation,
+      gapUnemployment,
+      inflationTarget: params.target_inflation,
+      unemploymentTarget: params.target_unemployment,
+    };
   }
 
   /**
