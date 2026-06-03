@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import Ajv2020 from "ajv/dist/2020";
 import { loadValidatedFile, _resetValidateFileCache } from "../src/content/loader";
+import { loadMandateParams, _resetMandateParamsCache } from "../src/engine/mandate";
 
 // SPEC-PARAMS-1
 
@@ -81,6 +82,27 @@ describe("committee params loader (SPEC-PARAMS-1)", () => {
     expect(result.dissent_tolerance).toBeGreaterThan(0);
     expect(result.neutral_blend).toBeGreaterThanOrEqual(0);
     expect(result.neutral_blend).toBeLessThanOrEqual(1);
+  });
+});
+
+describe("mandate params loader (SPEC-MANDATE-1)", () => {
+  afterEach(() => { _resetMandateParamsCache(); });
+
+  it("loadMandateParams returns dual mandate with target_inflation=0.02", () => {
+    // SPEC-MANDATE-1
+    const result = loadMandateParams();
+    expect(result.mandate_type).toBe("dual");
+    expect(result.target_inflation).toBe(0.02);
+    expect(result.tolerance_band).toBeGreaterThan(0);
+    expect(result.unemployment_target).toBeGreaterThan(0);
+    expect(result.unemployment_band).toBeGreaterThan(0);
+  });
+
+  it("returns the same object reference on repeated calls (cache)", () => {
+    // SPEC-MANDATE-1
+    const first = loadMandateParams();
+    const second = loadMandateParams();
+    expect(first).toBe(second);
   });
 });
 

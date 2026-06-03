@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mandate.dev/schemas/mandate.schema.json",
+  "title": "MandateParams",
+  "description": "Mandate evaluator parameters. SPEC-MANDATE-1: inflation and unemployment targets for the dual/single mandate check.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["target_inflation", "tolerance_band", "mandate_type", "unemployment_target", "unemployment_band"],
+  "properties": {
+    "target_inflation": {
+      "type": "number",
+      "minimum": 0,
+      "description": "The central bank's inflation target (e.g. 0.02 for 2%)."
+    },
+    "tolerance_band": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Symmetric tolerance around target_inflation within which inflation is considered on-target."
+    },
+    "mandate_type": {
+      "type": "string",
+      "enum": ["single", "dual"],
+      "description": "Whether the mandate is single (inflation only) or dual (inflation + unemployment)."
+    },
+    "unemployment_target": {
+      "type": "number",
+      "minimum": 0,
+      "description": "The central bank's unemployment target (e.g. 0.055 for 5.5%)."
+    },
+    "unemployment_band": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Symmetric tolerance around unemployment_target within which unemployment is considered on-target."
+    }
+  }
+}
