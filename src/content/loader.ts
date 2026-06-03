@@ -51,8 +51,12 @@ export function _resetRegistries(): void {
 }
 
 function readJsonFile(filePath: string): unknown {
-  const cached = _fileRegistry.get(registryKey(filePath));
-  if (cached !== undefined) return cached;
+  const key = registryKey(filePath);
+  // Use .has() rather than checking for undefined — a Vite parse failure could
+  // legitimately register `mod.default === undefined`, which would otherwise
+  // silently fall through to readFileSync and surface as the misleading
+  // "import ordering" stub error.
+  if (_fileRegistry.has(key)) return _fileRegistry.get(key);
   return JSON.parse(readFileSync(filePath, "utf8"));
 }
 

@@ -39,9 +39,23 @@ const calibrationFiles = import.meta.glob<{ default: unknown }>(
   { eager: true },
 );
 
+// Reject `mod.default === undefined` at registration time rather than letting
+// such a value enter the registry and surface later as an opaque AJV
+// "data must be object" error with no file pointer. The most likely cause is a
+// Vite JSON-import failure during dev/HMR.
+function assertDefined(path: string, value: unknown): unknown {
+  if (value === undefined) {
+    throw new Error(
+      `engine-content: "${path}" loaded with default === undefined — ` +
+        `Vite likely failed to parse this JSON file. Check the file for a syntax error.`,
+    );
+  }
+  return value;
+}
+
 function registerEach(modules: Record<string, { default: unknown }>): void {
   for (const [path, mod] of Object.entries(modules)) {
-    registerContentFile(path, mod.default);
+    registerContentFile(path, assertDefined(path, mod.default));
   }
 }
 
@@ -49,7 +63,8 @@ function registerDirEntities(
   modules: Record<string, { default: unknown }>,
   dirSuffix: string,
 ): void {
-  const items: unknown[] = Object.values(modules).map((m) => m.default);
+  const entries = Object.entries(modules);
+  const items: unknown[] = entries.map(([path, m]) => assertDefined(path, m.default));
   if (items.length === 0) {
     throw new Error(
       `engine-content: zero files matched for "${dirSuffix}" — ` +

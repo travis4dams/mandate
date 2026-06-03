@@ -19,7 +19,26 @@ export function readdirSync(_path: string): string[] {
   unreachable("readdirSync");
 }
 
-// node:path surface that loader.ts uses.
+// node:path `join` — resolves `..` segments the same way Node's path.posix.join does
+// so engine code like `join(new URL(".", import.meta.url).pathname, "../../content/...")`
+// produces a clean path the registry's normalizer can key on. Without `..` resolution,
+// any path that doesn't happen to contain a `schemas/` or `content/` segment would
+// silently miss the registry and fire the stub error.
 export function join(...segments: string[]): string {
-  return segments.join("/").replace(/\/+/g, "/");
+  const combined = segments.join("/").replace(/\/+/g, "/");
+  const isAbsolute = combined.startsWith("/");
+  const parts: string[] = [];
+  for (const segment of combined.split("/")) {
+    if (segment === "" || segment === ".") continue;
+    if (segment === "..") {
+      if (parts.length > 0 && parts[parts.length - 1] !== "..") {
+        parts.pop();
+      } else if (!isAbsolute) {
+        parts.push("..");
+      }
+      continue;
+    }
+    parts.push(segment);
+  }
+  return (isAbsolute ? "/" : "") + parts.join("/");
 }

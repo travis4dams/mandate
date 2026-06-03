@@ -1,7 +1,8 @@
 // SPEC-WEB-2: dashboard for the engine. Shows current state, a small chart of the
-// trajectory so far, and controls to advance time. The dashboard is intentionally
-// minimal — SPEC-WEB-3 will replace the inline SVG chart with @observablehq/plot
-// and SPEC-WEB-4 will add the FOMC meeting panel.
+// trajectory so far, and controls to advance time. Future UI specs will swap the
+// inline SVG chart for a richer plot and add a meeting panel; references to those
+// specs are deferred until they're registered in spec/requirements.md to avoid
+// phantom SPEC IDs in the codebase.
 
 import { useState } from "react";
 import { useSession } from "./useSession";
