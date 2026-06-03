@@ -65,7 +65,16 @@ export function Dashboard(): JSX.Element {
         <button onClick={() => run(() => session.advance(1))}>{t("ui.dashboard.button.advance_1")}</button>
         <button onClick={() => run(() => session.advance(3))}>{t("ui.dashboard.button.advance_3")}</button>
         <button onClick={() => run(() => session.advance(12))}>{t("ui.dashboard.button.advance_12")}</button>
-        <button onClick={() => run(() => advanceToNextMeeting(session))}>{t("ui.dashboard.button.advance_to_meeting")}</button>
+        <button onClick={() => run(() => {
+          try {
+            advanceToNextMeeting(session);
+          } catch {
+            // The helper throws a developer-facing message; the user sees the
+            // localized version. Anything other than the bounded-loop case
+            // would already have surfaced through `session.advance()`.
+            throw new Error(t("ui.dashboard.no_meeting_in_12mo"));
+          }
+        })}>{t("ui.dashboard.button.advance_to_meeting")}</button>
         <button onClick={() => run(() => session.reset())}>{t("ui.dashboard.button.reset")}</button>
       </section>
 
@@ -106,7 +115,11 @@ function advanceToNextMeeting(session: Session): void {
     }
   }
 
-  throw new Error(t("ui.meeting_panel.no_meeting_found"));
+  // Throw a stable developer-facing message; the call site is responsible for
+  // surfacing a localized error to the user. Localization keys do not belong in
+  // logic helpers — they couple the function to the UI translation context and
+  // make it hard to test in isolation.
+  throw new Error("advanceToNextMeeting: no meeting month within 12 months");
 }
 
 function Stat(props: { label: string; value: string }): JSX.Element {

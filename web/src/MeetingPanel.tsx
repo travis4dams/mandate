@@ -37,24 +37,28 @@ export function MeetingPanel(props: { session: Session }): JSX.Element {
   const briefingError = briefingResult && !briefingResult.ok ? briefingResult.error : null;
 
   function onPropose(): void {
-    setError(null);
-    setLastVote(null);
-    setCredibilityDelta(null);
     if (!Number.isFinite(parsedRate)) {
-      setError(`"${rateInput}" is not a finite number.`);
+      setError(`"${rateInput}" ${t("ui.meeting_panel.invalid_rate")}`);
+      setLastVote(null);
+      setCredibilityDelta(null);
       return;
     }
     const credBefore = session.current.vars.credibility;
+    let vote: FomcVote;
     try {
-      const vote = session.proposeRate(parsedRate);
-      setLastVote(vote);
-      const credAfter = session.current.vars.credibility;
-      setCredibilityDelta(
-        credBefore !== undefined && credAfter !== undefined ? credAfter - credBefore : null,
-      );
+      vote = session.proposeRate(parsedRate);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
+      setLastVote(null);
+      setCredibilityDelta(null);
+      return;
     }
+    const credAfter = session.current.vars.credibility;
+    setError(null);
+    setLastVote(vote);
+    setCredibilityDelta(
+      credBefore !== undefined && credAfter !== undefined ? credAfter - credBefore : null,
+    );
   }
 
   return (
@@ -140,9 +144,11 @@ function CommitteeBriefing(props: {
     <div style={{ marginTop: 12 }}>
       <div style={{ fontSize: 12, color: "#666", marginBottom: 4 }}>
         {t("ui.meeting_panel.briefing.inflation_gap_label")}{" "}
-        {(props.gapInflation * 100).toFixed(2)}pp (target {fmtPct(props.inflationTarget)}) ·{" "}
+        {(props.gapInflation * 100).toFixed(2)}{t("ui.meeting_panel.briefing.pp_suffix")}{" "}
+        {t("ui.meeting_panel.briefing.target_prefix")}{fmtPct(props.inflationTarget)}{t("ui.meeting_panel.briefing.target_suffix")} ·{" "}
         {t("ui.meeting_panel.briefing.unemployment_gap_label")}{" "}
-        {(props.gapUnemployment * 100).toFixed(2)}pp (target {fmtPct(props.unemploymentTarget)})
+        {(props.gapUnemployment * 100).toFixed(2)}{t("ui.meeting_panel.briefing.pp_suffix")}{" "}
+        {t("ui.meeting_panel.briefing.target_prefix")}{fmtPct(props.unemploymentTarget)}{t("ui.meeting_panel.briefing.target_suffix")}
       </div>
       <table style={{ width: "100%", fontSize: 13, borderCollapse: "collapse" }}>
         <thead>
@@ -164,7 +170,7 @@ function CommitteeBriefing(props: {
                 </td>
                 <td style={{ padding: "4px 6px", textAlign: "right", fontFamily: "monospace" }}>
                   {delta >= 0 ? "+" : ""}
-                  {(delta * 100).toFixed(2)}pp
+                  {(delta * 100).toFixed(2)}{t("ui.meeting_panel.briefing.pp_suffix")}
                 </td>
                 <td style={{ padding: "4px 6px", color: p.wouldDissent ? "#c92a2a" : "#2f9e44" }}>
                   {p.wouldDissent ? t("ui.meeting_panel.dissent") : t("ui.meeting_panel.approve")}
