@@ -79,4 +79,90 @@ describe("App", () => {
     });
     expect(container.textContent).toContain("1979-08");
   });
+
+  // SPEC-WEB-4: "Propose rate" button is disabled when not in a meeting month.
+  // Scenario starts at 1979-08 (August = meeting month), advance 2 months to
+  // 1979-10 (October = non-meeting month) → button must be disabled.
+  it("Propose rate button is disabled outside a meeting month", () => {
+    // SPEC-WEB-4
+    const { container } = render(<App />);
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: "Advance 1 month" }));
+    });
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: "Advance 1 month" }));
+    });
+    expect(container.textContent).toContain("1979-10");
+    const proposeBtn = screen.getByTestId("propose-rate-btn");
+    expect((proposeBtn as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  // SPEC-WEB-4: "Propose rate" button is enabled in a meeting month.
+  it("Propose rate button is enabled in a meeting month (1979-08 = August)", () => {
+    // SPEC-WEB-4
+    render(<App />);
+    // Initial date is 1979-08 — a meeting month.
+    const proposeBtn = screen.getByTestId("propose-rate-btn");
+    expect((proposeBtn as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  // SPEC-WEB-5: "Advance to next meeting" lands on the next FOMC meeting month.
+  // Starting at 1979-08 (August = meeting month), the next meeting is 1979-09
+  // (September), so advancing to next meeting should move to 1979-09.
+  it("Advance to next meeting lands on the next FOMC meeting month", () => {
+    // SPEC-WEB-5
+    const { container } = render(<App />);
+    // Advance 2 months first to be in 1979-10 (non-meeting month) so the
+    // advance-to-next-meeting button has to actually skip past a non-meeting month.
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: "Advance 1 month" }));
+    });
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: "Advance 1 month" }));
+    });
+    expect(container.textContent).toContain("1979-10");
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: "Advance to next meeting" }));
+    });
+    // 1979-10 (Oct) is not a meeting month. Next meeting month after Oct is Nov (11).
+    expect(container.textContent).toContain("1979-11");
+  });
+
+  // SPEC-WEB-5: "Advance to next meeting" from a meeting month skips to the *next*
+  // meeting, not the current one (loop starts at i=1, not i=0).
+  it("Advance to next meeting skips current meeting month and lands on the next one", () => {
+    // SPEC-WEB-5
+    const { container } = render(<App />);
+    // Initial state is 1979-08 (August = meeting month). The button should advance
+    // to 1979-09 (September = also a meeting month), not stay at 1979-08.
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: "Advance to next meeting" }));
+    });
+    expect(container.textContent).toContain("1979-09");
+  });
+
+  // SPEC-WEB-5: hawkish stance button calls setForwardGuidanceStance.
+  // We verify it doesn't throw (engine wiring) rather than inspecting internal state.
+  it("hawkish stance button does not throw", () => {
+    // SPEC-WEB-5
+    render(<App />);
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: "Hawkish" }));
+    });
+    // No error displayed — button handler succeeded.
+    expect(screen.queryByText(/error/i)).toBeNull();
+  });
+
+  // SPEC-WEB-5: neutral and dovish stance buttons do not throw.
+  it("neutral and dovish stance buttons do not throw", () => {
+    // SPEC-WEB-5
+    render(<App />);
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: "Neutral" }));
+    });
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: "Dovish" }));
+    });
+    expect(screen.queryByText(/error/i)).toBeNull();
+  });
 });

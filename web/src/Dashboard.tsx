@@ -1,12 +1,13 @@
 // SPEC-WEB-2: dashboard for the engine. Shows current state, a small chart of the
-// trajectory so far, and controls to advance time. Future UI specs will swap the
-// inline SVG chart for a richer plot and add a meeting panel; references to those
-// specs are deferred until they're registered in spec/requirements.md to avoid
-// phantom SPEC IDs in the codebase.
+// trajectory so far, and controls to advance time. SPEC-WEB-4 adds the FOMC
+// meeting panel so the Chair can propose rates; SPEC-WEB-5 adds stance controls
+// and advance-to-next-meeting so the Chair always lands in a meeting context.
 
 import { useState } from "react";
 import { useSession } from "./useSession";
 import { t } from "./loc";
+import { MeetingPanel } from "./MeetingPanel";
+import type { Session } from "../../src/engine/session";
 
 const fmtPercent = (n: number | undefined): string =>
   n === undefined ? "—" : `${(n * 100).toFixed(2)}%`;
@@ -20,6 +21,11 @@ export function Dashboard(): JSX.Element {
     42,
     "comm.fomc_1979",
   );
+
+  function run(action: () => void): void {
+    try { action(); setBtnError(null); }
+    catch (e) { setBtnError(e instanceof Error ? e.message : String(e)); }
+  }
 
   return (
     <div style={{ fontFamily: "system-ui, sans-serif", maxWidth: 960, margin: "0 auto", padding: "24px" }}>
@@ -53,11 +59,35 @@ export function Dashboard(): JSX.Element {
         <TrajectoryChart trajectory={trajectory} />
       </section>
 
-      <section style={{ display: "flex", gap: 8, margin: "16px 0" }}>
-        <button onClick={() => { try { session.advance(1); setBtnError(null); } catch (e) { setBtnError(e instanceof Error ? e.message : String(e)); } }}>{t("ui.dashboard.button.advance_1")}</button>
-        <button onClick={() => { try { session.advance(3); setBtnError(null); } catch (e) { setBtnError(e instanceof Error ? e.message : String(e)); } }}>{t("ui.dashboard.button.advance_3")}</button>
-        <button onClick={() => { try { session.advance(12); setBtnError(null); } catch (e) { setBtnError(e instanceof Error ? e.message : String(e)); } }}>{t("ui.dashboard.button.advance_12")}</button>
-        <button onClick={() => { try { session.reset(); setBtnError(null); } catch (e) { setBtnError(e instanceof Error ? e.message : String(e)); } }}>{t("ui.dashboard.button.reset")}</button>
+      <MeetingPanel session={session} />
+
+      <section style={{ display: "flex", flexWrap: "wrap", gap: 8, margin: "16px 0" }}>
+        <button onClick={() => run(() => session.advance(1))}>{t("ui.dashboard.button.advance_1")}</button>
+        <button onClick={() => run(() => session.advance(3))}>{t("ui.dashboard.button.advance_3")}</button>
+        <button onClick={() => run(() => session.advance(12))}>{t("ui.dashboard.button.advance_12")}</button>
+        <button onClick={() => run(() => {
+          try {
+            advanceToNextMeeting(session);
+          } catch (e) {
+            // Match ONLY the bounded-loop helper error; re-throw anything else
+            // unchanged so real engine/content failures from session.advance()
+            // surface as themselves rather than being misreported as
+            // "no meeting in 12 months".
+            const msg = e instanceof Error ? e.message : String(e);
+            if (msg.startsWith("advanceToNextMeeting:")) {
+              throw new Error(t("ui.dashboard.no_meeting_in_12mo"));
+            }
+            throw e;
+          }
+        })}>{t("ui.dashboard.button.advance_to_meeting")}</button>
+        <button onClick={() => run(() => session.reset())}>{t("ui.dashboard.button.reset")}</button>
+      </section>
+
+      <section style={{ display: "flex", gap: 8, alignItems: "center", margin: "16px 0" }}>
+        <span style={{ fontSize: 13, color: "#666" }}>{t("ui.dashboard.guidance_label")}</span>
+        <button onClick={() => run(() => session.setForwardGuidanceStance("hawkish"))}>{t("ui.dashboard.button.hawkish")}</button>
+        <button onClick={() => run(() => session.setForwardGuidanceStance("neutral"))}>{t("ui.dashboard.button.neutral")}</button>
+        <button onClick={() => run(() => session.setForwardGuidanceStance("dovish"))}>{t("ui.dashboard.button.dovish")}</button>
       </section>
 
       {btnError !== null && (
@@ -65,6 +95,36 @@ export function Dashboard(): JSX.Element {
       )}
     </div>
   );
+}
+
+/**
+ * Advance the session to the next FOMC meeting month without mutating state first.
+ * Checks future months by date string before advancing, so if no meeting is found
+ * in the next 12 months, this throws without having changed any game state.
+ */
+function advanceToNextMeeting(session: Session): void {
+  const parts = session.current.date.split("-");
+  const baseYear = parseInt(parts[0] ?? "1979", 10);
+  const baseMonth = parseInt(parts[1] ?? "01", 10);
+
+  for (let i = 1; i <= 12; i++) {
+    // Compute YYYY-MM for baseMonth+i without advancing session state.
+    const totalMonthIndex = (baseYear * 12 + (baseMonth - 1)) + i;
+    const futureYear = Math.floor(totalMonthIndex / 12);
+    const futureMonth = (totalMonthIndex % 12) + 1;
+    const futureDate = `${futureYear}-${String(futureMonth).padStart(2, "0")}`;
+
+    if (session.isMeetingMonth(futureDate)) {
+      session.advance(i);
+      return;
+    }
+  }
+
+  // Throw a stable developer-facing message; the call site is responsible for
+  // surfacing a localized error to the user. Localization keys do not belong in
+  // logic helpers — they couple the function to the UI translation context and
+  // make it hard to test in isolation.
+  throw new Error("advanceToNextMeeting: no meeting month within 12 months");
 }
 
 function Stat(props: { label: string; value: string }): JSX.Element {

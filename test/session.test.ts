@@ -498,3 +498,54 @@ describe("SPEC-SESSION-1: FOMC meeting schedule", () => {
     expect(() => s.proposeRate(0.11)).not.toThrow();
   });
 });
+
+describe("SPEC-WEB-4: Session.committeeBriefing", () => {
+  // SPEC-WEB-4: committeeBriefing returns per-member previews and gap fields.
+  it("returns previews for all committee members with finite preferred rates", () => {
+    // SPEC-WEB-4
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    const briefing = s.committeeBriefing(0.1075);
+    expect(briefing.previews.length).toBeGreaterThan(0);
+    for (const p of briefing.previews) {
+      expect(Number.isFinite(p.preferred)).toBe(true);
+      expect(typeof p.wouldDissent).toBe("boolean");
+    }
+  });
+
+  it("returns finite gapInflation, gapUnemployment, inflationTarget, unemploymentTarget", () => {
+    // SPEC-WEB-4
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    const briefing = s.committeeBriefing(0.1075);
+    expect(Number.isFinite(briefing.gapInflation)).toBe(true);
+    expect(Number.isFinite(briefing.gapUnemployment)).toBe(true);
+    expect(Number.isFinite(briefing.inflationTarget)).toBe(true);
+    expect(Number.isFinite(briefing.unemploymentTarget)).toBe(true);
+  });
+
+  it("wouldDissent count matches proposeRate dissent count for same inputs", () => {
+    // SPEC-WEB-4: previewVote and vote use the same preferred-rate logic.
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    const rate = 0.1075;
+    const briefing = s.committeeBriefing(rate);
+    const previewDissents = briefing.previews.filter((p) => p.wouldDissent).length;
+    const vote = s.proposeRate(rate);
+    expect(previewDissents).toBe(vote.dissents);
+  });
+
+  it("throws when proposedRate is not finite", () => {
+    // SPEC-WEB-4
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    expect(() => s.committeeBriefing(NaN)).toThrow(/not finite/);
+    expect(() => s.committeeBriefing(Infinity)).toThrow(/not finite/);
+  });
+
+  it("is pure: does not mutate session state", () => {
+    // SPEC-WEB-4: committeeBriefing must not advance or change state.
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    const dateBefore = s.current.date;
+    const credBefore = s.current.vars.credibility;
+    s.committeeBriefing(0.1075);
+    expect(s.current.date).toBe(dateBefore);
+    expect(s.current.vars.credibility).toBe(credBefore);
+  });
+});
