@@ -386,7 +386,9 @@ describe("SPEC-MANDATE-1: onTarget wired into Session.proposeRate()", () => {
   afterEach(() => { vi.restoreAllMocks(); });
 
   // SPEC-MANDATE-1: 1979 inflation=0.114 >> target=0.02 → onTarget=false → no +3 bonus.
-  // seed 42: credBefore=25, 7 dissents, no market surprise → credAfter = 25 - 14 = 11.
+  // SPEC-COMM-3: with the 12-member committee + Taylor-rule preferreds, proposing the
+  // lagged rate (0.1075) at the 1979 stress state produces 12 dissents → credibility
+  // erodes by 24, from 25 → 1.
   it("credibility changes by exact formula (no +3 bonus) when onTarget is false", () => {
     // SPEC-MANDATE-1
     const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
@@ -394,11 +396,11 @@ describe("SPEC-MANDATE-1: onTarget wired into Session.proposeRate()", () => {
     s.proposeRate(0.1075);
     const credAfter = s.current.vars.credibility;
     expect(credBefore).toBe(25);
-    expect(credAfter).toBe(11); // 25 + 0 (onTarget=false) - 14 (dissent penalty)
+    expect(credAfter).toBe(1); // 25 + 0 (onTarget=false) - 24 (12 dissents × 2)
   });
 
   // SPEC-MANDATE-1: when onTarget is true, the +3 lever fires — credAfter is exactly 3 higher.
-  // Mock mandate params so inflation=0.114 is "on target"; same seed → same vote → delta is +3.
+  // Mock mandate params so inflation=0.114 is "on target"; same seed → same 12 dissents → delta is +3 net.
   it("credibility is exactly 3 higher when onTarget is true (positive path)", () => {
     // SPEC-MANDATE-1
     vi.spyOn(mandateModule, "loadMandateParams").mockReturnValue({
@@ -413,7 +415,7 @@ describe("SPEC-MANDATE-1: onTarget wired into Session.proposeRate()", () => {
     s.proposeRate(0.1075);
     const credAfter = s.current.vars.credibility;
     expect(credBefore).toBe(25);
-    expect(credAfter).toBe(14); // 25 + 3 (onTarget=true) - 14 (dissent penalty)
+    expect(credAfter).toBe(4); // 25 + 3 (onTarget=true) - 24 (12 dissents × 2)
   });
 });
 

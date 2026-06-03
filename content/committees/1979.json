@@ -6,44 +6,98 @@
     {
       "id": "member.chair",
       "name": "member.chair.name",
-      "lean": "hawkish",
+      "inflation_coef": 2.0,
+      "output_coef": 0.3,
+      "inertia": 0.85,
       "competence": 0.95
+    },
+    {
+      "id": "member.vice_chair",
+      "name": "member.vice_chair.name",
+      "inflation_coef": 1.6,
+      "output_coef": 0.4,
+      "inertia": 0.88,
+      "competence": 0.85
     },
     {
       "id": "member.governor_a",
       "name": "member.governor_a.name",
-      "lean": "dovish",
+      "inflation_coef": 1.5,
+      "output_coef": 0.55,
+      "inertia": 0.88,
       "competence": 0.78
     },
     {
       "id": "member.governor_b",
       "name": "member.governor_b.name",
-      "lean": "hawkish",
+      "inflation_coef": 1.9,
+      "output_coef": 0.3,
+      "inertia": 0.85,
       "competence": 0.82
     },
     {
       "id": "member.governor_c",
       "name": "member.governor_c.name",
-      "lean": "neutral",
+      "inflation_coef": 1.65,
+      "output_coef": 0.4,
+      "inertia": 0.87,
       "competence": 0.72
     },
     {
       "id": "member.governor_d",
       "name": "member.governor_d.name",
-      "lean": "dovish",
+      "inflation_coef": 1.45,
+      "output_coef": 0.6,
+      "inertia": 0.88,
       "competence": 0.75
+    },
+    {
+      "id": "member.governor_e",
+      "name": "member.governor_e.name",
+      "inflation_coef": 1.7,
+      "output_coef": 0.35,
+      "inertia": 0.87,
+      "competence": 0.80
     },
     {
       "id": "member.regional_president_ny",
       "name": "member.regional_president_ny.name",
-      "lean": "hawkish",
-      "competence": 0.70
+      "inflation_coef": 1.75,
+      "output_coef": 0.4,
+      "inertia": 0.87,
+      "competence": 0.78
     },
     {
       "id": "member.regional_president_chicago",
       "name": "member.regional_president_chicago.name",
-      "lean": "neutral",
-      "competence": 0.68
+      "inflation_coef": 1.65,
+      "output_coef": 0.45,
+      "inertia": 0.88,
+      "competence": 0.74
+    },
+    {
+      "id": "member.regional_president_sf",
+      "name": "member.regional_president_sf.name",
+      "inflation_coef": 1.5,
+      "output_coef": 0.5,
+      "inertia": 0.88,
+      "competence": 0.72
+    },
+    {
+      "id": "member.regional_president_atlanta",
+      "name": "member.regional_president_atlanta.name",
+      "inflation_coef": 1.95,
+      "output_coef": 0.3,
+      "inertia": 0.86,
+      "competence": 0.70
+    },
+    {
+      "id": "member.regional_president_cleveland",
+      "name": "member.regional_president_cleveland.name",
+      "inflation_coef": 1.6,
+      "output_coef": 0.4,
+      "inertia": 0.88,
+      "competence": 0.71
     }
   ]
 }

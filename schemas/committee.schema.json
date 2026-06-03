@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://mandate.dev/schemas/committee.schema.json",
   "title": "Committee",
-  "description": "An FOMC-style committee. Logic only — name and desc are localization keys, not inline player-facing strings.",
+  "description": "An FOMC-style committee. SPEC-COMM-3: each member carries continuous Taylor-rule reaction coefficients (inflation_coef, output_coef, inertia) rather than the older hawkish/dovish/neutral trichotomy. Empirical anchors live in docs/research/2026-06-02-fomc-empirical-anchors.md.",
   "type": "object",
   "additionalProperties": false,
   "required": ["id", "name", "desc", "members"],
@@ -29,7 +29,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "name", "lean", "competence"],
+        "required": ["id", "name", "inflation_coef", "output_coef", "inertia", "competence"],
         "properties": {
           "id": {
             "type": "string",
@@ -41,16 +41,29 @@
             "pattern": "^[a-z][a-z0-9_.]+$",
             "description": "Localization key for the member name, e.g. member.chair.name."
           },
-          "lean": {
-            "type": "string",
-            "enum": ["hawkish", "dovish", "neutral"],
-            "description": "Policy preference lean of the member."
+          "inflation_coef": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 5,
+            "description": "Per-member weight on the inflation gap in the Taylor-rule preferred-rate computation. Empirical median ~1.7, hawks 1.8-2.0, doves 1.4-1.6."
+          },
+          "output_coef": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 5,
+            "description": "Per-member weight on the unemployment-gap term. memberPreferred subtracts `output_coef * (unemployment - target_unemployment)`, which is direction-equivalent to the classical Taylor rule's output-gap term. Empirical median ~0.4, hawks 0.25-0.35, doves 0.5-0.6."
+          },
+          "inertia": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Per-member smoothing on lagged policy rate; empirical range 0.85-0.92. High inertia is what makes the committee's preferred rates cluster meeting-to-meeting."
           },
           "competence": {
             "type": "number",
             "minimum": 0,
             "maximum": 1,
-            "description": "Member competence score in [0, 1]."
+            "description": "Member competence score in [0, 1]. Reserved for future stochastic mechanics."
           }
         }
       }
