@@ -10,14 +10,19 @@ needing an interactive session.
    about.
 2. Apply the **`agent-task`** label.
 3. That's it. The recurring agent picks up labelled issues in `created_at` order
-   on its next 5-hour fire.
+   on its next scheduled fire. The cadence is configured server-side in the
+   claude.ai routine — change it via the `/schedule` skill or
+   https://claude.ai/code/routines, not via this doc.
 
 ## What the agent does
 
 Each fire, before resuming its current plan work, the agent:
 
 1. Runs `gh issue list --state open --label agent-task --sort created --order asc --json number,title,body,createdAt`.
-   - **Non-zero exit (API error):** stop immediately; do not continue to plan work. Report the error.
+   - **Non-zero exit (API error):** stop immediately; do not continue to plan work.
+     Post a comment on the routine's tracking issue (or the latest PR if no
+     tracking issue exists) so the failure surfaces somewhere durable rather
+     than only in the routine's stdout.
    - **Empty list:** fall through to plan work normally.
 2. Picks the **oldest** issue and works only that one (no batching).
 3. **Dedup check:** verifies no open PR already references `#N` (guards against a
@@ -34,11 +39,15 @@ Each fire, before resuming its current plan work, the agent:
 - Touch issues that aren't labelled `agent-task`.
 - Push to `main` directly. Everything goes through PR review like normal slice
   work.
-- Change the routine's behaviour on its own. Adjusting the cadence, queue
-  semantics, or budget happens via this doc + an explicit user instruction.
-- Pile multiple PRs on a single issue. If the first attempt is rejected by
-  claude-review, the agent adds a comment on the issue explaining the blocker
-  and leaves the `agent-task` label removed. Re-apply the label to retry.
+- Change the routine's behaviour on its own. Cadence and queue semantics are
+  configured server-side in the claude.ai routine; budget rules (retry caps,
+  REQUEST_CHANGES limits) live in `docs/ralph-runbook.md`. Adjustments to
+  either happen via explicit user instruction.
+- Pile multiple PRs on a single issue. The `agent-task` label was already
+  removed at step 6 when the PR was opened. If `claude-review` later rejects
+  the PR, the agent adds a comment on the issue explaining the blocker; the
+  label stays removed, so the issue won't be re-picked-up. Re-apply the label
+  to retry.
 
 ## Tips for good agent-task issues
 
