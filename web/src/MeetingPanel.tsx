@@ -5,7 +5,7 @@
 
 import { useMemo, useState } from "react";
 import type { Session } from "../../src/engine/session";
-import type { FomcVote, MemberVotePreview } from "../../src/engine/fomc";
+import { VoteMissingVarError, type FomcVote, type MemberVotePreview } from "../../src/engine/fomc";
 import en from "../../content/localization/en.json";
 
 const loc = en as Record<string, string>;
@@ -25,8 +25,9 @@ export function MeetingPanel(props: { session: Session; currentDate: string }): 
     if (!Number.isFinite(parsedRate)) return null;
     try {
       return session.committeeBriefing(parsedRate);
-    } catch {
-      return null;
+    } catch (e) {
+      if (e instanceof VoteMissingVarError) return null;
+      throw e;
     }
   }, [session, parsedRate, currentDate]);
 
@@ -43,7 +44,9 @@ export function MeetingPanel(props: { session: Session; currentDate: string }): 
       const credAfter = session.current.vars.credibility ?? 0;
       setCredibilityDelta(credAfter - credBefore);
     } catch (e) {
-      setError((e as Error).message);
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error("proposeRate failed:", e);
+      setError(msg);
     }
   }
 

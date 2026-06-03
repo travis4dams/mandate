@@ -54,6 +54,22 @@ describe("App", () => {
     expect(container.textContent).toContain("Last vote:");
   });
 
+  // SPEC-WEB-4: Propose rate button is disabled outside a meeting month.
+  it("Propose rate button is disabled at a non-meeting month", () => {
+    // SPEC-WEB-4
+    render(<App />);
+    // 1979-08 (month 8) and 1979-09 (month 9) are both meeting months.
+    // 1979-10 (month 10) is not in the schedule → button must be disabled.
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: "Advance 1 month" }));
+    });
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: "Advance 1 month" }));
+    });
+    const proposeButton = screen.getByRole("button", { name: "Propose rate" }) as HTMLButtonElement;
+    expect(proposeButton.disabled).toBe(true);
+  });
+
   // SPEC-WEB-5: "Advance to next meeting" advances exactly to the next meeting month.
   // From 1979-08 the next meeting month per the schedule is 1979-09 (month 9 in the list).
   it("Advance-to-next-meeting lands on the next scheduled meeting month", () => {

@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach } from "vitest";
 import {
   vote,
+  previewVote,
   loadCommitteeParams,
   _resetCommitteeParamsCache,
   VoteMissingVarError,
@@ -268,6 +269,83 @@ describe("vote", () => {
     const state = makeState({ vars: { inflation: 0.22, unemployment: 0.04 } });
     const result = vote(committee, 0.05, state, PARAMS);
     expect(result.dissents).toBe(0);
+  });
+});
+
+describe("previewVote", () => {
+  // SPEC-WEB-4: per-member preferred rates and wouldDissent match the vote() computation
+  it("returns correct preferred rate and wouldDissent for each member", () => {
+    // gap_inflation = 0.10; hawkish preferred = 0.05 + 1.5 * 0.10 = 0.20 → dissent
+    // dovish: gap_unemp = 0; preferred = 0.05; |0.05 - 0.05| = 0 → no dissent
+    const committee = makeCommittee(["hawkish", "dovish"]);
+    const state = makeState({ vars: { inflation: 0.12, unemployment: 0.04 } });
+    const result = previewVote(committee, 0.05, state, PARAMS);
+
+    expect(result.previews).toHaveLength(2);
+    expect(result.previews[0].lean).toBe("hawkish");
+    expect(result.previews[0].preferred).toBeCloseTo(0.20, 10);
+    expect(result.previews[0].wouldDissent).toBe(true);
+    expect(result.previews[1].lean).toBe("dovish");
+    expect(result.previews[1].preferred).toBeCloseTo(0.05, 10);
+    expect(result.previews[1].wouldDissent).toBe(false);
+  });
+
+  // SPEC-WEB-4: gapInflation and gapUnemployment are relative to params targets
+  it("exposes correct gap values relative to params targets", () => {
+    const committee = makeCommittee(["neutral"]);
+    const state = makeState({ vars: { inflation: 0.07, unemployment: 0.06 } });
+    const result = previewVote(committee, 0.05, state, PARAMS);
+
+    expect(result.gapInflation).toBeCloseTo(0.07 - PARAMS.target_inflation, 10);
+    expect(result.gapUnemployment).toBeCloseTo(0.06 - PARAMS.target_unemployment, 10);
+  });
+
+  // SPEC-WEB-4: wouldDissent count matches the dissents from vote()
+  it("wouldDissent count in previews matches vote() dissents", () => {
+    const committee = makeCommittee(["hawkish", "hawkish", "dovish", "neutral"]);
+    const state = makeState({ vars: { inflation: 0.12, unemployment: 0.04 } });
+    const proposed = 0.05;
+
+    const voteResult = vote(committee, proposed, state, PARAMS);
+    const previewResult = previewVote(committee, proposed, state, PARAMS);
+
+    const previewDissents = previewResult.previews.filter((p) => p.wouldDissent).length;
+    expect(previewDissents).toBe(voteResult.dissents);
+  });
+
+  // SPEC-WEB-4: throws VoteMissingVarError for missing/non-finite state vars
+  it("throws VoteMissingVarError when inflation is missing", () => {
+    const committee = makeCommittee(["hawkish"]);
+    const state = makeState({ vars: { unemployment: 0.04 } });
+    expect(() => previewVote(committee, 0.05, state, PARAMS)).toThrow(VoteMissingVarError);
+  });
+
+  it("throws VoteMissingVarError when unemployment is missing", () => {
+    const committee = makeCommittee(["dovish"]);
+    const state = makeState({ vars: { inflation: 0.02 } });
+    expect(() => previewVote(committee, 0.05, state, PARAMS)).toThrow(VoteMissingVarError);
+  });
+
+  it("throws VoteMissingVarError when inflation is NaN", () => {
+    const committee = makeCommittee(["neutral"]);
+    const state = makeState({ vars: { inflation: NaN, unemployment: 0.04 } });
+    expect(() => previewVote(committee, 0.05, state, PARAMS)).toThrow(VoteMissingVarError);
+  });
+
+  // SPEC-WEB-4: throws for non-finite proposedRate
+  it("throws when proposedRate is NaN", () => {
+    const committee = makeCommittee(["neutral"]);
+    const state = makeState({ vars: { inflation: 0.05, unemployment: 0.04 } });
+    expect(() => previewVote(committee, NaN, state, PARAMS)).toThrow(/not finite/);
+  });
+
+  // SPEC-WEB-4: pure function — does not mutate input state
+  it("does not mutate the input state", () => {
+    const committee = makeCommittee(["hawkish", "dovish"]);
+    const state = makeState({ vars: { inflation: 0.08, unemployment: 0.06 } });
+    const inflationBefore = state.vars.inflation;
+    previewVote(committee, 0.08, state, PARAMS);
+    expect(state.vars.inflation).toBe(inflationBefore);
   });
 });
 

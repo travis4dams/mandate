@@ -9,7 +9,7 @@
 // transitive imports (clock.ts, fomc.ts, etc.) run their eager loadValidatedFile
 // calls at module top.
 import "./engine-content";
-import { useMemo, useSyncExternalStore } from "react";
+import { useRef, useSyncExternalStore } from "react";
 import { Session } from "../../src/engine/session";
 import type { GameStateSnapshot } from "../../src/engine/state";
 
@@ -18,12 +18,16 @@ export function useSession(
   seed: number,
   committeeId: string,
 ): { session: Session; current: GameStateSnapshot; trajectory: readonly GameStateSnapshot[] } {
-  const session = useMemo(
-    () => Session.fromScenario(scenarioId, seed, committeeId),
-    [scenarioId, seed, committeeId],
-  );
+  // useRef so the Session is created once per mount and never discarded when
+  // scenarioId/seed/committeeId identity changes (e.g. parent re-renders with
+  // new literals). useMemo would silently drop accumulated history on re-render.
+  const sessionRef = useRef<Session | null>(null);
+  if (sessionRef.current === null) {
+    sessionRef.current = Session.fromScenario(scenarioId, seed, committeeId);
+  }
+  const session = sessionRef.current;
 
-  const subscribe = useMemo(() => session.subscribe.bind(session), [session]);
+  const subscribe = session.subscribe.bind(session);
   // useSyncExternalStore requires identity-stable getSnapshot return values across
   // no-op reads. Session.current and Session.trajectory are referentially stable
   // (rebuilt only on mutation), which is the SPEC-SESSION-0 contract.

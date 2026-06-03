@@ -3,11 +3,13 @@
 // meeting panel + advance-to-next-meeting / stance controls so the Chair has
 // actual levers, not just a time-advance button.
 
+import { useState } from "react";
 import { useSession } from "./useSession";
 import { MeetingPanel } from "./MeetingPanel";
 import type { Session } from "../../src/engine/session";
 
 export function Dashboard(): JSX.Element {
+  const [btnError, setBtnError] = useState<string | null>(null);
   const { session, current, trajectory } = useSession(
     "scen.1979_stagflation",
     42,
@@ -54,33 +56,33 @@ export function Dashboard(): JSX.Element {
       <MeetingPanel session={session} currentDate={current.date} />
 
       <section style={{ display: "flex", flexWrap: "wrap", gap: 8, margin: "16px 0" }}>
-        <button onClick={() => session.advance(1)}>Advance 1 month</button>
-        <button onClick={() => session.advance(3)}>Advance 3 months</button>
-        <button onClick={() => session.advance(12)}>Advance 12 months</button>
-        <button onClick={() => advanceToNextMeeting(session)}>Advance to next meeting</button>
-        <button onClick={() => session.reset()}>Reset</button>
+        <button onClick={() => { try { session.advance(1); setBtnError(null); } catch (e) { setBtnError(e instanceof Error ? e.message : String(e)); } }}>Advance 1 month</button>
+        <button onClick={() => { try { session.advance(3); setBtnError(null); } catch (e) { setBtnError(e instanceof Error ? e.message : String(e)); } }}>Advance 3 months</button>
+        <button onClick={() => { try { session.advance(12); setBtnError(null); } catch (e) { setBtnError(e instanceof Error ? e.message : String(e)); } }}>Advance 12 months</button>
+        <button onClick={() => { try { advanceToNextMeeting(session); setBtnError(null); } catch (e) { setBtnError(e instanceof Error ? e.message : String(e)); } }}>Advance to next meeting</button>
+        <button onClick={() => { try { session.reset(); setBtnError(null); } catch (e) { setBtnError(e instanceof Error ? e.message : String(e)); } }}>Reset</button>
       </section>
+
+      {btnError !== null && (
+        <p style={{ color: "#c92a2a", fontSize: 13, margin: "4px 0 12px" }}>{btnError}</p>
+      )}
 
       <section style={{ display: "flex", gap: 8, alignItems: "center", margin: "16px 0" }}>
         <span style={{ fontSize: 13, color: "#666" }}>Forward-guidance stance:</span>
-        <button onClick={() => session.setForwardGuidanceStance("hawkish")}>Hawkish</button>
-        <button onClick={() => session.setForwardGuidanceStance("neutral")}>Neutral</button>
-        <button onClick={() => session.setForwardGuidanceStance("dovish")}>Dovish</button>
-        <span style={{ fontSize: 12, color: "#999" }}>
-          (Scales the credibility-recovery rate per SPEC-GUIDE-1; effect only fires once credibility ≥ 60.)
-        </span>
+        <button onClick={() => { try { session.setForwardGuidanceStance("hawkish"); setBtnError(null); } catch (e) { setBtnError(e instanceof Error ? e.message : String(e)); } }}>Hawkish</button>
+        <button onClick={() => { try { session.setForwardGuidanceStance("neutral"); setBtnError(null); } catch (e) { setBtnError(e instanceof Error ? e.message : String(e)); } }}>Neutral</button>
+        <button onClick={() => { try { session.setForwardGuidanceStance("dovish"); setBtnError(null); } catch (e) { setBtnError(e instanceof Error ? e.message : String(e)); } }}>Dovish</button>
       </section>
     </div>
   );
 }
 
 function advanceToNextMeeting(session: Session): void {
-  // Tick forward one month at a time until isMeetingMonth() is true. Bounded at
-  // 12 to avoid runaway loops if the meeting calendar were ever empty.
   for (let i = 0; i < 12; i++) {
     session.advance(1);
     if (session.isMeetingMonth()) return;
   }
+  throw new Error("No meeting month found within the next 12 months.");
 }
 
 function Stat(props: { label: string; value: string }): JSX.Element {
