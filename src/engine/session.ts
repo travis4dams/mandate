@@ -120,9 +120,6 @@ export class Session {
   // Replay to apply actions from (null when constructed from scenario only).
   private readonly _replay: Replay | null;
 
-  // Stored seed for future stochastic mechanics (SESSION-0: unused in dynamics).
-  private readonly _seed: number;
-
   // Committee id used by proposeRate; passed as a required factory argument.
   private readonly _committeeId: string;
 
@@ -135,8 +132,10 @@ export class Session {
   // Snapshot of the initial state so reset() can restore it without re-loading content.
   private readonly _initialState: GameState;
 
-  private constructor(initialState: GameState, seed: number, replay: Replay | null, committeeId: string) {
-    this._seed = seed;
+  // The `_seed` parameter is accepted positionally to preserve the public factory
+  // signatures (SPEC-SESSION-0: `fromScenario(scenarioId, seed, committeeId)`). It is
+  // currently unused — a future spec will wire stochastic mechanics through it.
+  private constructor(initialState: GameState, _seed: number, replay: Replay | null, committeeId: string) {
     this._replay = replay;
     this._committeeId = committeeId;
     this._initialState = initialState;
@@ -150,7 +149,7 @@ export class Session {
 
   /**
    * Construct a Session from a scenario content file.
-   * The seed is stored for future stochastic use (SESSION-0: deterministic substrate only).
+   * seed is accepted for API stability (SPEC-SESSION-0 factory signature); stochastic mechanics are not yet wired.
    * committeeId identifies the FOMC committee used by proposeRate (e.g. "comm.fomc_1979").
    */
   static fromScenario(scenarioId: string, seed: number, committeeId: string): Session {
@@ -220,7 +219,9 @@ export class Session {
       throw new Error(`Session.advance: months must be a positive integer, got ${months}.`);
     }
 
-    // Checkpoint for mid-loop rollback: capture mutable state before we begin.
+    // Checkpoint for mid-loop rollback: capture the current state reference.
+    // Safe because all tick/spiral/dynamics functions are pure (CLAUDE.md) — they
+    // return new GameState objects and never mutate in place, so this ref stays valid.
     const checkpointState = this._state;
     const checkpointTrajectoryLength = this._trajectoryInternal.length;
 
