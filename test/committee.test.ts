@@ -101,6 +101,24 @@ describe("committee schema validation", () => {
     }
   });
 
+  // SPEC-COMM-3: output_coef shares the [0, 5] upper bound — symmetry with inflation_coef.
+  it("rejects a member with output_coef out of range", () => {
+    const dir = join(tmpdir(), `mandate-test-comm-out-${process.pid}`);
+    mkdirSync(dir, { recursive: true });
+    try {
+      const bad = {
+        id: "comm.test_out",
+        name: "comm.test_out.name",
+        desc: "comm.test_out.desc",
+        members: [M("member.chair", "member.chair.name", { output_coef: 50 })],
+      };
+      writeFileSync(join(dir, "bad.json"), JSON.stringify(bad));
+      expect(() => loadValidated(COMMITTEE_SCHEMA, dir)).toThrow(/output_coef/);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   // SPEC-COMM-3: inertia is a smoothing weight in [0, 1].
   it("rejects a member with inertia > 1", () => {
     const dir = join(tmpdir(), `mandate-test-comm-inertia-${process.pid}`);

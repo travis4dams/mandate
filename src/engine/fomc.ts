@@ -55,11 +55,13 @@ function memberPreferred(
   return member.inertia * laggedRate + (1 - member.inertia) * taylor;
 }
 
-/** Per-member preview of how an FOMC vote would land. Pure; returns fresh objects. */
 export interface MemberVotePreview {
   readonly memberId: string;
   readonly nameKey: string;
   readonly preferred: number;
+  /** True iff `|preferred - proposedRate| > params.dissent_tolerance` for the
+   *  `proposedRate` passed to the previewVote() call that produced this preview.
+   *  Re-evaluating with a different proposed rate requires a fresh previewVote(). */
   readonly wouldDissent: boolean;
 }
 

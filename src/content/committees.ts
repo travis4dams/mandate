@@ -12,7 +12,9 @@ export interface CommitteeMember {
   name: string;
   /** Per-member weight on the inflation gap (target ≈ 1.7, hawks 1.8-2.0, doves 1.4-1.6). */
   inflation_coef: number;
-  /** Per-member weight on the unemployment-gap term (sign-inverted output gap). */
+  /** Per-member weight on the unemployment-gap term. memberPreferred subtracts
+   *  `output_coef * (unemployment - target_unemployment)`, which is direction-
+   *  equivalent to the classical Taylor rule's output-gap term. */
   output_coef: number;
   /** Smoothing on lagged policy rate (empirical 0.85-0.92). High inertia is what makes the dots cluster. */
   inertia: number;

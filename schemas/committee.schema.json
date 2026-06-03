@@ -51,7 +51,7 @@
             "type": "number",
             "minimum": 0,
             "maximum": 5,
-            "description": "Per-member weight on the unemployment-gap term (sign-inverted output gap). Empirical median ~0.4, hawks 0.25-0.35, doves 0.5-0.6."
+            "description": "Per-member weight on the unemployment-gap term. memberPreferred subtracts `output_coef * (unemployment - target_unemployment)`, which is direction-equivalent to the classical Taylor rule's output-gap term. Empirical median ~0.4, hawks 0.25-0.35, doves 0.5-0.6."
           },
           "inertia": {
             "type": "number",
