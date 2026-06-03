@@ -64,7 +64,6 @@
   "ui.meeting_panel.last_vote_label": "Last vote:",
   "ui.meeting_panel.dissent": "DISSENT",
   "ui.meeting_panel.approve": "approve",
-  "ui.meeting_panel.no_meeting_found": "No meeting month found within the next 12 months.",
   "ui.meeting_panel.briefing.inflation_gap_label": "Inflation gap from target:",
   "ui.meeting_panel.briefing.unemployment_gap_label": "Unemployment gap from target:",
   "ui.meeting_panel.rate_aria_label": "Proposed policy rate",
@@ -83,6 +82,5 @@
   "ui.meeting_panel.briefing.pp_suffix": "pp",
   "ui.meeting_panel.briefing.target_prefix": "(target ",
   "ui.meeting_panel.briefing.target_suffix": ")",
-  "ui.meeting_panel.no_meeting_found_dev": "advanceToNextMeeting: bounded loop completed without landing on a meeting month — check content/engine/meeting-schedule.json.",
   "ui.dashboard.no_meeting_in_12mo": "No FOMC meeting in the next 12 months — check the meeting schedule."
 }

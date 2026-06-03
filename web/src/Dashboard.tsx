@@ -68,11 +68,16 @@ export function Dashboard(): JSX.Element {
         <button onClick={() => run(() => {
           try {
             advanceToNextMeeting(session);
-          } catch {
-            // The helper throws a developer-facing message; the user sees the
-            // localized version. Anything other than the bounded-loop case
-            // would already have surfaced through `session.advance()`.
-            throw new Error(t("ui.dashboard.no_meeting_in_12mo"));
+          } catch (e) {
+            // Match ONLY the bounded-loop helper error; re-throw anything else
+            // unchanged so real engine/content failures from session.advance()
+            // surface as themselves rather than being misreported as
+            // "no meeting in 12 months".
+            const msg = e instanceof Error ? e.message : String(e);
+            if (msg.startsWith("advanceToNextMeeting:")) {
+              throw new Error(t("ui.dashboard.no_meeting_in_12mo"));
+            }
+            throw e;
           }
         })}>{t("ui.dashboard.button.advance_to_meeting")}</button>
         <button onClick={() => run(() => session.reset())}>{t("ui.dashboard.button.reset")}</button>
