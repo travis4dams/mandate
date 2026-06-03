@@ -128,6 +128,19 @@ describe("App", () => {
     expect(container.textContent).toContain("1979-11");
   });
 
+  // SPEC-WEB-5: "Advance to next meeting" from a meeting month skips to the *next*
+  // meeting, not the current one (loop starts at i=1, not i=0).
+  it("Advance to next meeting skips current meeting month and lands on the next one", () => {
+    // SPEC-WEB-5
+    const { container } = render(<App />);
+    // Initial state is 1979-08 (August = meeting month). The button should advance
+    // to 1979-09 (September = also a meeting month), not stay at 1979-08.
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: "Advance to next meeting" }));
+    });
+    expect(container.textContent).toContain("1979-09");
+  });
+
   // SPEC-WEB-5: hawkish stance button calls setForwardGuidanceStance.
   // We verify it doesn't throw (engine wiring) rather than inspecting internal state.
   it("hawkish stance button does not throw", () => {

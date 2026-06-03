@@ -193,7 +193,7 @@ describe("vote", () => {
   });
 
   it("previewVote throws when proposedRate is Infinity", () => {
-    // SPEC-COMM-3: symmetric guard with NaN — both are non-finite.
+    // SPEC-COMM-2: symmetric guard with NaN — both non-finite proposedRates throw.
     const c = committeeOf([member("a")]);
     const state = macroState({ inflation: 0.05, unemployment: 0.04 });
     expect(() => previewVote(c, Infinity, state, PARAMS)).toThrow(/proposedRate .* not finite/);

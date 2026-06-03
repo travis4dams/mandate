@@ -66,5 +66,17 @@
   "ui.meeting_panel.approve": "approve",
   "ui.meeting_panel.no_meeting_found": "No meeting month found within the next 12 months.",
   "ui.meeting_panel.briefing.inflation_gap_label": "Inflation gap from target:",
-  "ui.meeting_panel.briefing.unemployment_gap_label": "Unemployment gap from target:"
+  "ui.meeting_panel.briefing.unemployment_gap_label": "Unemployment gap from target:",
+  "ui.meeting_panel.rate_aria_label": "Proposed policy rate",
+  "ui.meeting_panel.decided_rate": "decided rate",
+  "ui.meeting_panel.dissents_label": "dissents",
+  "ui.meeting_panel.credibility_label": "credibility",
+  "ui.meeting_panel.briefing.col_member": "Member",
+  "ui.meeting_panel.briefing.col_preferred_rate": "Preferred rate",
+  "ui.meeting_panel.briefing.col_delta": "Δ from proposed",
+  "ui.meeting_panel.briefing.col_vote": "Vote",
+  "ui.meeting_panel.briefing.at_proposed_rate": "At this proposed rate:",
+  "ui.meeting_panel.briefing.dissents_of": "of",
+  "ui.meeting_panel.briefing.dissent_singular": "dissent",
+  "ui.meeting_panel.briefing.dissent_plural": "dissents"
 }

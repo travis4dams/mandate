@@ -22,6 +22,11 @@ export function Dashboard(): JSX.Element {
     "comm.fomc_1979",
   );
 
+  function run(action: () => void): void {
+    try { action(); setBtnError(null); }
+    catch (e) { setBtnError(e instanceof Error ? e.message : String(e)); }
+  }
+
   return (
     <div style={{ fontFamily: "system-ui, sans-serif", maxWidth: 960, margin: "0 auto", padding: "24px" }}>
       <header>
@@ -57,18 +62,18 @@ export function Dashboard(): JSX.Element {
       <MeetingPanel session={session} />
 
       <section style={{ display: "flex", flexWrap: "wrap", gap: 8, margin: "16px 0" }}>
-        <button onClick={() => { try { session.advance(1); setBtnError(null); } catch (e) { setBtnError(e instanceof Error ? e.message : String(e)); } }}>{t("ui.dashboard.button.advance_1")}</button>
-        <button onClick={() => { try { session.advance(3); setBtnError(null); } catch (e) { setBtnError(e instanceof Error ? e.message : String(e)); } }}>{t("ui.dashboard.button.advance_3")}</button>
-        <button onClick={() => { try { session.advance(12); setBtnError(null); } catch (e) { setBtnError(e instanceof Error ? e.message : String(e)); } }}>{t("ui.dashboard.button.advance_12")}</button>
-        <button onClick={() => { try { advanceToNextMeeting(session); setBtnError(null); } catch (e) { setBtnError(e instanceof Error ? e.message : String(e)); } }}>{t("ui.dashboard.button.advance_to_meeting")}</button>
-        <button onClick={() => { try { session.reset(); setBtnError(null); } catch (e) { setBtnError(e instanceof Error ? e.message : String(e)); } }}>{t("ui.dashboard.button.reset")}</button>
+        <button onClick={() => run(() => session.advance(1))}>{t("ui.dashboard.button.advance_1")}</button>
+        <button onClick={() => run(() => session.advance(3))}>{t("ui.dashboard.button.advance_3")}</button>
+        <button onClick={() => run(() => session.advance(12))}>{t("ui.dashboard.button.advance_12")}</button>
+        <button onClick={() => run(() => advanceToNextMeeting(session))}>{t("ui.dashboard.button.advance_to_meeting")}</button>
+        <button onClick={() => run(() => session.reset())}>{t("ui.dashboard.button.reset")}</button>
       </section>
 
       <section style={{ display: "flex", gap: 8, alignItems: "center", margin: "16px 0" }}>
         <span style={{ fontSize: 13, color: "#666" }}>{t("ui.dashboard.guidance_label")}</span>
-        <button onClick={() => { try { session.setForwardGuidanceStance("hawkish"); setBtnError(null); } catch (e) { setBtnError(e instanceof Error ? e.message : String(e)); } }}>{t("ui.dashboard.button.hawkish")}</button>
-        <button onClick={() => { try { session.setForwardGuidanceStance("neutral"); setBtnError(null); } catch (e) { setBtnError(e instanceof Error ? e.message : String(e)); } }}>{t("ui.dashboard.button.neutral")}</button>
-        <button onClick={() => { try { session.setForwardGuidanceStance("dovish"); setBtnError(null); } catch (e) { setBtnError(e instanceof Error ? e.message : String(e)); } }}>{t("ui.dashboard.button.dovish")}</button>
+        <button onClick={() => run(() => session.setForwardGuidanceStance("hawkish"))}>{t("ui.dashboard.button.hawkish")}</button>
+        <button onClick={() => run(() => session.setForwardGuidanceStance("neutral"))}>{t("ui.dashboard.button.neutral")}</button>
+        <button onClick={() => run(() => session.setForwardGuidanceStance("dovish"))}>{t("ui.dashboard.button.dovish")}</button>
       </section>
 
       {btnError !== null && (

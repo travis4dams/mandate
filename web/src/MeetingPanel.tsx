@@ -5,7 +5,7 @@
 
 import { useMemo, useState } from "react";
 import type { Session } from "../../src/engine/session";
-import { VoteMissingVarError, type FomcVote, type MemberVotePreview } from "../../src/engine/fomc";
+import { type FomcVote, type MemberVotePreview } from "../../src/engine/fomc";
 import { t } from "./loc";
 
 export function MeetingPanel(props: { session: Session }): JSX.Element {
@@ -19,26 +19,22 @@ export function MeetingPanel(props: { session: Session }): JSX.Element {
   const [lastVote, setLastVote] = useState<FomcVote | null>(null);
   const [credibilityDelta, setCredibilityDelta] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [briefingError, setBriefingError] = useState<string | null>(null);
 
   const parsedRate = parseFloat(rateInput);
 
-  const briefing = useMemo(() => {
+  const briefingResult = useMemo(():
+    | { ok: true; briefing: ReturnType<Session["committeeBriefing"]> }
+    | { ok: false; error: string }
+    | null => {
     if (!Number.isFinite(parsedRate)) return null;
     try {
-      return session.committeeBriefing(parsedRate);
+      return { ok: true, briefing: session.committeeBriefing(parsedRate) };
     } catch (e) {
-      // VoteMissingVarError means state vars are missing — don't crash the panel.
-      if (e instanceof VoteMissingVarError) {
-        setBriefingError(e.message);
-        return null;
-      }
-      // Any other error is unexpected — surface it and return null rather than
-      // re-throwing inside useMemo, which would crash the render tree.
-      setBriefingError(e instanceof Error ? e.message : String(e));
-      return null;
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
   }, [session, parsedRate, currentDate]);
+  const briefing = briefingResult?.ok ? briefingResult.briefing : null;
+  const briefingError = briefingResult && !briefingResult.ok ? briefingResult.error : null;
 
   function onPropose(): void {
     setError(null);
@@ -48,12 +44,14 @@ export function MeetingPanel(props: { session: Session }): JSX.Element {
       setError(`"${rateInput}" is not a finite number.`);
       return;
     }
-    const credBefore = session.current.vars.credibility ?? 0;
+    const credBefore = session.current.vars.credibility;
     try {
       const vote = session.proposeRate(parsedRate);
       setLastVote(vote);
-      const credAfter = session.current.vars.credibility ?? 0;
-      setCredibilityDelta(credAfter - credBefore);
+      const credAfter = session.current.vars.credibility;
+      setCredibilityDelta(
+        credBefore !== undefined && credAfter !== undefined ? credAfter - credBefore : null,
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
@@ -85,7 +83,7 @@ export function MeetingPanel(props: { session: Session }): JSX.Element {
           value={rateInput}
           onChange={(e) => setRateInput(e.target.value)}
           style={{ width: 100, padding: "4px 6px", fontFamily: "monospace" }}
-          aria-label="Proposed policy rate"
+          aria-label={t("ui.meeting_panel.rate_aria_label")}
         />
         <button onClick={onPropose} disabled={!isMeeting} data-testid="propose-rate-btn">
           {t("ui.meeting_panel.propose_button")}
@@ -114,11 +112,11 @@ export function MeetingPanel(props: { session: Session }): JSX.Element {
       {lastVote !== null && (
         <div style={{ marginTop: 10, fontSize: 13 }}>
           <strong>{t("ui.meeting_panel.last_vote_label")}</strong>{" "}
-          decided rate {(lastVote.decided * 100).toFixed(2)}% ·{" "}
-          dissents {lastVote.dissents}
+          {t("ui.meeting_panel.decided_rate")} {(lastVote.decided * 100).toFixed(2)}% ·{" "}
+          {t("ui.meeting_panel.dissents_label")} {lastVote.dissents}
           {credibilityDelta !== null && (
             <>
-              {" "}· credibility {credibilityDelta >= 0 ? "+" : ""}
+              {" "}· {t("ui.meeting_panel.credibility_label")} {credibilityDelta >= 0 ? "+" : ""}
               {credibilityDelta.toFixed(2)}
             </>
           )}
@@ -149,10 +147,10 @@ function CommitteeBriefing(props: {
       <table style={{ width: "100%", fontSize: 13, borderCollapse: "collapse" }}>
         <thead>
           <tr style={{ background: "#f0f0f0", textAlign: "left" }}>
-            <th style={{ padding: "4px 6px" }}>Member</th>
-            <th style={{ padding: "4px 6px", textAlign: "right" }}>Preferred rate</th>
-            <th style={{ padding: "4px 6px", textAlign: "right" }}>Δ from proposed</th>
-            <th style={{ padding: "4px 6px" }}>Vote</th>
+            <th style={{ padding: "4px 6px" }}>{t("ui.meeting_panel.briefing.col_member")}</th>
+            <th style={{ padding: "4px 6px", textAlign: "right" }}>{t("ui.meeting_panel.briefing.col_preferred_rate")}</th>
+            <th style={{ padding: "4px 6px", textAlign: "right" }}>{t("ui.meeting_panel.briefing.col_delta")}</th>
+            <th style={{ padding: "4px 6px" }}>{t("ui.meeting_panel.briefing.col_vote")}</th>
           </tr>
         </thead>
         <tbody>
@@ -177,7 +175,13 @@ function CommitteeBriefing(props: {
         </tbody>
       </table>
       <div style={{ marginTop: 6, fontSize: 12, color: "#666" }}>
-        At this proposed rate: <strong>{dissents}</strong> of {props.previews.length} {t("ui.meeting_panel.dissent").toLowerCase()}{dissents === 1 ? "s" : ""}.
+        {t("ui.meeting_panel.briefing.at_proposed_rate")}{" "}
+        <strong>{dissents}</strong>{" "}
+        {t("ui.meeting_panel.briefing.dissents_of")}{" "}
+        {props.previews.length}{" "}
+        {dissents === 1
+          ? t("ui.meeting_panel.briefing.dissent_singular")
+          : t("ui.meeting_panel.briefing.dissent_plural")}.
       </div>
     </div>
   );
