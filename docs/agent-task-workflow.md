@@ -14,15 +14,20 @@ needing an interactive session.
 
 ## What the agent does
 
-Each fire, before resuming the slice-2 PRD work, the agent:
+Each fire, before resuming its current plan work, the agent:
 
-1. Runs `gh issue list --state open --label agent-task --sort created --json number,title,body,createdAt`.
+1. Runs `gh issue list --state open --label agent-task --sort created --order asc --json number,title,body,createdAt`.
+   - **Non-zero exit (API error):** stop immediately; do not continue to plan work. Report the error.
+   - **Empty list:** fall through to plan work normally.
 2. Picks the **oldest** issue and works only that one (no batching).
-3. Opens a PR titled with the issue number (e.g. `Fixes #42 — <short summary>`)
+3. **Dedup check:** verifies no open PR already references `#N` (guards against a
+   mid-run interruption creating a duplicate). If one exists, skip to plan work.
+4. Opens a PR titled with the issue number (e.g. `Fixes #42 — <short summary>`)
    and links the issue in the PR body.
-4. Comments on the issue with the PR URL once it's open.
-5. **Removes the `agent-task` label** from the issue when the PR is opened. The
-   issue stays open until you close it — that's your verification step.
+5. Comments on the issue with the PR URL.
+6. **Removes the `agent-task` label** only after steps 4 and 5 both succeed.
+   If either step fails, the label is left in place so the issue stays in the queue.
+   The issue itself stays open until you close it — that's your verification step.
 
 ## What the agent will NOT do
 
@@ -31,8 +36,9 @@ Each fire, before resuming the slice-2 PRD work, the agent:
   work.
 - Change the routine's behaviour on its own. Adjusting the cadence, queue
   semantics, or budget happens via this doc + an explicit user instruction.
-- Pile multiple PRs on a single issue. If the first attempt is rejected, the
-  agent escalates rather than spinning.
+- Pile multiple PRs on a single issue. If the first attempt is rejected by
+  claude-review, the agent adds a comment on the issue explaining the blocker
+  and leaves the `agent-task` label removed. Re-apply the label to retry.
 
 ## Tips for good agent-task issues
 
