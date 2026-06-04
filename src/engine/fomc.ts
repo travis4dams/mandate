@@ -99,9 +99,9 @@ export function previewVote(
   }
   const { laggedRate, gapInflation, gapUnemployment } = readGuardedVars(state, params);
   const previews = committee.members.map((m) => {
-    if (!Number.isFinite(m.compromise_band) || m.compromise_band < 0) {
+    if (!Number.isFinite(m.compromise_band) || m.compromise_band < 0 || m.compromise_band > 0.5) {
       throw new Error(
-        `previewVote: member "${m.id}" has invalid compromise_band (${m.compromise_band}); expected a finite non-negative number.`,
+        `previewVote: member "${m.id}" has invalid compromise_band (${m.compromise_band}); expected a finite number in [0, 0.5].`,
       );
     }
     const preferred = memberPreferred(m, laggedRate, gapInflation, gapUnemployment, params);

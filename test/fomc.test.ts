@@ -90,11 +90,12 @@ describe("vote", () => {
   });
 
   // SPEC-COMM-2: members whose preferred is within their own compromise_band vote yes.
-  it("proposing the median-member-preferred rate produces zero dissents in a balanced committee", () => {
+  it("proposing a rate near each member's preferred produces zero dissents in a balanced committee", () => {
     const c = committeeOf([member("a"), member("b"), member("c")]);
     const state = macroState({ inflation: 0.05, unemployment: 0.05, policy_rate: 0.06 });
     // Member preferred = 0.88 * 0.06 + 0.12 * (0.05 + 1.7 * 0.03 - 0.4 * 0.01)
     //                  = 0.0528 + 0.12 * 0.097 = 0.0528 + 0.01164 = 0.06444
+    // Proposing 0.0645 → |0.06444 - 0.0645| ≈ 0.00006 < compromise_band(0.005) → no dissent.
     const result = vote(c, 0.0645, state, PARAMS);
     expect(result.dissents).toBe(0);
   });
@@ -272,16 +273,37 @@ describe("vote", () => {
     expect(vote(c, 0.057, state, PARAMS).dissents).toBe(2);
   });
 
-  // SPEC-COMM-4: NaN compromise_band throws rather than silently making member always assent.
+  // SPEC-COMM-4: invalid compromise_band throws rather than silently making member always assent/dissent.
   it("SPEC-COMM-4: previewVote throws when a member has NaN compromise_band", () => {
     const c = committeeOf([member("a", { compromise_band: NaN })]);
     const state = macroState({ inflation: 0.02, unemployment: 0.04, policy_rate: 0.05 });
     expect(() => previewVote(c, 0.05, state, PARAMS)).toThrow(/invalid compromise_band/);
   });
 
+  it("SPEC-COMM-4: vote() throws when a member has NaN compromise_band", () => {
+    const c = committeeOf([member("a", { compromise_band: NaN })]);
+    const state = macroState({ inflation: 0.02, unemployment: 0.04, policy_rate: 0.05 });
+    expect(() => vote(c, 0.05, state, PARAMS)).toThrow(/invalid compromise_band/);
+  });
+
   it("SPEC-COMM-4: previewVote throws when a member has negative compromise_band", () => {
     const c = committeeOf([member("a", { compromise_band: -0.001 })]);
     const state = macroState({ inflation: 0.02, unemployment: 0.04, policy_rate: 0.05 });
     expect(() => previewVote(c, 0.05, state, PARAMS)).toThrow(/invalid compromise_band/);
+  });
+
+  it("SPEC-COMM-4: previewVote throws when compromise_band exceeds maximum (0.5)", () => {
+    const c = committeeOf([member("a", { compromise_band: 5.0 })]);
+    const state = macroState({ inflation: 0.02, unemployment: 0.04, policy_rate: 0.05 });
+    expect(() => previewVote(c, 0.05, state, PARAMS)).toThrow(/invalid compromise_band/);
+  });
+
+  // SPEC-COMM-4: backward-compatibility — uniform bands equal to old global default reproduce prior behavior.
+  it("SPEC-COMM-4: uniform 0.005 bands reproduce prior dissent count (backward-compat regression)", () => {
+    // All members use the old global default (0.005 = 50bp). Behavior must match the pre-SPEC-COMM-4 world.
+    // Inflation 6pp above target; each member's preferred ≈ 0.062; |0.062 - 0.05| = 0.012 > 0.005 → all dissent.
+    const c = committeeOf([member("a"), member("b"), member("c"), member("d")]);
+    const state = macroState({ inflation: 0.08, unemployment: 0.04, policy_rate: 0.05 });
+    expect(vote(c, 0.05, state, PARAMS).dissents).toBe(4);
   });
 });
