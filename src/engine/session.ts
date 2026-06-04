@@ -5,6 +5,7 @@ import { loadCommittee } from "../content/committees.js";
 import { loadValidatedFile } from "../content/loader.js";
 import { tick } from "./clock.js";
 import { vote, previewVote, loadCommitteeParams } from "./fomc.js";
+import { loadTraitCatalog } from "../content/traits.js";
 import { applyMeetingOutcome, getCredibility } from "./credibility.js";
 import { applyMacroDynamics, loadDynamicsParams } from "./dynamics.js";
 import { onTarget, loadMandateParams } from "./mandate.js";
@@ -310,7 +311,8 @@ export class Session {
   } {
     const committee = loadCommittee(this._committeeId);
     const params = loadCommitteeParams();
-    const { previews, gapInflation, gapUnemployment } = previewVote(committee, proposedRate, this._state, params);
+    const traits = loadTraitCatalog();
+    const { previews, gapInflation, gapUnemployment } = previewVote(committee, proposedRate, this._state, params, traits);
     return {
       previews,
       gapInflation,
@@ -340,7 +342,8 @@ export class Session {
 
     const committee = loadCommittee(this._committeeId);
     const params = loadCommitteeParams();
-    const fomcVote = vote(committee, rate, this._state, params);
+    const traits = loadTraitCatalog();
+    const fomcVote = vote(committee, rate, this._state, params, traits);
 
     // Apply the decided rate and compute new credibility.
     // SPEC-CRED-1 (issue #33): dissents no longer affect credibility, so fomcVote.dissents is

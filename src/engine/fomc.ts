@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import { loadValidatedFile } from "../content/loader.js";
 import type { Committee, CommitteeMember } from "../content/committees.js";
+import type { TraitEntry } from "../content/traits.js";
 import type { GameState } from "./state.js";
 
 // FOMC vote engine — SPEC-COMM-2 + SPEC-COMM-3.
@@ -20,6 +21,9 @@ export interface CommitteeParams {
   target_inflation: number;
   /** Natural rate of unemployment used to compute the unemployment gap. */
   target_unemployment: number;
+  /** Scales how much a member's conviction narrows their effective compromise band.
+   *  effective_band = compromise_band * (1 - conviction * conviction_band_factor). SPEC-COMM-5. */
+  conviction_band_factor: number;
 }
 
 // Thrown when vote() is called against a state whose required vars are missing or non-finite.
@@ -30,6 +34,17 @@ export class VoteMissingVarError extends Error {
   ) {
     super(`vote: state.vars["${seriesId}"] is ${reason === "missing" ? "missing" : "not finite"} — refusing to compute dissents.`);
     this.name = "VoteMissingVarError";
+  }
+}
+
+// Thrown when a member references a trait id not present in the supplied catalog. SPEC-COMM-5.
+export class TraitNotFoundError extends Error {
+  constructor(
+    public readonly memberId: string,
+    public readonly traitId: string,
+  ) {
+    super(`previewVote: member "${memberId}" references unknown trait "${traitId}".`);
+    this.name = "TraitNotFoundError";
   }
 }
 
@@ -45,12 +60,13 @@ function memberPreferred(
   gapInflation: number,
   gapUnemployment: number,
   params: CommitteeParams,
+  leanShift: number,
 ): number {
   const taylor =
     params.neutral_rate +
     member.inflation_coef * gapInflation -
     member.output_coef * gapUnemployment;
-  return member.inertia * laggedRate + (1 - member.inertia) * taylor;
+  return member.inertia * laggedRate + (1 - member.inertia) * taylor + leanShift;
 }
 
 export interface MemberVotePreview {
@@ -88,11 +104,33 @@ function readGuardedVars(state: GameState, params: CommitteeParams): {
   };
 }
 
+// SPEC-COMM-5: resolve always-on trait effects for a member against the catalog.
+// Signal-reactive hooks are dormant — skipped regardless of state.vars content.
+function resolveTraitEffects(
+  member: CommitteeMember,
+  catalog: readonly TraitEntry[],
+): { leanShift: number; bandMod: number } {
+  const memberTraits = member.traits ?? [];
+  if (memberTraits.length === 0) return { leanShift: 0, bandMod: 0 };
+
+  const catalogMap = new Map(catalog.map((t) => [t.id, t]));
+  let leanShift = 0;
+  let bandMod = 0;
+  for (const traitId of memberTraits) {
+    const trait = catalogMap.get(traitId);
+    if (trait === undefined) throw new TraitNotFoundError(member.id, traitId);
+    leanShift += trait.effects.preferred_rate_shift ?? 0;
+    bandMod += trait.effects.band_modifier ?? 0;
+  }
+  return { leanShift, bandMod };
+}
+
 export function previewVote(
   committee: Committee,
   proposedRate: number,
   state: GameState,
   params: CommitteeParams,
+  traitCatalog: readonly TraitEntry[] = [],
 ): { previews: MemberVotePreview[]; gapInflation: number; gapUnemployment: number } {
   if (!Number.isFinite(proposedRate)) {
     throw new Error(`previewVote: proposedRate ${proposedRate} is not finite.`);
@@ -104,12 +142,24 @@ export function previewVote(
         `previewVote: member "${m.id}" has invalid compromise_band (${m.compromise_band}); expected a finite number in [0, 0.5].`,
       );
     }
-    const preferred = memberPreferred(m, laggedRate, gapInflation, gapUnemployment, params);
+    if (!Number.isFinite(m.conviction) || m.conviction < 0 || m.conviction > 1) {
+      throw new Error(
+        `previewVote: member "${m.id}" has invalid conviction (${m.conviction}); expected a finite number in [0, 1].`,
+      );
+    }
+    // SPEC-COMM-5: resolve trait lean shift and band modifier; signal hooks stay dormant.
+    const { leanShift, bandMod } = resolveTraitEffects(m, traitCatalog);
+    const preferred = memberPreferred(m, laggedRate, gapInflation, gapUnemployment, params, leanShift);
+    // conviction narrows the base band; trait band_modifier adjusts further; floor at 0.
+    const effectiveBand = Math.max(
+      0,
+      m.compromise_band * (1 - m.conviction * params.conviction_band_factor) * (1 + bandMod),
+    );
     return {
       memberId: m.id,
       nameKey: m.name,
       preferred,
-      wouldDissent: Math.abs(preferred - proposedRate) > m.compromise_band,
+      wouldDissent: Math.abs(preferred - proposedRate) > effectiveBand,
     };
   });
   return { previews, gapInflation, gapUnemployment };
@@ -121,8 +171,9 @@ export function vote(
   proposedRate: number,
   state: GameState,
   params: CommitteeParams,
+  traitCatalog: readonly TraitEntry[] = [],
 ): FomcVote {
-  const { previews } = previewVote(committee, proposedRate, state, params);
+  const { previews } = previewVote(committee, proposedRate, state, params, traitCatalog);
   return { decided: proposedRate, dissents: previews.filter((p) => p.wouldDissent).length };
 }
 

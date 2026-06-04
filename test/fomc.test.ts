@@ -5,12 +5,14 @@ import {
   loadCommitteeParams,
   _resetCommitteeParamsCache,
   VoteMissingVarError,
+  TraitNotFoundError,
   type FomcVote,
   type CommitteeParams,
 } from "../src/engine/fomc";
 import { applyMeetingOutcome } from "../src/engine/credibility";
 import { makeState } from "../src/engine/state";
 import type { Committee, CommitteeMember } from "../src/content/committees";
+import type { TraitEntry } from "../src/content/traits";
 
 afterEach(() => {
   _resetCommitteeParamsCache();
@@ -22,6 +24,7 @@ const PARAMS: CommitteeParams = {
   neutral_rate: 0.05,
   target_inflation: 0.02,
   target_unemployment: 0.04,
+  conviction_band_factor: 0.8,
 };
 
 // Default per-member coefficient fixture (empirical median).
@@ -37,6 +40,8 @@ function member(
     inertia: 0.88,
     competence: 0.8,
     compromise_band: 0.005,
+    conviction: 0,   // 0 = no conviction narrowing; preserves pre-SPEC-COMM-5 band behaviour
+    traits: [],
     ...overrides,
   };
 }
@@ -305,5 +310,108 @@ describe("vote", () => {
     const c = committeeOf([member("a"), member("b"), member("c"), member("d")]);
     const state = macroState({ inflation: 0.08, unemployment: 0.04, policy_rate: 0.05 });
     expect(vote(c, 0.05, state, PARAMS).dissents).toBe(4);
+  });
+
+  // SPEC-COMM-5: conviction narrows the effective band — high conviction dissents at a distance
+  // that low conviction accepts.
+  it("SPEC-COMM-5: high-conviction member dissents at distance that low-conviction member accepts", () => {
+    // Both members: compromise_band = 0.010, conviction_band_factor = 0.8.
+    // high conviction 0.9: effective = 0.010 * (1 - 0.9 * 0.8) = 0.010 * 0.28 = 0.0028
+    // low conviction 0.1:  effective = 0.010 * (1 - 0.1 * 0.8) = 0.010 * 0.92 = 0.0092
+    // At steady state preferred = 0.05; proposed = 0.057 → diff = 0.007.
+    // high: 0.007 > 0.0028 → dissent; low: 0.007 < 0.0092 → assent.
+    const c = committeeOf([
+      member("high_conv", { compromise_band: 0.010, conviction: 0.9 }),
+      member("low_conv",  { compromise_band: 0.010, conviction: 0.1 }),
+    ]);
+    const state = macroState({ inflation: 0.02, unemployment: 0.04, policy_rate: 0.05 });
+    const { previews } = previewVote(c, 0.057, state, PARAMS);
+    expect(previews[0]!.wouldDissent).toBe(true);   // high conviction
+    expect(previews[1]!.wouldDissent).toBe(false);  // low conviction
+    expect(vote(c, 0.057, state, PARAMS).dissents).toBe(1);
+  });
+
+  // SPEC-COMM-5: zero conviction leaves the band unmodified (backward-compat with pre-SPEC-COMM-5).
+  it("SPEC-COMM-5: conviction=0 leaves effective band equal to compromise_band", () => {
+    const c = committeeOf([member("a", { compromise_band: 0.010, conviction: 0 })]);
+    const state = macroState({ inflation: 0.02, unemployment: 0.04, policy_rate: 0.05 });
+    // diff = 0.007 < 0.010 → no dissent (same as if conviction didn't exist).
+    expect(vote(c, 0.057, state, PARAMS).dissents).toBe(0);
+  });
+
+  // SPEC-COMM-5: hawkish-lean trait shifts preferred rate up by the declared amount.
+  it("SPEC-COMM-5: hawkish-lean trait shifts preferred rate up by the trait's declared amount", () => {
+    // SPEC-COMM-5
+    const hawkishLean: TraitEntry = {
+      id: "trait.hawkish_lean",
+      name: "trait.hawkish_lean.name",
+      desc: "trait.hawkish_lean.desc",
+      effects: { preferred_rate_shift: 0.005 },
+    };
+    const withTrait = member("tagged", { traits: ["trait.hawkish_lean"] });
+    const plain    = member("plain");
+    const c = committeeOf([withTrait, plain]);
+    const state = macroState({ inflation: 0.02, unemployment: 0.04, policy_rate: 0.05 });
+    const { previews } = previewVote(c, 0.05, state, PARAMS, [hawkishLean]);
+    // tagged preferred = base + 0.005; plain preferred = base.
+    expect(previews[0]!.preferred - previews[1]!.preferred).toBeCloseTo(0.005, 10);
+  });
+
+  // SPEC-COMM-5: dovish-lean trait shifts preferred rate down.
+  it("SPEC-COMM-5: dovish-lean trait shifts preferred rate down by the trait's declared amount", () => {
+    // SPEC-COMM-5
+    const dovishLean: TraitEntry = {
+      id: "trait.dovish_lean",
+      name: "trait.dovish_lean.name",
+      desc: "trait.dovish_lean.desc",
+      effects: { preferred_rate_shift: -0.005 },
+    };
+    const withTrait = member("tagged", { traits: ["trait.dovish_lean"] });
+    const plain    = member("plain");
+    const c = committeeOf([withTrait, plain]);
+    const state = macroState({ inflation: 0.02, unemployment: 0.04, policy_rate: 0.05 });
+    const { previews } = previewVote(c, 0.05, state, PARAMS, [dovishLean]);
+    expect(previews[1]!.preferred - previews[0]!.preferred).toBeCloseTo(0.005, 10);
+  });
+
+  // SPEC-COMM-5: trait with band_modifier narrows the effective band.
+  it("SPEC-COMM-5: principled-dissenter trait narrows effective band via band_modifier", () => {
+    // SPEC-COMM-5
+    const dissenterTrait: TraitEntry = {
+      id: "trait.principled_dissenter",
+      name: "trait.principled_dissenter.name",
+      desc: "trait.principled_dissenter.desc",
+      effects: { band_modifier: -0.3 },
+    };
+    // compromise_band = 0.010, conviction = 0 (no conviction narrowing).
+    // Without trait: effective = 0.010. With trait: effective = 0.010 * (1 + (-0.3)) = 0.007.
+    // diff = 0.008 → no dissent without trait; dissent with trait.
+    const withTrait = member("tagged", { compromise_band: 0.010, conviction: 0, traits: ["trait.principled_dissenter"] });
+    const plain    = member("plain",  { compromise_band: 0.010, conviction: 0 });
+    const cWith  = committeeOf([withTrait]);
+    const cPlain = committeeOf([plain]);
+    const state = macroState({ inflation: 0.02, unemployment: 0.04, policy_rate: 0.05 });
+    expect(vote(cWith,  0.058, state, PARAMS, [dissenterTrait]).dissents).toBe(1);
+    expect(vote(cPlain, 0.058, state, PARAMS).dissents).toBe(0);
+  });
+
+  // SPEC-COMM-5: previewVote throws TraitNotFoundError when a member references an unknown trait.
+  it("SPEC-COMM-5: previewVote throws TraitNotFoundError for unknown trait id", () => {
+    const c = committeeOf([member("a", { traits: ["trait.nonexistent"] })]);
+    const state = macroState({ inflation: 0.02, unemployment: 0.04, policy_rate: 0.05 });
+    expect(() => previewVote(c, 0.05, state, PARAMS, [])).toThrow(TraitNotFoundError);
+  });
+
+  // SPEC-COMM-5: previewVote throws for invalid conviction value.
+  it("SPEC-COMM-5: previewVote throws when a member has NaN conviction", () => {
+    const c = committeeOf([member("a", { conviction: NaN })]);
+    const state = macroState({ inflation: 0.02, unemployment: 0.04, policy_rate: 0.05 });
+    expect(() => previewVote(c, 0.05, state, PARAMS)).toThrow(/invalid conviction/);
+  });
+
+  it("SPEC-COMM-5: previewVote throws when a member has conviction > 1", () => {
+    const c = committeeOf([member("a", { conviction: 1.5 })]);
+    const state = macroState({ inflation: 0.02, unemployment: 0.04, policy_rate: 0.05 });
+    expect(() => previewVote(c, 0.05, state, PARAMS)).toThrow(/invalid conviction/);
   });
 });

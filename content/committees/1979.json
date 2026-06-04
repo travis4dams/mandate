@@ -10,7 +10,8 @@
       "output_coef": 0.3,
       "inertia": 0.85,
       "competence": 0.95,
-      "compromise_band": 0.005
+      "compromise_band": 0.005,
+      "conviction": 0.85
     },
     {
       "id": "member.vice_chair",
@@ -19,7 +20,8 @@
       "output_coef": 0.4,
       "inertia": 0.88,
       "competence": 0.85,
-      "compromise_band": 0.005
+      "compromise_band": 0.005,
+      "conviction": 0.55
     },
     {
       "id": "member.governor_a",
@@ -28,7 +30,9 @@
       "output_coef": 0.55,
       "inertia": 0.88,
       "competence": 0.78,
-      "compromise_band": 0.005
+      "compromise_band": 0.005,
+      "conviction": 0.40,
+      "traits": ["trait.dovish_lean"]
     },
     {
       "id": "member.governor_b",
@@ -37,7 +41,9 @@
       "output_coef": 0.3,
       "inertia": 0.85,
       "competence": 0.82,
-      "compromise_band": 0.005
+      "compromise_band": 0.005,
+      "conviction": 0.70,
+      "traits": ["trait.hawkish_lean"]
     },
     {
       "id": "member.governor_c",
@@ -46,7 +52,8 @@
       "output_coef": 0.4,
       "inertia": 0.87,
       "competence": 0.72,
-      "compromise_band": 0.005
+      "compromise_band": 0.005,
+      "conviction": 0.50
     },
     {
       "id": "member.governor_d",
@@ -55,7 +62,9 @@
       "output_coef": 0.6,
       "inertia": 0.88,
       "competence": 0.75,
-      "compromise_band": 0.005
+      "compromise_band": 0.005,
+      "conviction": 0.35,
+      "traits": ["trait.dovish_lean"]
     },
     {
       "id": "member.governor_e",
@@ -64,7 +73,8 @@
       "output_coef": 0.35,
       "inertia": 0.87,
       "competence": 0.80,
-      "compromise_band": 0.005
+      "compromise_band": 0.005,
+      "conviction": 0.60
     },
     {
       "id": "member.regional_president_ny",
@@ -73,7 +83,8 @@
       "output_coef": 0.4,
       "inertia": 0.87,
       "competence": 0.78,
-      "compromise_band": 0.005
+      "compromise_band": 0.005,
+      "conviction": 0.65
     },
     {
       "id": "member.regional_president_chicago",
@@ -82,7 +93,9 @@
       "output_coef": 0.45,
       "inertia": 0.88,
       "competence": 0.74,
-      "compromise_band": 0.005
+      "compromise_band": 0.005,
+      "conviction": 0.55,
+      "traits": ["trait.ag_hawk"]
     },
     {
       "id": "member.regional_president_sf",
@@ -91,7 +104,8 @@
       "output_coef": 0.5,
       "inertia": 0.88,
       "competence": 0.72,
-      "compromise_band": 0.005
+      "compromise_band": 0.005,
+      "conviction": 0.45
     },
     {
       "id": "member.regional_president_atlanta",
@@ -100,7 +114,9 @@
       "output_coef": 0.3,
       "inertia": 0.86,
       "competence": 0.70,
-      "compromise_band": 0.005
+      "compromise_band": 0.005,
+      "conviction": 0.75,
+      "traits": ["trait.hawkish_lean"]
     },
     {
       "id": "member.regional_president_cleveland",
@@ -109,7 +125,8 @@
       "output_coef": 0.4,
       "inertia": 0.88,
       "competence": 0.71,
-      "compromise_band": 0.005
+      "compromise_band": 0.005,
+      "conviction": 0.50
     }
   ]
 }

@@ -29,7 +29,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "name", "inflation_coef", "output_coef", "inertia", "competence", "compromise_band"],
+        "required": ["id", "name", "inflation_coef", "output_coef", "inertia", "competence", "compromise_band", "conviction"],
         "properties": {
           "id": {
             "type": "string",
@@ -70,6 +70,21 @@
             "minimum": 0,
             "maximum": 0.5,
             "description": "The range (in rate units) around the member's preferred rate they will assent to. |preferred - proposed| > compromise_band → dissent. SPEC-COMM-4."
+          },
+          "conviction": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Strength of ideological conviction in [0, 1]. Higher values narrow the effective compromise band via conviction_band_factor (SPEC-COMM-5). 0 = open-minded, 1 = maximally stubborn."
+          },
+          "traits": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^trait\\.[a-z0-9_]+$"
+            },
+            "description": "Optional list of trait catalog IDs assigned to this member. Each trait's always-on effects are applied at vote time. SPEC-COMM-5.",
+            "default": []
           }
         }
       }

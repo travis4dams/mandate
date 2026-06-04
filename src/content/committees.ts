@@ -25,6 +25,13 @@ export interface CommitteeMember {
    *  Must be in [0, 0.5] (schema-governed). Zero is valid but means the member
    *  dissents on virtually every proposal (IEEE 754 exact equality is rare). */
   compromise_band: number;
+  /** Strength of ideological conviction in [0, 1]. Scales how much the effective
+   *  compromise band is narrowed: effective_band = compromise_band * (1 - conviction * conviction_band_factor).
+   *  0 = open-minded (no narrowing); 1 = maximally stubborn (band shrinks by conviction_band_factor). SPEC-COMM-5. */
+  conviction: number;
+  /** Optional trait IDs from the trait catalog. Each trait's always-on effects are applied at vote time.
+   *  Signal-reactive hooks are declared but dormant until the referenced series exists. SPEC-COMM-5. */
+  traits?: string[];
 }
 
 export interface Committee {
