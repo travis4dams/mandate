@@ -48,3 +48,21 @@ credibility_unemployment_weight; (2) phillips_slope description reversed in sche
 PR #30 (spec-web-3-charts) and PR #32 (chore/cycle-4-progress) both show claude-review success;
 full VERDICT check deferred to next cycle (Phase 1). Stopped per Phase 0 protocol.
 Stories still passing=false: US-012..US-019.
+
+== CYCLE 6 — 2026-06-04 ==
+Phase 0 (issue queue): issue #37 (SPEC-COMM-5: trait catalog + conviction dial).
+Dependency chain: merged PRs #32, #35, #49 (SPEC-COMM-4, per-member compromise_band) before implementing.
+Implemented on branch issue-37-spec-comm-5-trait-catalog:
+  - schemas/traits.schema.json (new), content/traits/catalog.json (5 traits)
+  - src/content/traits.ts (TraitEntry type + loadTraitCatalog with cache)
+  - schemas/committee.schema.json + content/committees/1979.json (conviction + traits fields)
+  - schemas/committee-params.schema.json + content/engine/committee.json (conviction_band_factor: 0.8)
+  - src/engine/fomc.ts (resolveTraitEffects, TraitNotFoundError, effectiveBand formula)
+  - src/engine/session.ts (passes traitCatalog to previewVote/vote)
+  - content/localization/en.json (10 trait name/desc keys)
+  - tools/validate-content.ts (traits dir added)
+  - spec/requirements.md (SPEC-COMM-5 [testable] added)
+  - test/fomc.test.ts (8 new SPEC-COMM-5 tests), test/traits.test.ts (7 new tests)
+  All checks green: 212 engine tests, 12 web tests, spec:trace 32/32, validate 15 content types.
+PR #50 opened, issue #37 commented, agent-task label removed. Stopped per Phase 0 protocol.
+Stories still passing=false: US-012..US-019.
