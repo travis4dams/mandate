@@ -27,3 +27,14 @@ ui.charts.legend.credibility → ui.dashboard.chart.legend.credibility).
 Fixed all 7 items in one commit (5cb4c90) and pushed to spec-web-3-charts.
 Waiting for claude-review re-run to confirm VERDICT: APPROVE.
 Stories still passing=false: US-012..US-019.
+
+== CYCLE 4 — 2026-06-04 ==
+Phase 0 (issue queue): empty — fell through to Phase 1.
+Phase 1: PR #31 (chore/cycle-3-progress) had VERDICT: APPROVE — merged (squash sha 41ed5e7).
+PR #30 (SPEC-WEB-3, branch spec-web-3-charts) had VERDICT: REQUEST_CHANGES (round 2) with
+1 must-fix (inline string: msg.textContent = "Chart unavailable." violates SPEC-CONTENT-2)
+and 3 should-fixes (stale ref in useEffect cleanup; unsafe fogParams cast — FogParams not
+exported from src/engine/fog.ts; missing unemployment/policy_rate assertions + empty-trajectory
+test in ChartsPanel.test.tsx). Dispatched executor to fix all 4 items on spec-web-3-charts.
+Awaiting push + claude-review re-run.
+Stories still passing=false: US-012..US-019.
