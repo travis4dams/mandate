@@ -1,5 +1,6 @@
 {
   "hawkish_multiplier": 1.5,
   "neutral_multiplier": 1.0,
-  "dovish_multiplier": 0.7
+  "dovish_multiplier": 0.7,
+  "surprise_tolerance": 0.0025
 }
