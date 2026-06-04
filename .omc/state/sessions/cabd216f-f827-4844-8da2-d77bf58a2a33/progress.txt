@@ -16,3 +16,14 @@ prd.json updated: US-010 and US-011 marked passes=true. No other open PRs found.
 Next story: US-012 (SPEC-WEB-3, time-series ChartsPanel via Observable Plot with fog overlay).
 Dispatched executor on branch spec-web-3-charts. Awaiting push + PR creation.
 Stories still passing=false: US-012..US-019.
+
+== CYCLE 3 — 2026-06-04 ==
+Phase 0 (issue queue): empty — fell through to Phase 1.
+Phase 1: PR #30 (SPEC-WEB-3, branch spec-web-3-charts) had VERDICT: REQUEST_CHANGES with 3
+must-fix blockers (useEffect not wrapped in try-catch; typeof v === "number" admits NaN;
+fogHalfWidth("credibility") not asserted) and 4 should-fix items (missing undefined-skip test;
+stale comment; misleading fog comment; localization key namespace inconsistency
+ui.charts.legend.credibility → ui.dashboard.chart.legend.credibility).
+Fixed all 7 items in one commit (5cb4c90) and pushed to spec-web-3-charts.
+Waiting for claude-review re-run to confirm VERDICT: APPROVE.
+Stories still passing=false: US-012..US-019.
