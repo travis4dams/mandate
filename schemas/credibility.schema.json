@@ -2,36 +2,57 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://mandate.dev/schemas/credibility.schema.json",
   "title": "CredibilityParams",
-  "description": "Credibility spiral parameters. SPEC-CRED-4: anchor threshold, drift, and recovery knobs.",
+  "description": "Expectations & credibility parameters. SPEC-CRED-4 (continuous credibility-weighted expectations) + SPEC-CRED-6 (mission-tied credibility).",
   "type": "object",
   "additionalProperties": false,
-  "required": ["anchor_threshold", "consecutive_months", "drift_per_period", "recovery_rate", "target_inflation"],
+  "required": [
+    "target_inflation",
+    "unemployment_target",
+    "expectations_adaptivity",
+    "expectations_anchor_pull",
+    "credibility_mission_gain",
+    "credibility_unemployment_weight",
+    "anchor_threshold"
+  ],
   "properties": {
+    "target_inflation": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Long-run inflation target expectations re-anchor toward and the inflation leg of the mission distance."
+    },
+    "unemployment_target": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Dual-mandate unemployment target — the unemployment leg of the mission distance."
+    },
+    "expectations_adaptivity": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "How fast expectations track realized inflation when credibility is low (adaptive de-anchoring)."
+    },
+    "expectations_anchor_pull": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "How fast expectations are pulled toward target when credibility is high (re-anchoring). Scaled by the forward-guidance stance (SPEC-GUIDE-1)."
+    },
+    "credibility_mission_gain": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Credibility points gained per unit reduction in dual-mandate distance per month. Higher = more responsive."
+    },
+    "credibility_unemployment_weight": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Weight on the unemployment gap in the dual-mandate distance. < 1 makes disinflation progress dominate so winning the inflation fight builds credibility through a recession."
+    },
     "anchor_threshold": {
       "type": "number",
       "minimum": 0,
       "maximum": 100,
-      "description": "Credibility level at or above which expectations remain anchored."
-    },
-    "consecutive_months": {
-      "type": "integer",
-      "minimum": 1,
-      "description": "Ticks below anchor_threshold required before the spiral activates."
-    },
-    "drift_per_period": {
-      "type": "number",
-      "minimum": 0,
-      "description": "Per-month widening of the expectations gap once the spiral is active."
-    },
-    "recovery_rate": {
-      "type": "number",
-      "exclusiveMinimum": 0,
-      "description": "Per-month recovery of expectations_anchor toward target_inflation. Must be > 0 — a zero rate would silently disable spiral recovery (recovery_rate * stanceMultiplier always 0)."
-    },
-    "target_inflation": {
-      "type": "number",
-      "minimum": 0,
-      "description": "Long-run inflation target that expectations_anchor converges to on recovery."
+      "description": "Credibility below this counts as a month 'below anchor' for the persistent-memory stat (months_below_anchor)."
     }
   }
 }

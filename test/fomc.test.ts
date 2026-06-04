@@ -111,14 +111,16 @@ describe("vote", () => {
     expect(result.dissents).toBe(4);
   });
 
-  // SPEC-COMM-2: integration smoke — dissents feed applyMeetingOutcome and reduce credibility.
-  it("dissents from vote reduce credibility when passed to applyMeetingOutcome", () => {
+  // SPEC-COMM-2 / SPEC-CRED-1 (issue #33): the vote surfaces a dissent count for the briefing,
+  // but dissents are NOT published in a way that damages the Chair — applyMeetingOutcome no
+  // longer takes a dissent count, so a split vote leaves credibility unchanged.
+  it("dissents are surfaced by the vote but do not reduce credibility", () => {
     const c = committeeOf([member("a"), member("b"), member("c")]);
     const state = macroState({ inflation: 0.10, unemployment: 0.04, policy_rate: 0.05 });
     const result = vote(c, 0.05, state, PARAMS);
-    const next = applyMeetingOutcome(70, { dissents: result.dissents, surprisedMarkets: false, onTarget: false });
+    const next = applyMeetingOutcome(70, { surprisedMarkets: false, onTarget: false });
     expect(result.dissents).toBeGreaterThan(0);
-    expect(next).toBeLessThan(70);
+    expect(next).toBe(70);
   });
 
   // SPEC-COMM-2: vote is pure — input state not mutated.

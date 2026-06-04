@@ -31,38 +31,46 @@ describe("fog loader (SPEC-PARAMS-1)", () => {
   });
 });
 
-describe("credibility loader (SPEC-PARAMS-1)", () => {
-  it("loadValidatedFile returns credibility params with required fields", () => {
+describe("credibility loader (SPEC-PARAMS-1 / SPEC-CRED-4 / SPEC-CRED-6)", () => {
+  it("loadValidatedFile returns expectations + mission-credibility params", () => {
     const result = loadValidatedFile<{
-      anchor_threshold: number;
-      consecutive_months: number;
-      drift_per_period: number;
-      recovery_rate: number;
       target_inflation: number;
+      unemployment_target: number;
+      expectations_adaptivity: number;
+      expectations_anchor_pull: number;
+      credibility_mission_gain: number;
+      credibility_unemployment_weight: number;
+      anchor_threshold: number;
     }>("schemas/credibility.schema.json", "content/engine/credibility.json");
-    expect(typeof result.anchor_threshold).toBe("number");
+    expect(result.target_inflation).toBe(0.02);
+    expect(result.unemployment_target).toBeGreaterThan(0);
+    expect(result.expectations_adaptivity).toBeGreaterThan(0);
+    expect(result.expectations_anchor_pull).toBeGreaterThan(0);
+    expect(result.credibility_mission_gain).toBeGreaterThan(0);
+    expect(result.credibility_unemployment_weight).toBeGreaterThan(0);
     expect(result.anchor_threshold).toBeGreaterThan(0);
     expect(result.anchor_threshold).toBeLessThanOrEqual(100);
-    expect(typeof result.recovery_rate).toBe("number");
   });
 });
 
 describe("dynamics loader (SPEC-SIM-5)", () => {
-  it("loadValidatedFile returns dynamics params with all five fields finite and inflation_persistence in [0,1]", () => {
+  it("loadValidatedFile returns real-rate dynamics params, finite, with inflation_persistence in [0,1]", () => {
     // SPEC-SIM-5
     const result = loadValidatedFile<{
+      inflation_persistence: number;
       phillips_slope: number;
       unemployment_natural_rate: number;
-      rate_sensitivity: number;
-      neutral_rate: number;
-      inflation_persistence: number;
+      real_neutral_rate: number;
+      okun_coefficient: number;
+      unemployment_adjustment_speed: number;
     }>("schemas/dynamics.schema.json", "content/engine/dynamics.json");
     expect(Number.isFinite(result.phillips_slope)).toBe(true);
     expect(Number.isFinite(result.unemployment_natural_rate)).toBe(true);
-    expect(Number.isFinite(result.rate_sensitivity)).toBe(true);
-    expect(Number.isFinite(result.neutral_rate)).toBe(true);
+    expect(Number.isFinite(result.real_neutral_rate)).toBe(true);
+    expect(Number.isFinite(result.okun_coefficient)).toBe(true);
+    expect(Number.isFinite(result.unemployment_adjustment_speed)).toBe(true);
     expect(Number.isFinite(result.inflation_persistence)).toBe(true);
-    // Schema-enforced upper bound — the only bounded param in DynamicsParams.
+    // Schema-enforced upper bound.
     expect(result.inflation_persistence).toBeGreaterThanOrEqual(0);
     expect(result.inflation_persistence).toBeLessThanOrEqual(1);
   });

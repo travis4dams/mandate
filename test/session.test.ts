@@ -278,24 +278,24 @@ describe("ForwardGuidanceStance type", () => {
   });
 });
 
-describe("SPEC-GUIDE-1: applyMonthlySpiral is called inside Session.advance()", () => {
-  // SPEC-GUIDE-1: after advance(1), expectations_anchor must have changed from its initial value.
-  // The 1979 scenario starts with credibility=25 < anchor_threshold=60 and months_below_anchor=6
-  // (already past consecutive_months=3), so drift mode activates immediately.
-  // anchor (0.090) > target (0.02) => direction=+1, drift_per_period=0.005 => anchor becomes 0.095.
-  it("after advance(1), expectations_anchor has changed from initial 0.090 (drift mode active)", () => {
+describe("SPEC-GUIDE-1: the stance scales expectations re-anchoring inside Session.advance()", () => {
+  // SPEC-GUIDE-1 / SPEC-CRED-4: after advance(1), expectations evolve. The 1979 scenario starts
+  // with low credibility (25), so expectations are mostly adaptive and track realized inflation
+  // (0.114 > anchor 0.090) — the anchor rises slightly rather than snapping or drifting by a
+  // fixed step. The binary spiral is gone.
+  it("after advance(1), expectations_anchor moves (adaptive tracking at low credibility)", () => {
     // SPEC-GUIDE-1
     const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
     expect(s.current.vars.expectations_anchor).toBe(0.090);
     s.advance(1);
-    // Spiral is in drift mode: anchor drifts away from target by drift_per_period=0.005 each month.
-    expect(s.current.vars.expectations_anchor).toBeCloseTo(0.095, 5);
+    expect(s.current.vars.expectations_anchor).toBeGreaterThan(0.090);
+    expect(s.current.vars.expectations_anchor).toBeLessThan(0.092);
   });
 
-  // SPEC-GUIDE-1: hawkish session has expectations_anchor no further from target than neutral
-  // after advance(1) in drift mode. In drift mode, stance only affects recovery; drift is identical
-  // for all stances. Both sessions should have the same anchor after 1 month in drift mode.
-  it("in drift mode, hawkish and neutral stances produce identical expectations_anchor after advance(1)", () => {
+  // SPEC-GUIDE-1: the stance scales the re-anchoring pull, which is active at any credibility
+  // (weighted by credibility/100). Hawkish pulls expectations toward target harder than neutral,
+  // so even at the low 1979 credibility a hawkish stance leaves the anchor lower than neutral.
+  it("hawkish leaves expectations_anchor lower (more re-anchored) than neutral after advance(1)", () => {
     // SPEC-GUIDE-1
     const hawk = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
     const neutral = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
@@ -303,20 +303,13 @@ describe("SPEC-GUIDE-1: applyMonthlySpiral is called inside Session.advance()", 
     neutral.setForwardGuidanceStance("neutral");
     hawk.advance(1);
     neutral.advance(1);
-    // Drift mode: recovery_rate multiplier has no effect; anchors must be equal.
-    expect(hawk.current.vars.expectations_anchor).toBe(neutral.current.vars.expectations_anchor);
+    expect(hawk.current.vars.expectations_anchor).toBeLessThan(neutral.current.vars.expectations_anchor);
   });
 
-  // SPEC-GUIDE-1: in recovery mode (credibility >= anchor_threshold), the stance multiplier
-  // actually scales the per-month recovery step. Uses the scen.recovery_test fixture:
-  // credibility=80 (in recovery), anchor=0.05, target=0.02 → gap = -0.03 each month moves
-  // anchor toward target by recovery_rate * stance_multiplier. With recovery_rate=0.002,
-  // one month gives:
-  //   hawkish (×1.5) → anchor 0.05 - 0.003 = 0.047
-  //   neutral (×1.0) → anchor 0.05 - 0.002 = 0.048
-  //   dovish  (×0.7) → anchor 0.05 - 0.0014 = 0.0486
-  // This is the only test that actually verifies stanceMultiplier dispatch via Session.advance().
-  it("in recovery mode, stance multiplier scales the per-month recovery step", () => {
+  // SPEC-GUIDE-1: in a high-credibility state (scen.recovery_test, credibility=80) the
+  // re-anchoring pull dominates and the stance multiplier scales how fast expectations close
+  // on target: hawkish fastest, dovish slowest. All three move the anchor toward target (0.02).
+  it("stance multiplier orders the re-anchoring speed: hawkish < neutral < dovish (closer to target)", () => {
     // SPEC-GUIDE-1
     const make = (stance: ForwardGuidanceStance) => {
       const s = Session.fromScenario("scen.recovery_test", 42, "comm.fomc_1979");
@@ -328,52 +321,46 @@ describe("SPEC-GUIDE-1: applyMonthlySpiral is called inside Session.advance()", 
     const neutral = make("neutral");
     const dovish = make("dovish");
 
-    // Strict ordering: hawkish closes the gap fastest, dovish slowest.
-    expect(hawk).toBeCloseTo(0.047, 6);
-    expect(neutral).toBeCloseTo(0.048, 6);
-    expect(dovish).toBeCloseTo(0.0486, 6);
-
-    // |anchor - target| must shrink at hawk < neutral < dovish.
-    const target = 0.02;
-    expect(Math.abs(hawk - target)).toBeLessThan(Math.abs(neutral - target));
-    expect(Math.abs(neutral - target)).toBeLessThan(Math.abs(dovish - target));
+    // Anchor starts at 0.05, above target — re-anchoring lowers it; hawkish lowers it most.
+    expect(hawk).toBeLessThan(neutral);
+    expect(neutral).toBeLessThan(dovish);
+    expect(dovish).toBeLessThan(0.05);
+    expect(hawk).toBeGreaterThan(0.02);
   });
 
-  // SPEC-GUIDE-1: reset() must restore stance to "neutral" so a fresh game is not
-  // contaminated by a prior session's setForwardGuidanceStance call. We probe this
-  // by setting hawkish, resetting, then advancing — the recovery step must match
-  // neutral, NOT hawkish.
-  it("reset() restores stance to 'neutral' (next advance uses neutral_multiplier)", () => {
+  // SPEC-GUIDE-1: reset() restores the stance to "neutral" so a fresh game is not contaminated
+  // by a prior setForwardGuidanceStance call — a reset-after-hawkish session advances identically
+  // to a fresh neutral session.
+  it("reset() restores stance to 'neutral'", () => {
     // SPEC-GUIDE-1
     const s = Session.fromScenario("scen.recovery_test", 42, "comm.fomc_1979");
     s.setForwardGuidanceStance("hawkish");
     s.reset();
     s.advance(1);
-    // After reset, the next advance uses neutral_multiplier (×1.0) → anchor = 0.048,
-    // NOT hawkish (×1.5 → 0.047).
-    expect(s.current.vars.expectations_anchor).toBeCloseTo(0.048, 6);
+    const neutral = Session.fromScenario("scen.recovery_test", 42, "comm.fomc_1979");
+    neutral.advance(1);
+    expect(s.current.vars.expectations_anchor).toBe(neutral.current.vars.expectations_anchor);
   });
 });
 
 describe("SPEC-SIM-5: macro dynamics wired into Session.advance()", () => {
-  // SPEC-SIM-5: after advance(24) from 1979 scenario, unemployment rises above initial 0.058.
-  // policy_rate=0.1075 > neutral=0.05, so each month unemployment increases by 0.02 * (0.1075 - 0.05) = 0.00115.
-  // After 24 months: ~0.058 + 24 * 0.00115 ≈ 0.086 >> 0.058.
-  it("after advance(24), unemployment is higher than initial 0.058 (tight policy drives unemployment up)", () => {
+  // SPEC-SIM-5: holding the 1979 starting rate (10.75% nominal) is NOT real-restrictive against
+  // ~9-11% expected inflation — the real rate is below neutral, so it does not cause a recession.
+  // Over 24 months unemployment eases below its 0.058 start rather than rising. This is the core
+  // realism fix: the slice-1 nominal-gap model wrongly drove unemployment up from any rate > 5%.
+  it("after advance(24) at a non-restrictive nominal rate, unemployment does NOT rise into a recession", () => {
     // SPEC-SIM-5
     const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
     expect(s.current.vars.unemployment).toBe(0.058);
     s.advance(24);
-    expect(s.current.vars.unemployment).toBeGreaterThan(0.058);
+    expect(s.current.vars.unemployment).toBeLessThan(0.058);
   });
 
-  // SPEC-SIM-5: after advance(24), inflation moves in the direction the model predicts.
-  // 1979 scenario: inflation=0.114, credibility=25 < anchor_threshold=60, so the spiral is
-  // in drift mode — expectations_anchor drifts UP (away from target=0.02) by drift_per_period
-  // each month. Over 24 months, anchor rises above current inflation, which pulls inflation
-  // UP via the (1-persistence)*anchor term. A direction-agnostic assertion (not.toBe(0.114))
-  // would pass even if the dynamics were wired backwards — this is the canary for sign errors.
-  it("after advance(24), inflation has risen above initial 0.114 (drift mode pulls anchor and inflation up)", () => {
+  // SPEC-SIM-5: with policy not real-restrictive and credibility low, expectations track realized
+  // inflation upward and the (negative) unemployment gap pushes inflation higher — a wage-price
+  // overheating. Inflation rises above its 0.114 start. The canary for sign errors: a backwards
+  // real-rate channel would instead disinflate here.
+  it("after advance(24), inflation accelerates above initial 0.114 (loose policy lets it run)", () => {
     // SPEC-SIM-5
     const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
     expect(s.current.vars.inflation).toBe(0.114);
@@ -385,22 +372,21 @@ describe("SPEC-SIM-5: macro dynamics wired into Session.advance()", () => {
 describe("SPEC-MANDATE-1: onTarget wired into Session.proposeRate()", () => {
   afterEach(() => { vi.restoreAllMocks(); });
 
-  // SPEC-MANDATE-1: 1979 inflation=0.114 >> target=0.02 → onTarget=false → no +3 bonus.
-  // SPEC-COMM-3: with the 12-member committee + Taylor-rule preferreds, proposing the
-  // lagged rate (0.1075) at the 1979 stress state produces 12 dissents → credibility
-  // erodes by 24, from 25 → 1.
-  it("credibility changes by exact formula (no +3 bonus) when onTarget is false", () => {
+  // SPEC-MANDATE-1 / SPEC-CRED-1 (issue #33): 1979 inflation=0.114 >> target=0.02 → onTarget=false
+  // → no +3 bonus. The 12-member committee dissents heavily at this stress state, but dissents no
+  // longer touch credibility, so proposeRate leaves credibility unchanged at 25.
+  it("credibility is unchanged when onTarget is false and dissents do not bite", () => {
     // SPEC-MANDATE-1
     const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
     const credBefore = s.current.vars.credibility;
     s.proposeRate(0.1075);
     const credAfter = s.current.vars.credibility;
     expect(credBefore).toBe(25);
-    expect(credAfter).toBe(1); // 25 + 0 (onTarget=false) - 24 (12 dissents × 2)
+    expect(credAfter).toBe(25); // 25 + 0 (onTarget=false), dissents ignored
   });
 
   // SPEC-MANDATE-1: when onTarget is true, the +3 lever fires — credAfter is exactly 3 higher.
-  // Mock mandate params so inflation=0.114 is "on target"; same seed → same 12 dissents → delta is +3 net.
+  // Mock mandate params so inflation=0.114 is "on target". Dissents are ignored, so the net is +3.
   it("credibility is exactly 3 higher when onTarget is true (positive path)", () => {
     // SPEC-MANDATE-1
     vi.spyOn(mandateModule, "loadMandateParams").mockReturnValue({
@@ -415,7 +401,7 @@ describe("SPEC-MANDATE-1: onTarget wired into Session.proposeRate()", () => {
     s.proposeRate(0.1075);
     const credAfter = s.current.vars.credibility;
     expect(credBefore).toBe(25);
-    expect(credAfter).toBe(4); // 25 + 3 (onTarget=true) - 24 (12 dissents × 2)
+    expect(credAfter).toBe(28); // 25 + 3 (onTarget=true), dissents ignored
   });
 });
 

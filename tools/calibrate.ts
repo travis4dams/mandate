@@ -1,14 +1,16 @@
 // Stand-alone calibration harness used by `npm run calibrate`.
-// Loads the committed FRED baseline, runs replay.1979_chair_tightening through the engine,
-// and emits a CSV comparing engine output to real FRED observations.
-// No runtime API calls — all data is committed as content.
+// Loads the committed FRED baseline, drives replay.1979_chair_tightening through the FULL engine
+// (Session.advance runs the real-rate dynamics, expectations, and mission-tied credibility), and
+// emits a CSV comparing engine output to real FRED observations.
+// No runtime API calls — all data is committed as content. SPEC-CAL-2 pins the RMSE tolerances
+// asserted here as a test.
 
 import { loadCalibration } from "../src/content/calibration.js";
-import { runReplay } from "../src/engine/replay.js";
+import { Session } from "../src/engine/session.js";
 
-// Wrap the two highest-risk operations so any failure (file I/O, schema validation,
-// UnconsumedReplayActionsError, etc.) emits a structured message instead of a raw
-// Node.js stack trace — matching the rest of this script's error-handling contract.
+// 1979-08 + 88 months = 1986-12; fromReplay seeds trajectory[0] at 1979-08 → 89 aligned entries.
+const MONTHS = 88;
+
 let cal, trajectory;
 try {
   cal = loadCalibration("cal.fred_1979_1986");
@@ -17,9 +19,11 @@ try {
   process.exit(1);
 }
 try {
-  trajectory = runReplay("replay.1979_chair_tightening", 89);
+  const session = Session.fromReplay("replay.1979_chair_tightening", 0, "comm.fomc_1979");
+  session.advance(MONTHS);
+  trajectory = session.trajectory;
 } catch (e) {
-  console.error(`calibrate: runReplay("replay.1979_chair_tightening", 89) failed: ${(e as Error).message}`);
+  console.error(`calibrate: driving replay.1979_chair_tightening failed: ${(e as Error).message}`);
   process.exit(1);
 }
 
@@ -32,13 +36,12 @@ if (cal.series.length !== trajectory.length) {
 
 // Emit CSV header
 console.log(
-  "date,engine_policy_rate,fred_fed_funds_rate,engine_inflation,fred_inflation_yoy,engine_unemployment,fred_unemployment"
+  "date,engine_policy_rate,fred_fed_funds_rate,engine_inflation,fred_inflation_yoy,engine_unemployment,fred_unemployment,engine_credibility"
 );
 
-// Emit one CSV row per month; accumulate squared error for policy_rate.
-// inflation/unemployment RMSE is intentionally deferred — Phillips-curve / forward-guidance
-// mechanics arrive in slice 2, at which point comparing those columns becomes meaningful.
-let sumSqErr = 0;
+let sumSqRate = 0;
+let sumSqInfl = 0;
+let sumSqUnemp = 0;
 for (let i = 0; i < cal.series.length; i++) {
   const entry = cal.series[i];
   const snap = trajectory[i];
@@ -51,22 +54,23 @@ for (let i = 0; i < cal.series.length; i++) {
   const policyRate = snap.vars.policy_rate;
   const inflation = snap.vars.inflation;
   const unemployment = snap.vars.unemployment;
+  const credibility = snap.vars.credibility;
 
-  if (!Number.isFinite(policyRate)) {
-    console.error(`trajectory[${i}] (${entry.date}): "policy_rate" is not a finite number (got ${policyRate})`);
-    process.exit(1);
-  }
-  if (!Number.isFinite(inflation)) {
-    console.error(`trajectory[${i}] (${entry.date}): "inflation" is not a finite number (got ${inflation})`);
-    process.exit(1);
-  }
-  if (!Number.isFinite(unemployment)) {
-    console.error(`trajectory[${i}] (${entry.date}): "unemployment" is not a finite number (got ${unemployment})`);
-    process.exit(1);
+  for (const [name, v] of [
+    ["policy_rate", policyRate],
+    ["inflation", inflation],
+    ["unemployment", unemployment],
+    ["credibility", credibility],
+  ] as const) {
+    if (!Number.isFinite(v)) {
+      console.error(`trajectory[${i}] (${entry.date}): "${name}" is not a finite number (got ${v})`);
+      process.exit(1);
+    }
   }
 
-  const diff = policyRate - entry.fed_funds_rate;
-  sumSqErr += diff * diff;
+  sumSqRate += (policyRate - entry.fed_funds_rate) ** 2;
+  sumSqInfl += (inflation - entry.inflation_yoy) ** 2;
+  sumSqUnemp += (unemployment - entry.unemployment) ** 2;
   console.log(
     [
       entry.date,
@@ -76,16 +80,13 @@ for (let i = 0; i < cal.series.length; i++) {
       entry.inflation_yoy.toFixed(4),
       unemployment.toFixed(4),
       entry.unemployment.toFixed(4),
+      credibility.toFixed(1),
     ].join(",")
   );
 }
 
-const rmse = Math.sqrt(sumSqErr / cal.series.length);
-if (!Number.isFinite(rmse)) {
-  console.error(`policy_rate RMSE is not finite (sumSqErr=${sumSqErr}, n=${cal.series.length}) — aborting`);
-  process.exit(1);
-}
-console.error(`policy_rate RMSE: ${rmse.toFixed(4)} (n=${cal.series.length})`);
-console.error(
-  `Note: inflation/unemployment divergence is expected in slice 1 — Phillips-curve and forward-guidance mechanics arrive in slice 2.`
-);
+const n = cal.series.length;
+const rmse = (sumSq: number): string => Math.sqrt(sumSq / n).toFixed(4);
+console.error(`policy_rate  RMSE: ${rmse(sumSqRate)} (n=${n})`);
+console.error(`inflation    RMSE: ${rmse(sumSqInfl)} (n=${n})  [SPEC-CAL-2 tolerance < 0.0250]`);
+console.error(`unemployment RMSE: ${rmse(sumSqUnemp)} (n=${n})  [SPEC-CAL-2 tolerance < 0.0200]`);

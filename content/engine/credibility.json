@@ -1,7 +1,9 @@
 {
-  "anchor_threshold": 60,
-  "consecutive_months": 3,
-  "drift_per_period": 0.005,
-  "recovery_rate": 0.002,
-  "target_inflation": 0.02
+  "target_inflation": 0.02,
+  "unemployment_target": 0.055,
+  "expectations_adaptivity": 0.051,
+  "expectations_anchor_pull": 0.025,
+  "credibility_mission_gain": 300,
+  "credibility_unemployment_weight": 0.5,
+  "anchor_threshold": 60
 }
