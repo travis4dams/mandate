@@ -19,7 +19,6 @@ afterEach(() => {
 // SPEC-COMM-2 (vote) + SPEC-COMM-3 (per-member Taylor coefficients with inertia).
 
 const PARAMS: CommitteeParams = {
-  dissent_tolerance: 0.005,
   neutral_rate: 0.05,
   target_inflation: 0.02,
   target_unemployment: 0.04,
@@ -37,6 +36,7 @@ function member(
     output_coef: 0.4,
     inertia: 0.88,
     competence: 0.8,
+    compromise_band: 0.005,
     ...overrides,
   };
 }
@@ -138,7 +138,7 @@ describe("vote", () => {
     // proposed = 0.05; lagged_rate = 0.05; gap_inflation = 0.01; gap_unemployment = 0.
     // preferred - proposed = (1 - inertia) * (inflation_coef * gap_inflation)
     //                      = 0.12 * inflation_coef * 0.01
-    // tolerance = 0.005 → critical inflation_coef ≈ 4.17.
+    // member's compromise_band = 0.005 → critical inflation_coef ≈ 4.17.
     // Use 3.5 (clearly inside) and 5.0 (clearly outside).
     const inside = committeeOf([member("a", { inflation_coef: 3.5 })]);
     const outside = committeeOf([member("a", { inflation_coef: 5.0 })]);
@@ -233,9 +233,33 @@ describe("vote", () => {
   // SPEC-PARAMS-1: loaded committee params include all required CommitteeParams fields.
   it("loadCommitteeParams() returns a CommitteeParams object with all required fields finite", () => {
     const params = loadCommitteeParams();
-    expect(Number.isFinite(params.dissent_tolerance)).toBe(true);
     expect(Number.isFinite(params.neutral_rate)).toBe(true);
     expect(Number.isFinite(params.target_inflation)).toBe(true);
     expect(Number.isFinite(params.target_unemployment)).toBe(true);
+  });
+
+  // SPEC-COMM-4: per-member compromise band — narrow band dissents where wide band accepts.
+  it("SPEC-COMM-4: narrow-band member dissents at a distance that wide-band member accepts", () => {
+    // At steady state (inflation=target, unemp=natural, lagged=neutral):
+    // preferred = neutral_rate = 0.05 for all members.
+    // Proposed 0.057 → |0.05 - 0.057| = 0.007
+    // narrow (0.003): 0.007 > 0.003 → dissent
+    // wide (0.010):   0.007 < 0.010 → no dissent
+    const c = committeeOf([
+      member("narrow", { compromise_band: 0.003 }),
+      member("wide", { compromise_band: 0.010 }),
+    ]);
+    const state = macroState({ inflation: 0.02, unemployment: 0.04, policy_rate: 0.05 });
+    const result = vote(c, 0.057, state, PARAMS);
+    expect(result.dissents).toBe(1);
+  });
+
+  it("SPEC-COMM-4: uniform bands equal to old global default reproduce prior dissent count", () => {
+    // All members with compromise_band = 0.005 should behave exactly as before.
+    const c = committeeOf([member("a"), member("b"), member("c"), member("d")]);
+    const state = macroState({ inflation: 0.08, unemployment: 0.04, policy_rate: 0.05 });
+    // Each member preferred ≈ 0.062 (from existing test comment), |0.062 - 0.05| = 0.012 > 0.005 → all dissent.
+    const result = vote(c, 0.05, state, PARAMS);
+    expect(result.dissents).toBe(4);
   });
 });

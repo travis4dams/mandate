@@ -14,8 +14,6 @@ export interface FomcVote {
 }
 
 export interface CommitteeParams {
-  /** |preferred - proposed| > this → member dissents. */
-  dissent_tolerance: number;
   /** Anchor for every member's preferred-rate computation — the rate the committee would set at target inflation and natural unemployment. */
   neutral_rate: number;
   /** Long-run inflation target used to compute the inflation gap. */
@@ -59,7 +57,7 @@ export interface MemberVotePreview {
   readonly memberId: string;
   readonly nameKey: string;
   readonly preferred: number;
-  /** True iff `|preferred - proposedRate| > params.dissent_tolerance` for the
+  /** True iff `|preferred - proposedRate| > member.compromise_band` for the
    *  `proposedRate` passed to the previewVote() call that produced this preview.
    *  Re-evaluating with a different proposed rate requires a fresh previewVote(). */
   readonly wouldDissent: boolean;
@@ -106,7 +104,7 @@ export function previewVote(
       memberId: m.id,
       nameKey: m.name,
       preferred,
-      wouldDissent: Math.abs(preferred - proposedRate) > params.dissent_tolerance,
+      wouldDissent: Math.abs(preferred - proposedRate) > m.compromise_band,
     };
   });
   return { previews, gapInflation, gapUnemployment };

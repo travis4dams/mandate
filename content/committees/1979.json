@@ -9,7 +9,8 @@
       "inflation_coef": 2.0,
       "output_coef": 0.3,
       "inertia": 0.85,
-      "competence": 0.95
+      "competence": 0.95,
+      "compromise_band": 0.005
     },
     {
       "id": "member.vice_chair",
@@ -17,7 +18,8 @@
       "inflation_coef": 1.6,
       "output_coef": 0.4,
       "inertia": 0.88,
-      "competence": 0.85
+      "competence": 0.85,
+      "compromise_band": 0.005
     },
     {
       "id": "member.governor_a",
@@ -25,7 +27,8 @@
       "inflation_coef": 1.5,
       "output_coef": 0.55,
       "inertia": 0.88,
-      "competence": 0.78
+      "competence": 0.78,
+      "compromise_band": 0.005
     },
     {
       "id": "member.governor_b",
@@ -33,7 +36,8 @@
       "inflation_coef": 1.9,
       "output_coef": 0.3,
       "inertia": 0.85,
-      "competence": 0.82
+      "competence": 0.82,
+      "compromise_band": 0.005
     },
     {
       "id": "member.governor_c",
@@ -41,7 +45,8 @@
       "inflation_coef": 1.65,
       "output_coef": 0.4,
       "inertia": 0.87,
-      "competence": 0.72
+      "competence": 0.72,
+      "compromise_band": 0.005
     },
     {
       "id": "member.governor_d",
@@ -49,7 +54,8 @@
       "inflation_coef": 1.45,
       "output_coef": 0.6,
       "inertia": 0.88,
-      "competence": 0.75
+      "competence": 0.75,
+      "compromise_band": 0.005
     },
     {
       "id": "member.governor_e",
@@ -57,7 +63,8 @@
       "inflation_coef": 1.7,
       "output_coef": 0.35,
       "inertia": 0.87,
-      "competence": 0.80
+      "competence": 0.80,
+      "compromise_band": 0.005
     },
     {
       "id": "member.regional_president_ny",
@@ -65,7 +72,8 @@
       "inflation_coef": 1.75,
       "output_coef": 0.4,
       "inertia": 0.87,
-      "competence": 0.78
+      "competence": 0.78,
+      "compromise_band": 0.005
     },
     {
       "id": "member.regional_president_chicago",
@@ -73,7 +81,8 @@
       "inflation_coef": 1.65,
       "output_coef": 0.45,
       "inertia": 0.88,
-      "competence": 0.74
+      "competence": 0.74,
+      "compromise_band": 0.005
     },
     {
       "id": "member.regional_president_sf",
@@ -81,7 +90,8 @@
       "inflation_coef": 1.5,
       "output_coef": 0.5,
       "inertia": 0.88,
-      "competence": 0.72
+      "competence": 0.72,
+      "compromise_band": 0.005
     },
     {
       "id": "member.regional_president_atlanta",
@@ -89,7 +99,8 @@
       "inflation_coef": 1.95,
       "output_coef": 0.3,
       "inertia": 0.86,
-      "competence": 0.70
+      "competence": 0.70,
+      "compromise_band": 0.005
     },
     {
       "id": "member.regional_president_cleveland",
@@ -97,7 +108,8 @@
       "inflation_coef": 1.6,
       "output_coef": 0.4,
       "inertia": 0.88,
-      "competence": 0.71
+      "competence": 0.71,
+      "compromise_band": 0.005
     }
   ]
 }

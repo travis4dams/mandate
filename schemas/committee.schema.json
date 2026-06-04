@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://mandate.dev/schemas/committee.schema.json",
   "title": "Committee",
-  "description": "An FOMC-style committee. SPEC-COMM-3: each member carries continuous Taylor-rule reaction coefficients (inflation_coef, output_coef, inertia) rather than the older hawkish/dovish/neutral trichotomy. Empirical anchors live in docs/research/2026-06-02-fomc-empirical-anchors.md.",
+  "description": "An FOMC-style committee. SPEC-COMM-3: each member carries continuous Taylor-rule reaction coefficients (inflation_coef, output_coef, inertia) rather than the older hawkish/dovish/neutral trichotomy. Empirical anchors live in docs/research/2026-06-02-fomc-empirical-anchors.md. SPEC-COMM-4: each member carries their own compromise_band for per-member dissent judgement.",
   "type": "object",
   "additionalProperties": false,
   "required": ["id", "name", "desc", "members"],
@@ -29,7 +29,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["id", "name", "inflation_coef", "output_coef", "inertia", "competence"],
+        "required": ["id", "name", "inflation_coef", "output_coef", "inertia", "competence", "compromise_band"],
         "properties": {
           "id": {
             "type": "string",
@@ -64,6 +64,11 @@
             "minimum": 0,
             "maximum": 1,
             "description": "Member competence score in [0, 1]. Reserved for future stochastic mechanics."
+          },
+          "compromise_band": {
+            "type": "number",
+            "minimum": 0,
+            "description": "The range (in rate units) around the member's preferred rate they will assent to. |preferred - proposed| > compromise_band → dissent. SPEC-COMM-4."
           }
         }
       }

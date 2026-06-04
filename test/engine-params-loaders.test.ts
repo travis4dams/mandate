@@ -76,16 +76,14 @@ describe("dynamics loader (SPEC-SIM-5)", () => {
   });
 });
 
-describe("committee params loader (SPEC-PARAMS-1 + SPEC-COMM-3)", () => {
+describe("committee params loader (SPEC-PARAMS-1 + SPEC-COMM-3 + SPEC-COMM-4)", () => {
   it("loadValidatedFile returns committee params with required fields", () => {
+    // SPEC-COMM-4: dissent_tolerance removed; per-member compromise_band now governs dissent.
     const result = loadValidatedFile<{
-      dissent_tolerance: number;
       neutral_rate: number;
       target_inflation: number;
       target_unemployment: number;
     }>("schemas/committee-params.schema.json", "content/engine/committee.json");
-    expect(typeof result.dissent_tolerance).toBe("number");
-    expect(result.dissent_tolerance).toBeGreaterThan(0);
     expect(result.neutral_rate).toBeGreaterThan(0);
     expect(result.target_inflation).toBeGreaterThan(0);
     expect(result.target_unemployment).toBeGreaterThan(0);
