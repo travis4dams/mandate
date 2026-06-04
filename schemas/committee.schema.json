@@ -68,6 +68,7 @@
           "compromise_band": {
             "type": "number",
             "minimum": 0,
+            "maximum": 0.5,
             "description": "The range (in rate units) around the member's preferred rate they will assent to. |preferred - proposed| > compromise_band → dissent. SPEC-COMM-4."
           }
         }

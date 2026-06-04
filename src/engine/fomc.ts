@@ -9,7 +9,7 @@ import type { GameState } from "./state.js";
 export interface FomcVote {
   /** The enacted rate. Always equals proposedRate in slice 1 (the committee has no override power yet); a future slice may add majority-override. */
   decided: number;
-  /** Count of members preferring a rate outside the dissent tolerance band. */
+  /** Count of members whose `|preferred - proposedRate| > member.compromise_band`. */
   dissents: number;
 }
 
@@ -99,6 +99,11 @@ export function previewVote(
   }
   const { laggedRate, gapInflation, gapUnemployment } = readGuardedVars(state, params);
   const previews = committee.members.map((m) => {
+    if (!Number.isFinite(m.compromise_band) || m.compromise_band < 0) {
+      throw new Error(
+        `previewVote: member "${m.id}" has invalid compromise_band (${m.compromise_band}); expected a finite non-negative number.`,
+      );
+    }
     const preferred = memberPreferred(m, laggedRate, gapInflation, gapUnemployment, params);
     return {
       memberId: m.id,

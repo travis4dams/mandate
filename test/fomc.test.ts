@@ -89,7 +89,7 @@ describe("vote", () => {
     expect(spread).toBeLessThan(0.025);
   });
 
-  // SPEC-COMM-2: members within dissent_tolerance of the proposed rate vote yes.
+  // SPEC-COMM-2: members whose preferred is within their own compromise_band vote yes.
   it("proposing the median-member-preferred rate produces zero dissents in a balanced committee", () => {
     const c = committeeOf([member("a"), member("b"), member("c")]);
     const state = macroState({ inflation: 0.05, unemployment: 0.05, policy_rate: 0.06 });
@@ -105,7 +105,7 @@ describe("vote", () => {
     const c = committeeOf([member("a"), member("b"), member("c"), member("d")]);
     // Inflation 6pp above target, output gap near zero, lagged 5%.
     // Each member's preferred ≈ 0.88 * 0.05 + 0.12 * (0.05 + 1.7 * 0.06 - 0.4 * 0) = 0.044 + 0.018 = 0.062
-    // |0.062 - 0.05| = 0.012 > tol(0.005) → all dissent.
+    // |0.062 - 0.05| = 0.012 > compromise_band(0.005) → all dissent.
     const state = macroState({ inflation: 0.08, unemployment: 0.04, policy_rate: 0.05 });
     const result = vote(c, 0.05, state, PARAMS);
     expect(result.dissents).toBe(4);
@@ -250,16 +250,38 @@ describe("vote", () => {
       member("wide", { compromise_band: 0.010 }),
     ]);
     const state = macroState({ inflation: 0.02, unemployment: 0.04, policy_rate: 0.05 });
+    const { previews } = previewVote(c, 0.057, state, PARAMS);
+    expect(previews[0]!.wouldDissent).toBe(true);   // narrow band
+    expect(previews[1]!.wouldDissent).toBe(false);  // wide band
     const result = vote(c, 0.057, state, PARAMS);
     expect(result.dissents).toBe(1);
   });
 
-  it("SPEC-COMM-4: uniform bands equal to old global default reproduce prior dissent count", () => {
-    // All members with compromise_band = 0.005 should behave exactly as before.
-    const c = committeeOf([member("a"), member("b"), member("c"), member("d")]);
-    const state = macroState({ inflation: 0.08, unemployment: 0.04, policy_rate: 0.05 });
-    // Each member preferred ≈ 0.062 (from existing test comment), |0.062 - 0.05| = 0.012 > 0.005 → all dissent.
-    const result = vote(c, 0.05, state, PARAMS);
-    expect(result.dissents).toBe(4);
+  // SPEC-COMM-4: heterogeneous committee — mixed bands produce the correct aggregate count.
+  it("SPEC-COMM-4: heterogeneous band committee produces correct aggregate dissent count", () => {
+    // 4 members: narrow (0.003), narrow (0.003), medium (0.010), wide (0.020)
+    // At steady state, all preferred = 0.05. Proposed = 0.057 → |diff| = 0.007.
+    // narrow×2: 0.007 > 0.003 → dissent; medium: 0.007 < 0.010 → assent; wide: assent.
+    const c = committeeOf([
+      member("n1", { compromise_band: 0.003 }),
+      member("n2", { compromise_band: 0.003 }),
+      member("m1", { compromise_band: 0.010 }),
+      member("w1", { compromise_band: 0.020 }),
+    ]);
+    const state = macroState({ inflation: 0.02, unemployment: 0.04, policy_rate: 0.05 });
+    expect(vote(c, 0.057, state, PARAMS).dissents).toBe(2);
+  });
+
+  // SPEC-COMM-4: NaN compromise_band throws rather than silently making member always assent.
+  it("SPEC-COMM-4: previewVote throws when a member has NaN compromise_band", () => {
+    const c = committeeOf([member("a", { compromise_band: NaN })]);
+    const state = macroState({ inflation: 0.02, unemployment: 0.04, policy_rate: 0.05 });
+    expect(() => previewVote(c, 0.05, state, PARAMS)).toThrow(/invalid compromise_band/);
+  });
+
+  it("SPEC-COMM-4: previewVote throws when a member has negative compromise_band", () => {
+    const c = committeeOf([member("a", { compromise_band: -0.001 })]);
+    const state = macroState({ inflation: 0.02, unemployment: 0.04, policy_rate: 0.05 });
+    expect(() => previewVote(c, 0.05, state, PARAMS)).toThrow(/invalid compromise_band/);
   });
 });
