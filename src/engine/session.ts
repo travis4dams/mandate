@@ -93,8 +93,9 @@ export type ForwardGuidanceStance = "hawkish" | "dovish" | "neutral";
 
 // SPEC-GUIDE-2: markets are surprised when the decided rate's move contradicts the guided
 // direction. A hawkish stance signals tightening, so an easing surprises; dovish signals easing,
-// so a tightening surprises; neutral signals a hold, so any move beyond `tolerance` surprises.
-// A move within `tolerance` of the current rate is consistent with any stance.
+// so a tightening surprises; neutral makes no directional commitment, so any move beyond
+// `tolerance` (in either direction) surprises. A move within `tolerance` of the current rate is
+// consistent with any stance. Strict inequalities: a move of exactly `tolerance` never surprises.
 export function marketsSurprised(
   stance: ForwardGuidanceStance,
   currentRate: number,
@@ -348,11 +349,14 @@ export class Session {
     // measured against the pre-meeting policy rate.
     // vote() above already guaranteed policy_rate is present and finite (VoteMissingVarError),
     // so the cast mirrors the codebase's required-var convention rather than masking a real gap.
+    // Capturing it here (immediately after vote) keeps that guarantee visible.
+    const guidanceP = loadGuidanceParams();
+    const preMeetingRate = this._state.vars.policy_rate as number;
     const surprisedMarkets = marketsSurprised(
       this._stance,
-      this._state.vars.policy_rate as number,
+      preMeetingRate,
       fomcVote.decided,
-      loadGuidanceParams().surprise_tolerance,
+      guidanceP.surprise_tolerance,
     );
     const newCredibility = applyMeetingOutcome(
       getCredibility(this._state),

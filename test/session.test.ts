@@ -374,6 +374,16 @@ describe("SPEC-GUIDE-2: marketsSurprised pure function", () => {
     expect(marketsSurprised("hawkish", 0.10, 0.10 - within, TOL)).toBe(false);
     expect(marketsSurprised("dovish", 0.10, 0.10 + within, TOL)).toBe(false);
   });
+
+  it("a move of exactly the tolerance does NOT surprise (strict-inequality boundary)", () => {
+    // SPEC-GUIDE-2: pins `<`/`>` (not `<=`/`>=`) so a refactor swapping them would fail here.
+    // Binary-exact values (0.5/1.0/1.5) so the boundary equality is precise, not float noise.
+    const tol = 0.5;
+    expect(marketsSurprised("hawkish", 1.0, 0.5, tol)).toBe(false); // delta === -tol
+    expect(marketsSurprised("dovish", 1.0, 1.5, tol)).toBe(false); // delta === +tol
+    expect(marketsSurprised("neutral", 1.0, 1.5, tol)).toBe(false); // |delta| === tol
+    expect(marketsSurprised("neutral", 1.0, 0.5, tol)).toBe(false); // |delta| === tol
+  });
 });
 
 describe("SPEC-GUIDE-2: surprise lever wired into Session.proposeRate()", () => {
@@ -409,6 +419,16 @@ describe("SPEC-GUIDE-2: surprise lever wired into Session.proposeRate()", () => 
     const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
     s.proposeRate(0.1075); // unchanged, neutral default → no surprise
     expect(s.current.vars.credibility).toBe(25);
+  });
+
+  it("reset() restores credibility after a surprise penalty", () => {
+    // SPEC-GUIDE-2 / SPEC-SESSION-0: the surprise penalty must not persist into _initialState.
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    s.setForwardGuidanceStance("hawkish");
+    s.proposeRate(0.09); // surprise → credibility 25 → 20
+    expect(s.current.vars.credibility).toBe(20);
+    s.reset();
+    expect(s.current.vars.credibility).toBe(25); // restored to scenario start
   });
 });
 

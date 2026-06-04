@@ -24,8 +24,8 @@
     },
     "surprise_tolerance": {
       "type": "number",
-      "minimum": 0,
-      "description": "Rate move (decimal, e.g. 0.0025 = 25bp) within which a decision is consistent with guidance and does not surprise markets."
+      "exclusiveMinimum": 0,
+      "description": "Rate move (decimal, e.g. 0.0025 = 25bp) within which a decision is consistent with guidance and does not surprise markets. Must be > 0 — a zero tolerance would make every non-hold decision surprise markets, inverting the intent."
     }
   }
 }
