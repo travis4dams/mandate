@@ -60,6 +60,7 @@ for (let i = 0; i < cal.series.length; i++) {
     ["policy_rate", policyRate],
     ["inflation", inflation],
     ["unemployment", unemployment],
+    ["credibility", credibility],
   ] as const) {
     if (!Number.isFinite(v)) {
       console.error(`trajectory[${i}] (${entry.date}): "${name}" is not a finite number (got ${v})`);
@@ -79,7 +80,7 @@ for (let i = 0; i < cal.series.length; i++) {
       entry.inflation_yoy.toFixed(4),
       unemployment.toFixed(4),
       entry.unemployment.toFixed(4),
-      (credibility ?? NaN).toFixed(1),
+      credibility.toFixed(1),
     ].join(",")
   );
 }

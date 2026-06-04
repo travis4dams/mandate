@@ -9,7 +9,7 @@ import { makeState } from "../src/engine/state.js";
 
 // Defensive hygiene: loadDynamicsParams() caches a read-through merge of the param files.
 // These tests don't mock the loader, but resetting after each keeps the cache from leaking
-// into any future test that does (per PR #34 review).
+// into any future test that does.
 afterEach(() => {
   _resetDynamicsParamsCache();
 });

@@ -10,6 +10,7 @@ import { loadCalibration } from "../src/content/calibration.js";
 // 1979-08 + 88 months = 1986-12. fromReplay seeds trajectory[0] at 1979-08, so
 // advance(88) yields a 89-entry trajectory aligned month-for-month with FRED.
 const MONTHS = 88;
+const COUNT = MONTHS + 1; // trajectory length / FRED row count
 
 function runVolcker(): Session {
   const session = Session.fromReplay("replay.1979_chair_tightening", 0, "comm.fomc_1979");
@@ -27,12 +28,12 @@ describe("SPEC-CAL-2: Volcker disinflation calibration", () => {
     // SPEC-CAL-2
     const cal = loadCalibration("cal.fred_1979_1986");
     const traj = runVolcker().trajectory;
-    expect(traj).toHaveLength(89);
-    expect(cal.series).toHaveLength(89);
+    expect(traj).toHaveLength(COUNT);
+    expect(cal.series).toHaveLength(COUNT);
 
     const inflPairs: [number, number][] = [];
     const unempPairs: [number, number][] = [];
-    for (let i = 0; i < 89; i++) {
+    for (let i = 0; i < COUNT; i++) {
       // Trajectory must align month-for-month with the FRED baseline.
       expect(traj[i].date).toBe(cal.series[i].date);
       inflPairs.push([traj[i].vars.inflation, cal.series[i].inflation_yoy]);
@@ -47,7 +48,7 @@ describe("SPEC-CAL-2: Volcker disinflation calibration", () => {
     // SPEC-CAL-2
     const traj = runVolcker().trajectory;
     const first = traj[0].vars;
-    const last = traj[88].vars;
+    const last = traj[MONTHS].vars;
 
     // Inflation falls dramatically from its 1979 starting level.
     expect(last.inflation).toBeLessThan(first.inflation - 0.05);
