@@ -19,6 +19,12 @@ export interface CommitteeMember {
   /** Smoothing on lagged policy rate (empirical 0.85-0.92). High inertia is what makes the dots cluster. */
   inertia: number;
   competence: number;
+  /** Range around preferred rate the member will assent to.
+   *  `|preferred - proposed| <= compromise_band` → assent;
+   *  `|preferred - proposed| > compromise_band` → dissent. SPEC-COMM-4.
+   *  Must be in [0, 0.5] (schema-governed). Zero is valid but means the member
+   *  dissents on virtually every proposal (IEEE 754 exact equality is rare). */
+  compromise_band: number;
 }
 
 export interface Committee {

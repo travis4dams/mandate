@@ -17,6 +17,7 @@ const M = (id: string, name: string, overrides: Partial<Record<string, unknown>>
   output_coef: 0.4,
   inertia: 0.88,
   competence: 0.9,
+  compromise_band: 0.005,
   ...overrides,
 });
 

@@ -1,5 +1,4 @@
 {
-  "dissent_tolerance": 0.005,
   "neutral_rate": 0.05,
   "target_inflation": 0.02,
   "target_unemployment": 0.04

@@ -2,21 +2,15 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://mandate.dev/schemas/committee-params.schema.json",
   "title": "CommitteeParams",
-  "description": "FOMC committee vote parameters. SPEC-COMM-3: the per-member preferred-rate formula is `inertia * lagged_rate + (1 - inertia) * (neutral_rate + inflation_coef * gap_inflation - output_coef * gap_unemployment)`. Per-member coefficients live on each CommitteeMember; this file holds only the committee-wide constants.",
+  "description": "FOMC committee vote parameters. SPEC-COMM-3: the per-member preferred-rate formula is `inertia * lagged_rate + (1 - inertia) * (neutral_rate + inflation_coef * gap_inflation - output_coef * gap_unemployment)`. Per-member coefficients live on each CommitteeMember; this file holds only the committee-wide constants. SPEC-COMM-4: dissent_tolerance removed; each member now carries their own compromise_band.",
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "dissent_tolerance",
     "neutral_rate",
     "target_inflation",
     "target_unemployment"
   ],
   "properties": {
-    "dissent_tolerance": {
-      "type": "number",
-      "minimum": 0,
-      "description": "Absolute rate difference (decimal, e.g. 0.005 = 50 bp) between a member's preferred rate and the Chair's proposed rate above which the member dissents. Empirical 1979-82 dissent rate of 1-3 per meeting suggests this should be tight enough that dots far from the proposal dissent and members within a couple of standard deviations vote yes."
-    },
     "neutral_rate": {
       "type": "number",
       "minimum": 0,
