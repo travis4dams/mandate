@@ -36,8 +36,8 @@ export function buildChartData(
   for (const snap of trajectory) {
     for (const key of series) {
       const v = snap.vars[key];
-      if (typeof v === "number") {
-        result[key].push({ date: snap.date, value: v });
+      if (Number.isFinite(v)) {
+        result[key].push({ date: snap.date, value: v as number });
       }
     }
   }
@@ -48,7 +48,7 @@ const SERIES_CONFIG = [
   { key: "inflation" as const, color: "#c92a2a", labelKey: "ui.dashboard.chart.legend.inflation" },
   { key: "unemployment" as const, color: "#1864ab", labelKey: "ui.dashboard.chart.legend.unemployment" },
   { key: "policy_rate" as const, color: "#2b8a3e", labelKey: "ui.dashboard.chart.legend.policy_rate" },
-  { key: "credibility" as const, color: "#7c3aed", labelKey: "ui.charts.legend.credibility" },
+  { key: "credibility" as const, color: "#7c3aed", labelKey: "ui.dashboard.chart.legend.credibility" },
 ];
 
 export function ChartsPanel(props: { trajectory: readonly Snapshot[] }): JSX.Element {
@@ -57,44 +57,53 @@ export function ChartsPanel(props: { trajectory: readonly Snapshot[] }): JSX.Ele
 
   useEffect(() => {
     if (!ref.current) return;
-    const data = buildChartData(trajectory);
+    try {
+      const data = buildChartData(trajectory);
 
-    const marks: Plot.Markish[] = [];
-    for (const cfg of SERIES_CONFIG) {
-      const pts = data[cfg.key];
-      const hw = fogHalfWidth(cfg.key);
-      if (hw > 0) {
+      const marks: Plot.Markish[] = [];
+      for (const cfg of SERIES_CONFIG) {
+        const pts = data[cfg.key];
+        const hw = fogHalfWidth(cfg.key);
+        if (hw > 0) {
+          marks.push(
+            Plot.areaY(pts, {
+              x: "date",
+              y1: (d: DataPoint) => d.value - hw,
+              y2: (d: DataPoint) => d.value + hw,
+              fill: "#888",
+              fillOpacity: 0.15,
+            }),
+          );
+        }
         marks.push(
-          Plot.areaY(pts, {
+          Plot.line(pts, {
             x: "date",
-            y1: (d: DataPoint) => d.value - hw,
-            y2: (d: DataPoint) => d.value + hw,
-            fill: "#888",
-            fillOpacity: 0.15,
+            y: "value",
+            stroke: cfg.color,
+            strokeWidth: 1.5,
+            tip: true,
           }),
         );
       }
-      marks.push(
-        Plot.line(pts, {
-          x: "date",
-          y: "value",
-          stroke: cfg.color,
-          strokeWidth: 1.5,
-          tip: true,
-        }),
-      );
+
+      const plot = Plot.plot({
+        marks,
+        x: { label: null },
+        y: { label: null },
+        color: { legend: false },
+        width: 880,
+        height: 200,
+      });
+
+      ref.current.replaceChildren(plot);
+    } catch (err) {
+      console.error("[ChartsPanel] Plot.plot() failed:", err);
+      if (ref.current) {
+        const msg = document.createElement("p");
+        msg.textContent = "Chart unavailable.";
+        ref.current.replaceChildren(msg);
+      }
     }
-
-    const plot = Plot.plot({
-      marks,
-      x: { label: null },
-      y: { label: null },
-      color: { legend: false },
-      width: 880,
-      height: 200,
-    });
-
-    ref.current.replaceChildren(plot);
     return () => { ref.current?.replaceChildren(); };
   }, [trajectory]);
 
