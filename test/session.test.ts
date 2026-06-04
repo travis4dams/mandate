@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { Session, NotMeetingMonthError } from "../src/engine/session.js";
+import { Session, NotMeetingMonthError, marketsSurprised } from "../src/engine/session.js";
 import type { ForwardGuidanceStance } from "../src/engine/session.js";
 import * as mandateModule from "../src/engine/mandate.js";
 
@@ -340,6 +340,95 @@ describe("SPEC-GUIDE-1: the stance scales expectations re-anchoring inside Sessi
     const neutral = Session.fromScenario("scen.recovery_test", 42, "comm.fomc_1979");
     neutral.advance(1);
     expect(s.current.vars.expectations_anchor).toBe(neutral.current.vars.expectations_anchor);
+  });
+});
+
+describe("SPEC-GUIDE-2: marketsSurprised pure function", () => {
+  const TOL = 0.0025;
+
+  it("hawkish stance is surprised by an easing but not by a hold or a hike", () => {
+    // SPEC-GUIDE-2
+    expect(marketsSurprised("hawkish", 0.10, 0.08, TOL)).toBe(true); // cut after guiding up
+    expect(marketsSurprised("hawkish", 0.10, 0.10, TOL)).toBe(false); // hold
+    expect(marketsSurprised("hawkish", 0.10, 0.13, TOL)).toBe(false); // hike
+  });
+
+  it("dovish stance is surprised by a tightening but not by a hold or a cut", () => {
+    // SPEC-GUIDE-2
+    expect(marketsSurprised("dovish", 0.10, 0.13, TOL)).toBe(true); // hike after guiding down
+    expect(marketsSurprised("dovish", 0.10, 0.10, TOL)).toBe(false); // hold
+    expect(marketsSurprised("dovish", 0.10, 0.08, TOL)).toBe(false); // cut
+  });
+
+  it("neutral stance is surprised by any move beyond the tolerance, in either direction", () => {
+    // SPEC-GUIDE-2
+    expect(marketsSurprised("neutral", 0.10, 0.13, TOL)).toBe(true); // hike
+    expect(marketsSurprised("neutral", 0.10, 0.08, TOL)).toBe(true); // cut
+    expect(marketsSurprised("neutral", 0.10, 0.10, TOL)).toBe(false); // hold
+  });
+
+  it("a move strictly within the tolerance band never surprises", () => {
+    // SPEC-GUIDE-2: a sub-tolerance move (here half the band) is consistent with any stance.
+    const within = TOL / 2;
+    expect(marketsSurprised("neutral", 0.10, 0.10 + within, TOL)).toBe(false);
+    expect(marketsSurprised("hawkish", 0.10, 0.10 - within, TOL)).toBe(false);
+    expect(marketsSurprised("dovish", 0.10, 0.10 + within, TOL)).toBe(false);
+  });
+
+  it("a move of exactly the tolerance does NOT surprise (strict-inequality boundary)", () => {
+    // SPEC-GUIDE-2: pins `<`/`>` (not `<=`/`>=`) so a refactor swapping them would fail here.
+    // Binary-exact values (0.5/1.0/1.5) so the boundary equality is precise, not float noise.
+    const tol = 0.5;
+    expect(marketsSurprised("hawkish", 1.0, 0.5, tol)).toBe(false); // delta === -tol
+    expect(marketsSurprised("dovish", 1.0, 1.5, tol)).toBe(false); // delta === +tol
+    expect(marketsSurprised("neutral", 1.0, 1.5, tol)).toBe(false); // |delta| === tol
+    expect(marketsSurprised("neutral", 1.0, 0.5, tol)).toBe(false); // |delta| === tol
+  });
+});
+
+describe("SPEC-GUIDE-2: surprise lever wired into Session.proposeRate()", () => {
+  // 1979-08 is a meeting month; starting policy_rate 0.1075, credibility 25, inflation 0.114
+  // (so onTarget is false and the +3 lever never fires — isolating the surprise lever).
+  it("a cut after hawkish guidance surprises markets and costs 5 credibility", () => {
+    // SPEC-GUIDE-2
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    s.setForwardGuidanceStance("hawkish");
+    expect(s.current.vars.credibility).toBe(25);
+    s.proposeRate(0.09); // easing after guiding hawkish → surprise
+    expect(s.current.vars.credibility).toBe(20); // 25 - 5
+  });
+
+  it("a hike after hawkish guidance is consistent — no surprise, credibility unchanged", () => {
+    // SPEC-GUIDE-2
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    s.setForwardGuidanceStance("hawkish");
+    s.proposeRate(0.13); // hiking after guiding hawkish → consistent
+    expect(s.current.vars.credibility).toBe(25);
+  });
+
+  it("a hike after dovish guidance surprises markets and costs 5 credibility", () => {
+    // SPEC-GUIDE-2
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    s.setForwardGuidanceStance("dovish");
+    s.proposeRate(0.13); // tightening after guiding dovish → surprise
+    expect(s.current.vars.credibility).toBe(20);
+  });
+
+  it("holding the rate under neutral guidance does not surprise markets", () => {
+    // SPEC-GUIDE-2
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    s.proposeRate(0.1075); // unchanged, neutral default → no surprise
+    expect(s.current.vars.credibility).toBe(25);
+  });
+
+  it("reset() restores credibility after a surprise penalty", () => {
+    // SPEC-GUIDE-2 / SPEC-SESSION-0: the surprise penalty must not persist into _initialState.
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    s.setForwardGuidanceStance("hawkish");
+    s.proposeRate(0.09); // surprise → credibility 25 → 20
+    expect(s.current.vars.credibility).toBe(20);
+    s.reset();
+    expect(s.current.vars.credibility).toBe(25); // restored to scenario start
   });
 });
 

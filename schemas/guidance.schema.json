@@ -2,25 +2,30 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://mandate.dev/schemas/guidance.schema.json",
   "title": "GuidanceParams",
-  "description": "Forward-guidance stance multipliers for the credibility-spiral recovery path.",
+  "description": "Forward-guidance params: stance multipliers on the expectations re-anchoring pull (SPEC-GUIDE-1), plus the rate-move tolerance below which a decision does not surprise markets (SPEC-GUIDE-2).",
   "type": "object",
   "additionalProperties": false,
-  "required": ["hawkish_multiplier", "neutral_multiplier", "dovish_multiplier"],
+  "required": ["hawkish_multiplier", "neutral_multiplier", "dovish_multiplier", "surprise_tolerance"],
   "properties": {
     "hawkish_multiplier": {
       "type": "number",
       "exclusiveMinimum": 0,
-      "description": "Recovery-rate multiplier when the Chair adopts a hawkish forward-guidance stance."
+      "description": "Re-anchoring-pull multiplier when the Chair adopts a hawkish forward-guidance stance."
     },
     "neutral_multiplier": {
       "type": "number",
       "exclusiveMinimum": 0,
-      "description": "Recovery-rate multiplier when the Chair adopts a neutral forward-guidance stance."
+      "description": "Re-anchoring-pull multiplier when the Chair adopts a neutral forward-guidance stance."
     },
     "dovish_multiplier": {
       "type": "number",
       "exclusiveMinimum": 0,
-      "description": "Recovery-rate multiplier when the Chair adopts a dovish forward-guidance stance."
+      "description": "Re-anchoring-pull multiplier when the Chair adopts a dovish forward-guidance stance."
+    },
+    "surprise_tolerance": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Rate move (decimal, e.g. 0.0025 = 25bp) within which a decision is consistent with guidance and does not surprise markets. Must be > 0 — a zero tolerance would make every non-hold decision surprise markets, inverting the intent."
     }
   }
 }

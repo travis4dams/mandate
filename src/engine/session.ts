@@ -41,6 +41,7 @@ interface GuidanceParams {
   hawkish_multiplier: number;
   neutral_multiplier: number;
   dovish_multiplier: number;
+  surprise_tolerance: number;
 }
 const GUIDANCE_SCHEMA = join(
   new URL(".", import.meta.url).pathname,
@@ -89,6 +90,32 @@ export class NotMeetingMonthError extends Error {
 // SPEC-GUIDE-1: The three forward-guidance stances the Chair can adopt.
 // The stance scales the expectations re-anchoring pull (expectations_anchor_pull) via stanceMultiplier().
 export type ForwardGuidanceStance = "hawkish" | "dovish" | "neutral";
+
+// SPEC-GUIDE-2: markets are surprised when the decided rate's move contradicts the guided
+// direction. A hawkish stance signals tightening, so an easing surprises; dovish signals easing,
+// so a tightening surprises; neutral makes no directional commitment, so any move beyond
+// `tolerance` (in either direction) surprises. A move within `tolerance` of the current rate is
+// consistent with any stance. Strict inequalities: a move of exactly `tolerance` never surprises.
+export function marketsSurprised(
+  stance: ForwardGuidanceStance,
+  currentRate: number,
+  decidedRate: number,
+  tolerance: number,
+): boolean {
+  const delta = decidedRate - currentRate;
+  switch (stance) {
+    case "hawkish":
+      return delta < -tolerance;
+    case "dovish":
+      return delta > tolerance;
+    case "neutral":
+      return Math.abs(delta) > tolerance;
+    default: {
+      const _exhaustive: never = stance;
+      throw new Error(`marketsSurprised: unknown stance "${String(_exhaustive)}".`);
+    }
+  }
+}
 
 // Required vars that every scenario must supply for the engine to function.
 const REQUIRED_VARS = ["policy_rate", "inflation", "unemployment", "credibility", "expectations_anchor"] as const;
@@ -317,12 +344,24 @@ export class Session {
 
     // Apply the decided rate and compute new credibility.
     // SPEC-CRED-1 (issue #33): dissents no longer affect credibility, so fomcVote.dissents is
-    // reported back to the caller but not fed here. TODO: wire surprisedMarkets from a
-    // forward-guidance-vs-decided delta in a future spec; it is pinned false for now.
+    // reported back to the caller but not fed here.
+    // SPEC-GUIDE-2: markets are surprised when the decided rate contradicts the guidance stance,
+    // measured against the pre-meeting policy rate.
+    // vote() above already guaranteed policy_rate is present and finite (VoteMissingVarError),
+    // so the cast mirrors the codebase's required-var convention rather than masking a real gap.
+    // Capturing it here (immediately after vote) keeps that guarantee visible.
+    const guidanceP = loadGuidanceParams();
+    const preMeetingRate = this._state.vars.policy_rate as number;
+    const surprisedMarkets = marketsSurprised(
+      this._stance,
+      preMeetingRate,
+      fomcVote.decided,
+      guidanceP.surprise_tolerance,
+    );
     const newCredibility = applyMeetingOutcome(
       getCredibility(this._state),
       {
-        surprisedMarkets: false,
+        surprisedMarkets,
         onTarget: onTarget(this._state, loadMandateParams()),
       },
     );
