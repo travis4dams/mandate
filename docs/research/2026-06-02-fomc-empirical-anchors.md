@@ -112,12 +112,19 @@ PR #27; the latter three remain queued.
    tolerance band needs to be content-tunable independently of the mandate
    tolerance.
 
-3. **SPEC-CAL-2 (Volcker calibration test)** *— queued.*
-   A test that drives the engine through `content/replays/1979_chair_tightening.json`
-   and compares the resulting trajectory to the FRED 1979-1986 calibration
-   baseline (already committed at `content/calibration/fred_1979_1986.json`).
-   Pin RMSE thresholds (loose tolerance) on inflation, unemployment, and
-   policy_rate so calibration regressions surface as test failures.
+3. **SPEC-CAL-2 (Volcker calibration test)** *— shipped.*
+   `test/calibration-volcker.test.ts` drives `Session.fromReplay` through
+   `content/replays/1979_chair_tightening.json` and asserts RMSE vs the FRED
+   1979-1986 baseline: inflation < 2.5pp, unemployment < 2.0pp (achieved ~1.4pp /
+   ~0.9pp). Required redesigning the macro core: SPEC-SIM-5 became a **real-rate
+   transmission** model (the policy rate bites only through `policy_rate −
+   expectations_anchor`, so 1979's 10.75% nominal rate is barely restrictive but
+   Volcker's 19% against falling expectations crushes demand); SPEC-CRED-4 became
+   **continuous credibility-weighted adaptive expectations** (replacing the binary
+   spiral); and **SPEC-CRED-6** ties credibility to mandate progress, not committee
+   votes (issue #33 — dissents no longer cost credibility). The 1979-80 inflation
+   peak (second oil shock) is left to content events, so the tolerance is loose.
+   Calibrated params: see `content/engine/dynamics.json` + `credibility.json`.
 
 4. **SPEC-WEB-3 (UI Volcker integration test)** *— queued.*
    A vitest-jsdom test that drives the Dashboard through the rate path via the

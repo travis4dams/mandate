@@ -5,7 +5,7 @@ import { loadCommittee } from "../content/committees.js";
 import { loadValidatedFile } from "../content/loader.js";
 import { tick } from "./clock.js";
 import { vote, previewVote, loadCommitteeParams } from "./fomc.js";
-import { applyMeetingOutcome, applyMonthlySpiral, getCredibility, loadCredibilityParams } from "./credibility.js";
+import { applyMeetingOutcome, getCredibility } from "./credibility.js";
 import { applyMacroDynamics, loadDynamicsParams } from "./dynamics.js";
 import { onTarget, loadMandateParams } from "./mandate.js";
 import type { GameState, GameStateSnapshot } from "./state.js";
@@ -87,7 +87,7 @@ export class NotMeetingMonthError extends Error {
 }
 
 // SPEC-GUIDE-1: The three forward-guidance stances the Chair can adopt.
-// The stance scales the credibility-spiral recovery_rate via stanceMultiplier().
+// The stance scales the expectations re-anchoring pull (expectations_anchor_pull) via stanceMultiplier().
 export type ForwardGuidanceStance = "hawkish" | "dovish" | "neutral";
 
 // Required vars that every scenario must supply for the engine to function.
@@ -225,15 +225,16 @@ export class Session {
     const checkpointState = this._state;
     const checkpointTrajectoryLength = this._trajectoryInternal.length;
 
-    // SPEC-GUIDE-1 / SPEC-SIM-5: all three loaders + effectiveParams are loop-invariant —
-    // each is a cached singleton and stance is fixed for the duration of advance(). Hoisting
-    // makes that obvious to readers and removes any hint of per-month re-resolution.
-    const credParams = loadCredibilityParams();
+    // SPEC-GUIDE-1 / SPEC-SIM-5: loaders + effectiveParams are loop-invariant — each is a
+    // cached singleton and stance is fixed for the duration of advance(). Hoisting makes that
+    // obvious to readers and removes any hint of per-month re-resolution. The forward-guidance
+    // stance scales the expectations re-anchoring pull (hawkish = faster, dovish = slower).
     const guidanceP = loadGuidanceParams();
     const dynamicsParams = loadDynamicsParams();
     const effectiveParams = {
-      ...credParams,
-      recovery_rate: credParams.recovery_rate * stanceMultiplier(this._stance, guidanceP),
+      ...dynamicsParams,
+      expectations_anchor_pull:
+        dynamicsParams.expectations_anchor_pull * stanceMultiplier(this._stance, guidanceP),
     };
 
     try {
@@ -249,8 +250,7 @@ export class Session {
         }
 
         this._state = tick(this._state, 1);
-        this._state = applyMonthlySpiral(this._state, effectiveParams);
-        this._state = applyMacroDynamics(this._state, dynamicsParams);
+        this._state = applyMacroDynamics(this._state, effectiveParams);
 
         const snapshot = Session._snapshotOf(this._state);
         this._trajectoryInternal.push(snapshot);
@@ -316,12 +316,12 @@ export class Session {
     const fomcVote = vote(committee, rate, this._state, params);
 
     // Apply the decided rate and compute new credibility.
-    // TODO: wire surprisedMarkets from forward-guidance-vs-decided delta in a future spec. SESSION-0
-    // limitation: surprisedMarkets is pinned to false, disabling that SPEC-CRED-1 lever for this slice.
+    // SPEC-CRED-1 (issue #33): dissents no longer affect credibility, so fomcVote.dissents is
+    // reported back to the caller but not fed here. TODO: wire surprisedMarkets from a
+    // forward-guidance-vs-decided delta in a future spec; it is pinned false for now.
     const newCredibility = applyMeetingOutcome(
       getCredibility(this._state),
       {
-        dissents: fomcVote.dissents,
         surprisedMarkets: false,
         onTarget: onTarget(this._state, loadMandateParams()),
       },

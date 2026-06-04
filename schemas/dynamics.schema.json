@@ -2,37 +2,49 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://mandate.dev/schemas/dynamics.schema.json",
   "title": "DynamicsParams",
-  "description": "Macro dynamics parameters. SPEC-SIM-5: Phillips-curve / IS-curve model knobs.",
+  "description": "Macro dynamics parameters. SPEC-SIM-5: real-rate transmission (inflation + unemployment).",
   "type": "object",
   "additionalProperties": false,
-  "required": ["phillips_slope", "unemployment_natural_rate", "rate_sensitivity", "neutral_rate", "inflation_persistence"],
+  "required": [
+    "inflation_persistence",
+    "phillips_slope",
+    "unemployment_natural_rate",
+    "real_neutral_rate",
+    "okun_coefficient",
+    "unemployment_adjustment_speed"
+  ],
   "properties": {
+    "inflation_persistence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Weight on lagged inflation in the Phillips curve (0 = none, 1 = full momentum)."
+    },
     "phillips_slope": {
       "type": "number",
       "minimum": 0,
-      "description": "Slope of the Phillips curve: how much unemployment gap reduces inflation per month."
+      "description": "How much an unemployment gap below the natural rate pushes inflation down per month."
     },
     "unemployment_natural_rate": {
       "type": "number",
       "minimum": 0,
       "maximum": 1,
-      "description": "Long-run equilibrium unemployment rate (NAIRU). Decimal in [0,1] — schema-rejects percentage-point notation like 6 (meant 0.06)."
+      "description": "Long-run equilibrium unemployment (NAIRU). Decimal in [0,1] — schema-rejects percentage-point notation like 6 (meant 0.06)."
     },
-    "rate_sensitivity": {
+    "real_neutral_rate": {
+      "type": "number",
+      "description": "Real neutral rate r*: the real policy rate (nominal minus expected inflation) at which the economy is neither tightening nor easing."
+    },
+    "okun_coefficient": {
       "type": "number",
       "minimum": 0,
-      "description": "How much unemployment changes per month per unit of rate gap (policy_rate - neutral_rate)."
+      "description": "Extra equilibrium unemployment per unit of real-rate gap (Okun-style sensitivity of slack to the real rate)."
     },
-    "neutral_rate": {
-      "type": "number",
-      "minimum": 0,
-      "description": "The neutral nominal policy rate at which unemployment is neither rising nor falling."
-    },
-    "inflation_persistence": {
+    "unemployment_adjustment_speed": {
       "type": "number",
       "minimum": 0,
       "maximum": 1,
-      "description": "Weight on lagged inflation in the inflation update equation (0 = no persistence, 1 = full persistence)."
+      "description": "Fraction of the gap to policy-implied equilibrium unemployment closed each month (lag of policy on output)."
     }
   }
 }

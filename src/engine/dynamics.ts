@@ -1,64 +1,171 @@
-// SPEC-SIM-5: pure monthly macro dynamics.
+// SPEC-SIM-5 / SPEC-CRED-4 / SPEC-CRED-6: the monthly macro step.
+//
+// A single simultaneous update: inflation, unemployment, expectations_anchor, and
+// credibility are all computed from the PRIOR month's vars, so the step is
+// order-independent and matches the calibration harness (SPEC-CAL-2).
+//
+// The transmission is real-rate based: the policy rate bites on the economy only
+// through the *real* rate (nominal minus expected inflation). In 1979 an 11% nominal
+// rate against 11% expected inflation is ~0% real and barely restrictive; Volcker's
+// 19% nominal against falling expectations was deeply restrictive. That real-rate gap
+// drives a recession (unemployment up), which pulls inflation down via the Phillips
+// curve, while sustained progress toward the mandate rebuilds credibility, which
+// re-anchors expectations — historically about half the disinflation.
 import { join } from "node:path";
 import { loadValidatedFile } from "../content/loader.js";
 import type { GameState } from "./state.js";
+import { CRED_MIN, CRED_MAX } from "./credibility.js";
 
-export interface DynamicsParams {
-  phillips_slope: number;
-  unemployment_natural_rate: number;
-  rate_sensitivity: number;
-  neutral_rate: number;
+export interface MacroDynamicsParams {
+  // --- inflation & unemployment (content/engine/dynamics.json) ---
+  /** Weight on lagged inflation in the Phillips curve (0 = none, 1 = full momentum). */
   inflation_persistence: number;
+  /** How much an unemployment gap below natural pushes inflation down per month. */
+  phillips_slope: number;
+  /** Long-run equilibrium unemployment (NAIRU). */
+  unemployment_natural_rate: number;
+  /** Real neutral rate r*: the real policy rate at which the economy is neither tightening nor easing. */
+  real_neutral_rate: number;
+  /** Okun sensitivity: extra equilibrium unemployment per unit of real-rate gap. */
+  okun_coefficient: number;
+  /** Speed unemployment mean-reverts toward its policy-implied equilibrium each month. */
+  unemployment_adjustment_speed: number;
+
+  // --- expectations & credibility (content/engine/credibility.json) ---
+  /** Long-run inflation target. */
+  target_inflation: number;
+  /** Dual-mandate unemployment target (for the mission-distance credibility update). */
+  unemployment_target: number;
+  /** How fast expectations track realized inflation when credibility is low (adaptive). */
+  expectations_adaptivity: number;
+  /** How fast expectations are pulled to target when credibility is high (re-anchoring). */
+  expectations_anchor_pull: number;
+  /** Credibility gained per unit reduction in dual-mandate distance (mission progress). */
+  credibility_mission_gain: number;
+  /** Weight on the unemployment gap in the dual-mandate distance (<1 → inflation dominates). */
+  credibility_unemployment_weight: number;
+  /** Credibility below this counts as a month "below anchor" for the persistent-memory stat. */
+  anchor_threshold: number;
 }
 
-const SCHEMA_PATH = join(new URL(".", import.meta.url).pathname, "../../schemas/dynamics.schema.json");
-const FILE_PATH = join(new URL(".", import.meta.url).pathname, "../../content/engine/dynamics.json");
+const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));
 
-let _cachedParams: DynamicsParams | undefined;
-
-export function loadDynamicsParams(): DynamicsParams {
-  if (_cachedParams !== undefined) return _cachedParams;
-  try {
-    _cachedParams = loadValidatedFile<DynamicsParams>(SCHEMA_PATH, FILE_PATH);
-  } catch (e) {
-    throw new Error("Failed to load dynamics params from content/engine/dynamics.json", { cause: e });
-  }
-  return _cachedParams;
-}
-
-/** Test-only: clear the cache so the next loadDynamicsParams() re-reads and re-validates
- *  the JSON. AJV's compiled validator is cached separately in loader.ts and is not affected. */
-export function _resetDynamicsParamsCache(): void {
-  _cachedParams = undefined;
-}
-
-// All four inputs are in Session.REQUIRED_VARS, so loadScenario's MissingVarsError catches
-// any omission at scenario load time. Trust that boundary guard — adding silent `?? <default>`
-// fallbacks here would either inject a directional error (inflation pulled to 0, anchor pulled
-// to 0) or mask a real content authoring bug. Per CLAUDE.md: "Don't add error handling for
-// scenarios that can't happen."
-export function applyMacroDynamics(state: GameState, params: DynamicsParams): GameState {
+// SPEC-SIM-5: all inputs except months_below_anchor are in Session.REQUIRED_VARS, so
+// loadScenario's MissingVarsError catches any omission at scenario load time. Trust that
+// boundary guard rather than injecting directional `?? 0` defaults. months_below_anchor is
+// an informational counter that may legitimately be absent in hand-built test states, so it
+// alone defaults to 0.
+export function applyMacroDynamics(state: GameState, params: MacroDynamicsParams): GameState {
   const inflation = state.vars.inflation as number;
   const unemployment = state.vars.unemployment as number;
   const policyRate = state.vars.policy_rate as number;
-  const expectationsAnchor = state.vars.expectations_anchor as number;
+  const anchor = state.vars.expectations_anchor as number;
+  const credibility = state.vars.credibility as number;
+  const monthsBelow = state.vars.months_below_anchor ?? 0;
 
-  const unemploymentGap = unemployment - params.unemployment_natural_rate;
-  const rateGap = policyRate - params.neutral_rate;
+  // Real-rate transmission.
+  const realRate = policyRate - anchor;
+  const realGap = realRate - params.real_neutral_rate;
 
-  const newInflation =
+  // Unemployment mean-reverts toward a policy-implied equilibrium.
+  const uEquilibrium = params.unemployment_natural_rate + params.okun_coefficient * realGap;
+  const newUnemployment = clamp(
+    unemployment + params.unemployment_adjustment_speed * (uEquilibrium - unemployment),
+    0,
+    1,
+  );
+
+  // Expectations-augmented Phillips curve with momentum (slack measured on PRIOR unemployment).
+  const slack = unemployment - params.unemployment_natural_rate;
+  const newInflation = Math.max(
+    0,
     params.inflation_persistence * inflation +
-    (1 - params.inflation_persistence) * expectationsAnchor -
-    params.phillips_slope * unemploymentGap;
+      (1 - params.inflation_persistence) * anchor -
+      params.phillips_slope * slack,
+  );
 
-  const newUnemployment = unemployment + params.rate_sensitivity * rateGap;
+  // Expectations: adaptive when credibility is low, target-anchored when high (SPEC-CRED-4).
+  const c = credibility / CRED_MAX;
+  const newAnchor =
+    anchor +
+    params.expectations_adaptivity * (1 - c) * (inflation - anchor) -
+    params.expectations_anchor_pull * c * (anchor - params.target_inflation);
+
+  // Mission-tied credibility: rises as the economy moves toward the dual-mandate target,
+  // falls as it moves away (SPEC-CRED-6).
+  const distance = (i: number, u: number): number =>
+    Math.abs(i - params.target_inflation) +
+    params.credibility_unemployment_weight * Math.abs(u - params.unemployment_target);
+  const distBefore = distance(inflation, unemployment);
+  const distAfter = distance(newInflation, newUnemployment);
+  const newCredibility = clamp(
+    credibility + params.credibility_mission_gain * (distBefore - distAfter),
+    CRED_MIN,
+    CRED_MAX,
+  );
+
+  // Persistent-memory counter: increments while below threshold, frozen (not reset) on recovery.
+  const newMonthsBelow =
+    credibility < params.anchor_threshold ? monthsBelow + 1 : monthsBelow;
 
   return {
     ...state,
     vars: {
       ...state.vars,
-      inflation: Math.max(0, newInflation),
-      unemployment: Math.max(0, Math.min(1, newUnemployment)),
+      inflation: newInflation,
+      unemployment: newUnemployment,
+      expectations_anchor: newAnchor,
+      credibility: newCredibility,
+      months_below_anchor: newMonthsBelow,
     },
   };
+}
+
+const DYNAMICS_SCHEMA = join(new URL(".", import.meta.url).pathname, "../../schemas/dynamics.schema.json");
+const DYNAMICS_FILE = join(new URL(".", import.meta.url).pathname, "../../content/engine/dynamics.json");
+const CREDIBILITY_SCHEMA = join(new URL(".", import.meta.url).pathname, "../../schemas/credibility.schema.json");
+const CREDIBILITY_FILE = join(new URL(".", import.meta.url).pathname, "../../content/engine/credibility.json");
+
+type DynamicsFile = Pick<
+  MacroDynamicsParams,
+  | "inflation_persistence"
+  | "phillips_slope"
+  | "unemployment_natural_rate"
+  | "real_neutral_rate"
+  | "okun_coefficient"
+  | "unemployment_adjustment_speed"
+>;
+type CredibilityFile = Pick<
+  MacroDynamicsParams,
+  | "target_inflation"
+  | "unemployment_target"
+  | "expectations_adaptivity"
+  | "expectations_anchor_pull"
+  | "credibility_mission_gain"
+  | "credibility_unemployment_weight"
+  | "anchor_threshold"
+>;
+
+let _cachedParams: MacroDynamicsParams | undefined;
+
+/** Lazy-loaded, cached merge of the macro (dynamics.json) and expectations/credibility
+ *  (credibility.json) params — the full parameter set `applyMacroDynamics` consumes. */
+export function loadDynamicsParams(): MacroDynamicsParams {
+  if (_cachedParams !== undefined) return _cachedParams;
+  try {
+    const dyn = loadValidatedFile<DynamicsFile>(DYNAMICS_SCHEMA, DYNAMICS_FILE);
+    const cred = loadValidatedFile<CredibilityFile>(CREDIBILITY_SCHEMA, CREDIBILITY_FILE);
+    _cachedParams = { ...dyn, ...cred };
+  } catch (e) {
+    throw new Error(
+      "Failed to load macro dynamics params from content/engine/dynamics.json + credibility.json",
+      { cause: e },
+    );
+  }
+  return _cachedParams;
+}
+
+/** Test-only: clear the cache so the next loadDynamicsParams() re-reads and re-validates. */
+export function _resetDynamicsParamsCache(): void {
+  _cachedParams = undefined;
 }

@@ -1,7 +1,8 @@
 {
-  "phillips_slope": 0.05,
-  "unemployment_natural_rate": 0.06,
-  "rate_sensitivity": 0.02,
-  "neutral_rate": 0.05,
-  "inflation_persistence": 0.95
+  "inflation_persistence": 0.952,
+  "phillips_slope": 0.106,
+  "unemployment_natural_rate": 0.0645,
+  "real_neutral_rate": 0.027,
+  "okun_coefficient": 1.14,
+  "unemployment_adjustment_speed": 0.045
 }
