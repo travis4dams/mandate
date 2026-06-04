@@ -1,6 +1,18 @@
-import { describe, it, expect } from "vitest";
-import { applyMacroDynamics, loadDynamicsParams, type MacroDynamicsParams } from "../src/engine/dynamics.js";
+import { describe, it, expect, afterEach } from "vitest";
+import {
+  applyMacroDynamics,
+  loadDynamicsParams,
+  _resetDynamicsParamsCache,
+  type MacroDynamicsParams,
+} from "../src/engine/dynamics.js";
 import { makeState } from "../src/engine/state.js";
+
+// Defensive hygiene: loadDynamicsParams() caches a read-through merge of the param files.
+// These tests don't mock the loader, but resetting after each keeps the cache from leaking
+// into any future test that does (per PR #34 review).
+afterEach(() => {
+  _resetDynamicsParamsCache();
+});
 
 // SPEC-GUIDE-1: the forward-guidance stance scales `expectations_anchor_pull`. Here we verify
 // the underlying lever directly: a larger pull (hawkish) re-anchors expectations toward target
