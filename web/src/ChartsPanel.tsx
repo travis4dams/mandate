@@ -5,6 +5,7 @@ import { useRef, useEffect } from "react";
 import * as Plot from "@observablehq/plot";
 import { t } from "./loc";
 import fogJson from "../../content/engine/fog.json";
+import type { FogParams } from "../../src/engine/fog";
 
 export type DataPoint = { date: string; value: number };
 
@@ -18,7 +19,7 @@ export type ChartData = {
 type Snapshot = { date: string; vars: Record<string, number | undefined> };
 
 // Maps series name -> noise_scale from fog.json; falls back to 0 for unknown series.
-const fogParams = fogJson as Record<string, { noise_scale: number; lag_months: number }>;
+const fogParams: Record<string, FogParams> = fogJson as Record<string, FogParams>;
 
 // Returns the fog-band half-width (noise_scale) for a given series name.
 // Falls back to 0 if the series is not listed in content/engine/fog.json.
@@ -56,7 +57,8 @@ export function ChartsPanel(props: { trajectory: readonly Snapshot[] }): JSX.Ele
   const { trajectory } = props;
 
   useEffect(() => {
-    if (!ref.current) return;
+    const el = ref.current;
+    if (!el) return;
     try {
       const data = buildChartData(trajectory);
 
@@ -95,16 +97,14 @@ export function ChartsPanel(props: { trajectory: readonly Snapshot[] }): JSX.Ele
         height: 200,
       });
 
-      ref.current.replaceChildren(plot);
+      el.replaceChildren(plot);
     } catch (err) {
       console.error("[ChartsPanel] Plot.plot() failed:", err);
-      if (ref.current) {
-        const msg = document.createElement("p");
-        msg.textContent = "Chart unavailable.";
-        ref.current.replaceChildren(msg);
-      }
+      const msg = document.createElement("p");
+      msg.textContent = t("ui.dashboard.chart.unavailable");
+      el.replaceChildren(msg);
     }
-    return () => { ref.current?.replaceChildren(); };
+    return () => { el.replaceChildren(); };
   }, [trajectory]);
 
   return (

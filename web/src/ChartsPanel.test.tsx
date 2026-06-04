@@ -26,6 +26,8 @@ describe("SPEC-WEB-3 chart data", () => {
     const data = buildChartData(trajectory);
     expect(data.inflation[0]).toEqual({ date: "1979-08", value: 0.11 });
     expect(data.credibility[0]).toEqual({ date: "1979-08", value: 8.2 });
+    expect(data.unemployment[0]).toEqual({ date: "1979-08", value: 0.06 });
+    expect(data.policy_rate[0]).toEqual({ date: "1979-08", value: 0.105 });
   });
 
   it("fog half-width matches noise_scale from fog params", () => {
@@ -34,6 +36,14 @@ describe("SPEC-WEB-3 chart data", () => {
     expect(fogHalfWidth("unemployment")).toBeCloseTo(0.001);
     expect(fogHalfWidth("policy_rate")).toBe(0);
     expect(fogHalfWidth("credibility")).toBe(0);
+  });
+
+  it("returns empty arrays for empty trajectory", () => {
+    const data = buildChartData([]);
+    expect(data.inflation).toHaveLength(0);
+    expect(data.unemployment).toHaveLength(0);
+    expect(data.policy_rate).toHaveLength(0);
+    expect(data.credibility).toHaveLength(0);
   });
 
   it("skips snapshots where the series value is undefined", () => {
