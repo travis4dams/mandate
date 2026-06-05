@@ -18,7 +18,7 @@ export interface TraitEntry {
   readonly id: string;
   readonly name: string;
   readonly desc: string;
-  readonly effects: TraitEffects;
+  readonly effects: Readonly<TraitEffects>;
   readonly signal_hooks?: readonly SignalHook[];
 }
 
@@ -30,11 +30,19 @@ let _cachedTraitCatalog: TraitEntry[] | undefined;
 export function loadTraitCatalog(dir: string = DEFAULT_TRAITS_DIR): TraitEntry[] {
   if (dir === DEFAULT_TRAITS_DIR) {
     if (_cachedTraitCatalog === undefined) {
-      _cachedTraitCatalog = loadValidated<TraitEntry>(SCHEMA_PATH, dir);
+      try {
+        _cachedTraitCatalog = loadValidated<TraitEntry>(SCHEMA_PATH, dir);
+      } catch (e) {
+        throw new Error("Failed to load trait catalog from content/traits/catalog.json", { cause: e });
+      }
     }
     return _cachedTraitCatalog;
   }
-  return loadValidated<TraitEntry>(SCHEMA_PATH, dir);
+  try {
+    return loadValidated<TraitEntry>(SCHEMA_PATH, dir);
+  } catch (e) {
+    throw new Error(`Failed to load trait catalog from ${dir}`, { cause: e });
+  }
 }
 
 export function _resetTraitCatalogCache(): void {

@@ -10,7 +10,8 @@ import type { GameState } from "./state.js";
 export interface FomcVote {
   /** The enacted rate. Always equals proposedRate in slice 1 (the committee has no override power yet); a future slice may add majority-override. */
   decided: number;
-  /** Count of members whose `|preferred - proposedRate| > member.compromise_band`. */
+  /** Count of members whose `|preferred - proposedRate| > effectiveBand`, where
+   *  `effectiveBand = Math.max(0, compromise_band * (1 - conviction * conviction_band_factor) * (1 + bandMod))`. */
   dissents: number;
 }
 
@@ -73,8 +74,9 @@ export interface MemberVotePreview {
   readonly memberId: string;
   readonly nameKey: string;
   readonly preferred: number;
-  /** True iff `|preferred - proposedRate| > member.compromise_band` for the
-   *  `proposedRate` passed to the previewVote() call that produced this preview.
+  /** True iff `|preferred - proposedRate| > effectiveBand` for the `proposedRate`
+   *  passed to the previewVote() call that produced this preview, where
+   *  `effectiveBand = Math.max(0, compromise_band * (1 - conviction * conviction_band_factor) * (1 + bandMod))`.
    *  Re-evaluating with a different proposed rate requires a fresh previewVote(). */
   readonly wouldDissent: boolean;
 }
@@ -130,10 +132,13 @@ export function previewVote(
   proposedRate: number,
   state: GameState,
   params: CommitteeParams,
-  traitCatalog: readonly TraitEntry[] = [],
+  traitCatalog: readonly TraitEntry[],
 ): { previews: MemberVotePreview[]; gapInflation: number; gapUnemployment: number } {
   if (!Number.isFinite(proposedRate)) {
     throw new Error(`previewVote: proposedRate ${proposedRate} is not finite.`);
+  }
+  if (!Number.isFinite(params.conviction_band_factor) || params.conviction_band_factor < 0 || params.conviction_band_factor > 1) {
+    throw new Error(`previewVote: invalid conviction_band_factor (${params.conviction_band_factor}); expected finite in [0,1].`);
   }
   const { laggedRate, gapInflation, gapUnemployment } = readGuardedVars(state, params);
   const previews = committee.members.map((m) => {
@@ -149,6 +154,9 @@ export function previewVote(
     }
     // SPEC-COMM-5: resolve trait lean shift and band modifier; signal hooks stay dormant.
     const { leanShift, bandMod } = resolveTraitEffects(m, traitCatalog);
+    if (1 + bandMod <= 0) {
+      throw new Error(`member "${m.id}" trait band_modifier sum (${bandMod}) causes effectiveBand ≤ 0; reduce band_modifier magnitudes in the trait catalog.`);
+    }
     const preferred = memberPreferred(m, laggedRate, gapInflation, gapUnemployment, params, leanShift);
     // conviction narrows the base band; trait band_modifier adjusts further; floor at 0.
     const effectiveBand = Math.max(
@@ -171,7 +179,7 @@ export function vote(
   proposedRate: number,
   state: GameState,
   params: CommitteeParams,
-  traitCatalog: readonly TraitEntry[] = [],
+  traitCatalog: readonly TraitEntry[],
 ): FomcVote {
   const { previews } = previewVote(committee, proposedRate, state, params, traitCatalog);
   return { decided: proposedRate, dissents: previews.filter((p) => p.wouldDissent).length };

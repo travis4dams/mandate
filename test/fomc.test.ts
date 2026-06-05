@@ -71,7 +71,7 @@ describe("vote", () => {
   it("steady state → zero dissents", () => {
     const c = committeeOf([member("a"), member("b"), member("c")]);
     const state = macroState({ inflation: 0.02, unemployment: 0.04, policy_rate: 0.05 });
-    const result: FomcVote = vote(c, 0.05, state, PARAMS);
+    const result: FomcVote = vote(c, 0.05, state, PARAMS, []);
     expect(result.decided).toBe(0.05);
     expect(result.dissents).toBe(0);
   });
@@ -85,7 +85,7 @@ describe("vote", () => {
       member("dove", { inflation_coef: 1.4, output_coef: 0.6 }),
     ]);
     const state = macroState({ inflation: 0.114, unemployment: 0.058, policy_rate: 0.1075 });
-    const { previews } = previewVote(c, 0.1075, state, PARAMS);
+    const { previews } = previewVote(c, 0.1075, state, PARAMS, []);
     const [hawkPref, dovePref] = [previews[0]!.preferred, previews[1]!.preferred];
     const spread = hawkPref - dovePref;
     // Empirical FOMC spread at the 1-2y horizon is ~150bp; tolerate up to 250bp for
@@ -101,7 +101,7 @@ describe("vote", () => {
     // Member preferred = 0.88 * 0.06 + 0.12 * (0.05 + 1.7 * 0.03 - 0.4 * 0.01)
     //                  = 0.0528 + 0.12 * 0.097 = 0.0528 + 0.01164 = 0.06444
     // Proposing 0.0645 → |0.06444 - 0.0645| ≈ 0.00006 < compromise_band(0.005) → no dissent.
-    const result = vote(c, 0.0645, state, PARAMS);
+    const result = vote(c, 0.0645, state, PARAMS, []);
     expect(result.dissents).toBe(0);
   });
 
@@ -113,7 +113,7 @@ describe("vote", () => {
     // Each member's preferred ≈ 0.88 * 0.05 + 0.12 * (0.05 + 1.7 * 0.06 - 0.4 * 0) = 0.044 + 0.018 = 0.062
     // |0.062 - 0.05| = 0.012 > compromise_band(0.005) → all dissent.
     const state = macroState({ inflation: 0.08, unemployment: 0.04, policy_rate: 0.05 });
-    const result = vote(c, 0.05, state, PARAMS);
+    const result = vote(c, 0.05, state, PARAMS, []);
     expect(result.dissents).toBe(4);
   });
 
@@ -123,7 +123,7 @@ describe("vote", () => {
   it("dissents are surfaced by the vote but do not reduce credibility", () => {
     const c = committeeOf([member("a"), member("b"), member("c")]);
     const state = macroState({ inflation: 0.10, unemployment: 0.04, policy_rate: 0.05 });
-    const result = vote(c, 0.05, state, PARAMS);
+    const result = vote(c, 0.05, state, PARAMS, []);
     const next = applyMeetingOutcome(70, { surprisedMarkets: false, onTarget: false });
     expect(result.dissents).toBeGreaterThan(0);
     expect(next).toBe(70);
@@ -134,7 +134,7 @@ describe("vote", () => {
     const c = committeeOf([member("a"), member("b")]);
     const state = macroState({ inflation: 0.08, unemployment: 0.06, policy_rate: 0.05 });
     const before = { ...state.vars };
-    vote(c, 0.08, state, PARAMS);
+    vote(c, 0.08, state, PARAMS, []);
     expect(state.vars).toEqual(before);
   });
 
@@ -149,35 +149,35 @@ describe("vote", () => {
     const inside = committeeOf([member("a", { inflation_coef: 3.5 })]);
     const outside = committeeOf([member("a", { inflation_coef: 5.0 })]);
     const state = macroState({ inflation: 0.03, unemployment: 0.04, policy_rate: 0.05 });
-    expect(vote(inside, 0.05, state, PARAMS).dissents).toBe(0);
-    expect(vote(outside, 0.05, state, PARAMS).dissents).toBe(1);
+    expect(vote(inside, 0.05, state, PARAMS, []).dissents).toBe(0);
+    expect(vote(outside, 0.05, state, PARAMS, []).dissents).toBe(1);
   });
 
   // SPEC-COMM-2: missing required vars throws (no silent default-to-zero).
   it("throws VoteMissingVarError when state.vars.inflation is missing", () => {
     const c = committeeOf([member("a")]);
     const state = makeState({ vars: { unemployment: 0.04, policy_rate: 0.05 } });
-    expect(() => vote(c, 0.05, state, PARAMS)).toThrow(VoteMissingVarError);
+    expect(() => vote(c, 0.05, state, PARAMS, [])).toThrow(VoteMissingVarError);
   });
 
   it("throws VoteMissingVarError when state.vars.unemployment is missing", () => {
     const c = committeeOf([member("a")]);
     const state = makeState({ vars: { inflation: 0.02, policy_rate: 0.05 } });
-    expect(() => vote(c, 0.05, state, PARAMS)).toThrow(VoteMissingVarError);
+    expect(() => vote(c, 0.05, state, PARAMS, [])).toThrow(VoteMissingVarError);
   });
 
   // SPEC-COMM-3: lagged rate is now a required input (inertia term reads it).
   it("throws VoteMissingVarError when state.vars.policy_rate is missing", () => {
     const c = committeeOf([member("a")]);
     const state = makeState({ vars: { inflation: 0.02, unemployment: 0.04 } });
-    expect(() => vote(c, 0.05, state, PARAMS)).toThrow(VoteMissingVarError);
+    expect(() => vote(c, 0.05, state, PARAMS, [])).toThrow(VoteMissingVarError);
   });
 
   // SPEC-COMM-2: production callers resolve params via loadCommitteeParams() against committed content.
   it("vote with params from loadCommitteeParams() works end-to-end against committed content", () => {
     const c = committeeOf([member("a")]);
     const state = macroState({ inflation: 0.02, unemployment: 0.04, policy_rate: 0.05 });
-    const result = vote(c, 0.05, state, loadCommitteeParams());
+    const result = vote(c, 0.05, state, loadCommitteeParams(), []);
     expect(result.decided).toBe(0.05);
   });
 
@@ -185,26 +185,26 @@ describe("vote", () => {
   it("throws VoteMissingVarError when inflation is NaN", () => {
     const c = committeeOf([member("a")]);
     const state = macroState({ inflation: NaN, unemployment: 0.04 });
-    expect(() => vote(c, 0.05, state, PARAMS)).toThrow(VoteMissingVarError);
+    expect(() => vote(c, 0.05, state, PARAMS, [])).toThrow(VoteMissingVarError);
   });
 
   it("throws VoteMissingVarError when unemployment is Infinity", () => {
     const c = committeeOf([member("a")]);
     const state = macroState({ inflation: 0.02, unemployment: Infinity });
-    expect(() => vote(c, 0.05, state, PARAMS)).toThrow(VoteMissingVarError);
+    expect(() => vote(c, 0.05, state, PARAMS, [])).toThrow(VoteMissingVarError);
   });
 
   it("throws when proposedRate is NaN", () => {
     const c = committeeOf([member("a")]);
     const state = macroState({ inflation: 0.05, unemployment: 0.04 });
-    expect(() => vote(c, NaN, state, PARAMS)).toThrow(/proposedRate .* not finite/);
+    expect(() => vote(c, NaN, state, PARAMS, [])).toThrow(/proposedRate .* not finite/);
   });
 
   it("previewVote throws when proposedRate is Infinity", () => {
     // SPEC-COMM-2: symmetric guard with NaN — both non-finite proposedRates throw.
     const c = committeeOf([member("a")]);
     const state = macroState({ inflation: 0.05, unemployment: 0.04 });
-    expect(() => previewVote(c, Infinity, state, PARAMS)).toThrow(/proposedRate .* not finite/);
+    expect(() => previewVote(c, Infinity, state, PARAMS, [])).toThrow(/proposedRate .* not finite/);
   });
 
   // SPEC-COMM-3 / negotiation: moving proposed toward a member's preferred reduces their dissent gap linearly.
@@ -213,12 +213,12 @@ describe("vote", () => {
     // Pick a state with a sizable inflation gap so a hawk's preferred is well above lagged.
     const c = committeeOf([member("hawk", { inflation_coef: 2.0, output_coef: 0.3 })]);
     const state = macroState({ inflation: 0.10, unemployment: 0.04, policy_rate: 0.05 });
-    const { previews } = previewVote(c, 0.05, state, PARAMS);
+    const { previews } = previewVote(c, 0.05, state, PARAMS, []);
     const hawkPref = previews[0]!.preferred;
     // At proposed = lagged, hawk dissents.
-    expect(vote(c, 0.05, state, PARAMS).dissents).toBe(1);
+    expect(vote(c, 0.05, state, PARAMS, []).dissents).toBe(1);
     // At proposed = hawk preferred, no dissent.
-    expect(vote(c, hawkPref, state, PARAMS).dissents).toBe(0);
+    expect(vote(c, hawkPref, state, PARAMS, []).dissents).toBe(0);
   });
 
   // SPEC-COMM-3: previewVote surfaces per-member detail for UIs.
@@ -228,7 +228,7 @@ describe("vote", () => {
       member("dove", { inflation_coef: 1.4, output_coef: 0.6 }),
     ]);
     const state = macroState({ inflation: 0.06, unemployment: 0.05, policy_rate: 0.05 });
-    const { previews, gapInflation, gapUnemployment } = previewVote(c, 0.05, state, PARAMS);
+    const { previews, gapInflation, gapUnemployment } = previewVote(c, 0.05, state, PARAMS, []);
     expect(previews).toHaveLength(2);
     expect(gapInflation).toBeCloseTo(0.04, 10);
     expect(gapUnemployment).toBeCloseTo(0.01, 10);
@@ -256,10 +256,10 @@ describe("vote", () => {
       member("wide", { compromise_band: 0.010 }),
     ]);
     const state = macroState({ inflation: 0.02, unemployment: 0.04, policy_rate: 0.05 });
-    const { previews } = previewVote(c, 0.057, state, PARAMS);
+    const { previews } = previewVote(c, 0.057, state, PARAMS, []);
     expect(previews[0]!.wouldDissent).toBe(true);   // narrow band
     expect(previews[1]!.wouldDissent).toBe(false);  // wide band
-    const result = vote(c, 0.057, state, PARAMS);
+    const result = vote(c, 0.057, state, PARAMS, []);
     expect(result.dissents).toBe(1);
   });
 
@@ -275,32 +275,32 @@ describe("vote", () => {
       member("w1", { compromise_band: 0.020 }),
     ]);
     const state = macroState({ inflation: 0.02, unemployment: 0.04, policy_rate: 0.05 });
-    expect(vote(c, 0.057, state, PARAMS).dissents).toBe(2);
+    expect(vote(c, 0.057, state, PARAMS, []).dissents).toBe(2);
   });
 
   // SPEC-COMM-4: invalid compromise_band throws rather than silently making member always assent/dissent.
   it("SPEC-COMM-4: previewVote throws when a member has NaN compromise_band", () => {
     const c = committeeOf([member("a", { compromise_band: NaN })]);
     const state = macroState({ inflation: 0.02, unemployment: 0.04, policy_rate: 0.05 });
-    expect(() => previewVote(c, 0.05, state, PARAMS)).toThrow(/invalid compromise_band/);
+    expect(() => previewVote(c, 0.05, state, PARAMS, [])).toThrow(/invalid compromise_band/);
   });
 
   it("SPEC-COMM-4: vote() throws when a member has NaN compromise_band", () => {
     const c = committeeOf([member("a", { compromise_band: NaN })]);
     const state = macroState({ inflation: 0.02, unemployment: 0.04, policy_rate: 0.05 });
-    expect(() => vote(c, 0.05, state, PARAMS)).toThrow(/invalid compromise_band/);
+    expect(() => vote(c, 0.05, state, PARAMS, [])).toThrow(/invalid compromise_band/);
   });
 
   it("SPEC-COMM-4: previewVote throws when a member has negative compromise_band", () => {
     const c = committeeOf([member("a", { compromise_band: -0.001 })]);
     const state = macroState({ inflation: 0.02, unemployment: 0.04, policy_rate: 0.05 });
-    expect(() => previewVote(c, 0.05, state, PARAMS)).toThrow(/invalid compromise_band/);
+    expect(() => previewVote(c, 0.05, state, PARAMS, [])).toThrow(/invalid compromise_band/);
   });
 
   it("SPEC-COMM-4: previewVote throws when compromise_band exceeds maximum (0.5)", () => {
     const c = committeeOf([member("a", { compromise_band: 5.0 })]);
     const state = macroState({ inflation: 0.02, unemployment: 0.04, policy_rate: 0.05 });
-    expect(() => previewVote(c, 0.05, state, PARAMS)).toThrow(/invalid compromise_band/);
+    expect(() => previewVote(c, 0.05, state, PARAMS, [])).toThrow(/invalid compromise_band/);
   });
 
   // SPEC-COMM-4: backward-compatibility — uniform bands equal to old global default reproduce prior behavior.
@@ -309,7 +309,7 @@ describe("vote", () => {
     // Inflation 6pp above target; each member's preferred ≈ 0.062; |0.062 - 0.05| = 0.012 > 0.005 → all dissent.
     const c = committeeOf([member("a"), member("b"), member("c"), member("d")]);
     const state = macroState({ inflation: 0.08, unemployment: 0.04, policy_rate: 0.05 });
-    expect(vote(c, 0.05, state, PARAMS).dissents).toBe(4);
+    expect(vote(c, 0.05, state, PARAMS, []).dissents).toBe(4);
   });
 
   // SPEC-COMM-5: conviction narrows the effective band — high conviction dissents at a distance
@@ -325,10 +325,10 @@ describe("vote", () => {
       member("low_conv",  { compromise_band: 0.010, conviction: 0.1 }),
     ]);
     const state = macroState({ inflation: 0.02, unemployment: 0.04, policy_rate: 0.05 });
-    const { previews } = previewVote(c, 0.057, state, PARAMS);
+    const { previews } = previewVote(c, 0.057, state, PARAMS, []);
     expect(previews[0]!.wouldDissent).toBe(true);   // high conviction
     expect(previews[1]!.wouldDissent).toBe(false);  // low conviction
-    expect(vote(c, 0.057, state, PARAMS).dissents).toBe(1);
+    expect(vote(c, 0.057, state, PARAMS, []).dissents).toBe(1);
   });
 
   // SPEC-COMM-5: zero conviction leaves the band unmodified (backward-compat with pre-SPEC-COMM-5).
@@ -336,7 +336,7 @@ describe("vote", () => {
     const c = committeeOf([member("a", { compromise_band: 0.010, conviction: 0 })]);
     const state = macroState({ inflation: 0.02, unemployment: 0.04, policy_rate: 0.05 });
     // diff = 0.007 < 0.010 → no dissent (same as if conviction didn't exist).
-    expect(vote(c, 0.057, state, PARAMS).dissents).toBe(0);
+    expect(vote(c, 0.057, state, PARAMS, []).dissents).toBe(0);
   });
 
   // SPEC-COMM-5: hawkish-lean trait shifts preferred rate up by the declared amount.
@@ -392,7 +392,7 @@ describe("vote", () => {
     const cPlain = committeeOf([plain]);
     const state = macroState({ inflation: 0.02, unemployment: 0.04, policy_rate: 0.05 });
     expect(vote(cWith,  0.058, state, PARAMS, [dissenterTrait]).dissents).toBe(1);
-    expect(vote(cPlain, 0.058, state, PARAMS).dissents).toBe(0);
+    expect(vote(cPlain, 0.058, state, PARAMS, []).dissents).toBe(0);
   });
 
   // SPEC-COMM-5: previewVote throws TraitNotFoundError when a member references an unknown trait.
@@ -406,12 +406,12 @@ describe("vote", () => {
   it("SPEC-COMM-5: previewVote throws when a member has NaN conviction", () => {
     const c = committeeOf([member("a", { conviction: NaN })]);
     const state = macroState({ inflation: 0.02, unemployment: 0.04, policy_rate: 0.05 });
-    expect(() => previewVote(c, 0.05, state, PARAMS)).toThrow(/invalid conviction/);
+    expect(() => previewVote(c, 0.05, state, PARAMS, [])).toThrow(/invalid conviction/);
   });
 
   it("SPEC-COMM-5: previewVote throws when a member has conviction > 1", () => {
     const c = committeeOf([member("a", { conviction: 1.5 })]);
     const state = macroState({ inflation: 0.02, unemployment: 0.04, policy_rate: 0.05 });
-    expect(() => previewVote(c, 0.05, state, PARAMS)).toThrow(/invalid conviction/);
+    expect(() => previewVote(c, 0.05, state, PARAMS, [])).toThrow(/invalid conviction/);
   });
 });
