@@ -91,3 +91,21 @@ STUCK NOTE — PR #30 (SPEC-WEB-3): three rounds of REQUEST_CHANGES is the stop 
   (c) Raise the retry cap for this SPEC in docs/ralph-runbook.md and let the agent retry.
   US-012 remains passes=false until resolved.
 Stories still passing=false: US-012..US-019.
+
+== CYCLE 10 — 2026-06-05 ==
+Phase 0 (issue queue): 8 agent-task issues open (#40-#47). Oldest = #40 (SPEC-BRIEF-1).
+Implemented on branch issue-40-spec-brief-1-briefing-content:
+  - schemas/briefing.schema.json (new): raise/hold/lower order enforced via prefixItems;
+    id ^brief\., name/desc loc-key shape, forecast payload (inflation_outlook,
+    unemployment_outlook, optional growth_outlook)
+  - content/briefings/1979_q3_stagflation.json: era-appropriate 1979 example briefing
+  - src/content/briefings.ts: loadBriefing(id, dir?) with BriefingNotFoundError +
+    BriefingScenarioOrderError
+  - tools/validate-content.ts: briefings dir registered
+  - spec/requirements.md: SPEC-BRIEF-1 [testable] added
+  - content/localization/en.json: 5 loc-keys for the example briefing
+  - test/briefings.test.ts: 13 tests (// SPEC-BRIEF-1); all green
+  All checks: 210 engine tests, 12 web tests, spec:trace 32/32, validate 16 content types,
+  web build clean.
+PR #57 opened, issue #40 commented, agent-task label removed. Stopped per Phase 0 protocol.
+Stories still passing=false: US-012..US-019.
