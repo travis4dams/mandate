@@ -92,6 +92,31 @@ STUCK NOTE — PR #30 (SPEC-WEB-3): three rounds of REQUEST_CHANGES is the stop 
   US-012 remains passes=false until resolved.
 Stories still passing=false: US-012..US-019.
 
+== CYCLE 8 — 2026-06-05 ==
+Phase 0 (issue queue): issue #38 (SPEC-COMM-6: between-meeting stance drift). Implemented on
+branch issue-38-spec-comm-6-stance-drift:
+  - src/engine/stance.ts: applyIntermeetingDrift + stanceKey; pure, no Math.random/Date.now
+  - src/engine/fomc.ts: previewVote uses stored per-member stance; fallback to policy_rate
+  - src/engine/session.ts: advance() calls applyIntermeetingDrift each month
+  - spec/requirements.md: SPEC-COMM-6 [testable] added
+  - test/stance.test.ts: 11 tests (// SPEC-COMM-6)
+  All checks green: 208 engine + 12 web tests, spec:trace, validate, web build.
+PR #53 opened, issue #38 commented, agent-task label removed. Stopped per Phase 0 protocol.
+Stories still passing=false: US-012..US-019.
+
+== CYCLE 9 — 2026-06-05 ==
+Phase 0 (issue queue): issue #39 (SPEC-COMM-7: Chair capital persuasion — widen compromise band).
+Implemented on branch issue-39-spec-comm-7-chair-capital:
+  - schemas/chair-capital.schema.json + content/engine/chair-capital.json (new)
+  - src/engine/chair-capital.ts: computeChairCapital, computeEffectiveBands; ephemeral spend
+  - src/engine/fomc.ts: previewVote/vote accept optional effectiveBands overrides
+  - src/engine/session.ts: chairCapital() getter; proposeRate/committeeBriefing accept capitalSpend
+  - spec/requirements.md: SPEC-COMM-7 [testable] added
+  - test/chair-capital.test.ts: 14 tests (// SPEC-COMM-7)
+  All checks green: 211 engine + 12 web tests, spec:trace, validate, web build.
+PR #55 opened, issue #39 commented, agent-task label removed. Stopped per Phase 0 protocol.
+Stories still passing=false: US-012..US-019.
+
 == CYCLE 10 — 2026-06-05 ==
 Phase 0 (issue queue): 8 agent-task issues open (#40-#47). Oldest = #40 (SPEC-BRIEF-1).
 Implemented on branch issue-40-spec-brief-1-briefing-content:
@@ -105,7 +130,7 @@ Implemented on branch issue-40-spec-brief-1-briefing-content:
   - spec/requirements.md: SPEC-BRIEF-1 [testable] added
   - content/localization/en.json: 5 loc-keys for the example briefing
   - test/briefings.test.ts: 13 tests (// SPEC-BRIEF-1); all green
-  All checks: 210 engine tests, 12 web tests, spec:trace 32/32, validate 16 content types,
+  All checks: 210 engine tests, 12 web tests, spec:trace 32/32, validate 15 content types,
   web build clean.
 PR #57 opened, issue #40 commented, agent-task label removed. Stopped per Phase 0 protocol.
 Stories still passing=false: US-012..US-019.
