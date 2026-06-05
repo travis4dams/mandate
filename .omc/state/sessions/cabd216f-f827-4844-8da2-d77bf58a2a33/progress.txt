@@ -106,3 +106,17 @@ when PR #50 merges):
   PR #53 opened, issue #38 commented, agent-task label removed. Stopped per Phase 0 protocol.
   Open PRs: #30 (STUCK), #50 (round 2 REQUEST_CHANGES), #52 (round 1 REQUEST_CHANGES), #53 (new).
 Stories still passing=false: US-012..US-019.
+
+== CYCLE 9 — 2026-06-05 ==
+Phase 0 (issue queue): issue #39 (SPEC-COMM-7, Chair capital persuasion) was oldest agent-task.
+Implemented on branch issue-39-spec-comm-7-chair-capital:
+  - schemas/chair-capital.schema.json + content/engine/chair-capital.json (base_capital=3,
+    credibility_weight=0.05, band_widen_per_unit=0.002, max_spend_per_member=3)
+  - src/engine/chair-capital.ts (computeChairCapital, computeEffectiveBands, loadChairCapitalParams)
+  - src/engine/fomc.ts (previewVote + vote gain optional effectiveBands parameter)
+  - src/engine/session.ts (Session.chairCapital(), committeeBriefing/proposeRate gain optional capitalSpend)
+  - tools/validate-content.ts (chair-capital registered), spec/requirements.md (SPEC-COMM-7 [testable])
+  - test/chair-capital.test.ts (14 tests: formula, monotonicity, cap, integration, no-persist, loader)
+  All checks green: 211 engine tests, 12 web tests, spec:trace 32/32, validate 15 content types.
+PR #55 opened, issue #39 commented, agent-task label removed. Stopped per Phase 0 protocol.
+Stories still passing=false: US-012..US-019.
