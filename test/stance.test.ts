@@ -1,0 +1,199 @@
+import { describe, it, expect } from "vitest";
+import { applyIntermeetingDrift, stanceKey } from "../src/engine/stance";
+import { makeState } from "../src/engine/state";
+import type { Committee, CommitteeMember } from "../src/content/committees";
+import type { CommitteeParams } from "../src/engine/fomc";
+
+// SPEC-COMM-6
+
+const PARAMS: CommitteeParams = {
+  neutral_rate: 0.05,
+  target_inflation: 0.02,
+  target_unemployment: 0.04,
+};
+
+function member(id: string, overrides: Partial<CommitteeMember> = {}): CommitteeMember {
+  return {
+    id: `member.${id}`,
+    name: `member.${id}.name`,
+    inflation_coef: 1.7,
+    output_coef: 0.4,
+    inertia: 0.88,
+    competence: 0.8,
+    compromise_band: 0.005,
+    ...overrides,
+  };
+}
+
+function committeeOf(members: CommitteeMember[]): Committee {
+  return { id: "comm.test", name: "comm.test.name", desc: "comm.test.desc", members };
+}
+
+function macroState(opts: { inflation: number; unemployment: number; policy_rate?: number; stances?: Record<string, number> }) {
+  return makeState({
+    vars: {
+      inflation: opts.inflation,
+      unemployment: opts.unemployment,
+      policy_rate: opts.policy_rate ?? 0.05,
+      ...(opts.stances ?? {}),
+    },
+  });
+}
+
+describe("applyIntermeetingDrift", () => {
+  // SPEC-COMM-6: pure function, no mutation
+  it("returns a new state object (pure — input not mutated)", () => {
+    const m = member("a");
+    const c = committeeOf([m]);
+    const state = macroState({ inflation: 0.02, unemployment: 0.04 });
+    const result = applyIntermeetingDrift(state, c, PARAMS);
+    expect(result).not.toBe(state);
+    expect(result.vars).not.toBe(state.vars);
+  });
+
+  // SPEC-COMM-6: stance key follows stance.<memberId> convention
+  it("writes stance to state.vars[stanceKey(memberId)]", () => {
+    const m = member("a");
+    const c = committeeOf([m]);
+    const state = macroState({ inflation: 0.02, unemployment: 0.04, policy_rate: 0.05 });
+    const result = applyIntermeetingDrift(state, c, PARAMS);
+    expect(typeof result.vars[stanceKey(m.id)]).toBe("number");
+    expect(Number.isFinite(result.vars[stanceKey(m.id)])).toBe(true);
+  });
+
+  // SPEC-COMM-6: cold-start falls back to policy_rate as lagged anchor
+  it("on first call (no stored stance) falls back to policy_rate as lagged anchor", () => {
+    const m = member("a", { inertia: 0.88 });
+    const c = committeeOf([m]);
+    const policyRate = 0.07;
+    const inflation = 0.02;
+    const unemployment = 0.04;
+    const state = macroState({ inflation, unemployment, policy_rate: policyRate });
+    const result = applyIntermeetingDrift(state, c, PARAMS);
+
+    const gapI = inflation - PARAMS.target_inflation; // 0
+    const gapU = unemployment - PARAMS.target_unemployment; // 0
+    const taylor = PARAMS.neutral_rate + m.inflation_coef * gapI - m.output_coef * gapU; // 0.05
+    const expected = m.inertia * policyRate + (1 - m.inertia) * taylor;
+    expect(result.vars[stanceKey(m.id)]).toBeCloseTo(expected, 10);
+  });
+
+  // SPEC-COMM-6: uses stored stance as lagged anchor on subsequent calls
+  it("uses stored stance as lagged anchor when present", () => {
+    const m = member("a", { inertia: 0.88 });
+    const c = committeeOf([m]);
+    const prevStance = 0.09;
+    const state = macroState({
+      inflation: 0.02,
+      unemployment: 0.04,
+      policy_rate: 0.07,
+      stances: { [stanceKey(m.id)]: prevStance },
+    });
+    const result = applyIntermeetingDrift(state, c, PARAMS);
+
+    const gapI = 0.02 - PARAMS.target_inflation;
+    const gapU = 0.04 - PARAMS.target_unemployment;
+    const taylor = PARAMS.neutral_rate + m.inflation_coef * gapI - m.output_coef * gapU;
+    const expected = m.inertia * prevStance + (1 - m.inertia) * taylor;
+    expect(result.vars[stanceKey(m.id)]).toBeCloseTo(expected, 10);
+  });
+
+  // SPEC-COMM-6: more inflation-sensitive member drifts more when inflation rises
+  it("higher inflation_coef member's stance moves more with rising inflation", () => {
+    const mHawk = member("hawk", { inflation_coef: 2.0, output_coef: 0.3, inertia: 0.88 });
+    const mDove = member("dove", { inflation_coef: 1.4, output_coef: 0.3, inertia: 0.88 });
+    const c = committeeOf([mHawk, mDove]);
+    const prevStance = 0.05; // both start at same stance
+    const risingInflation = 0.08; // well above target
+    const state = macroState({
+      inflation: risingInflation,
+      unemployment: 0.04,
+      policy_rate: 0.05,
+      stances: {
+        [stanceKey(mHawk.id)]: prevStance,
+        [stanceKey(mDove.id)]: prevStance,
+      },
+    });
+    const result = applyIntermeetingDrift(state, c, PARAMS);
+    const hawkNew = result.vars[stanceKey(mHawk.id)] as number;
+    const doveNew = result.vars[stanceKey(mDove.id)] as number;
+    // Both move up (inflation above target), hawk more so
+    expect(hawkNew).toBeGreaterThan(prevStance);
+    expect(doveNew).toBeGreaterThan(prevStance);
+    expect(hawkNew).toBeGreaterThan(doveNew);
+  });
+
+  // SPEC-COMM-6: near steady state produces negligible drift
+  it("near steady state (gaps ~0, stance near Taylor) produces negligible drift", () => {
+    const m = member("a", { inertia: 0.88 });
+    const c = committeeOf([m]);
+    // At steady state: inflation=target, unemp=natural → gapI=0, gapU=0 → taylor=neutral_rate
+    const steadyStance = PARAMS.neutral_rate;
+    const state = macroState({
+      inflation: PARAMS.target_inflation,
+      unemployment: PARAMS.target_unemployment,
+      policy_rate: PARAMS.neutral_rate,
+      stances: { [stanceKey(m.id)]: steadyStance },
+    });
+    const result = applyIntermeetingDrift(state, c, PARAMS);
+    const newStance = result.vars[stanceKey(m.id)] as number;
+    // Expected: inertia * steadyStance + (1-inertia) * neutral_rate = steadyStance (no drift)
+    expect(Math.abs(newStance - steadyStance)).toBeLessThan(1e-10);
+  });
+
+  // SPEC-COMM-6: multiple members get independent stances
+  it("each member gets their own stance key", () => {
+    const mA = member("a", { inflation_coef: 2.0 });
+    const mB = member("b", { inflation_coef: 1.4 });
+    const c = committeeOf([mA, mB]);
+    const state = macroState({ inflation: 0.06, unemployment: 0.04, policy_rate: 0.05 });
+    const result = applyIntermeetingDrift(state, c, PARAMS);
+    expect(result.vars[stanceKey(mA.id)]).toBeDefined();
+    expect(result.vars[stanceKey(mB.id)]).toBeDefined();
+    expect(result.vars[stanceKey(mA.id)]).not.toBe(result.vars[stanceKey(mB.id)]);
+  });
+
+  // SPEC-COMM-6: returns state unchanged when required vars are missing
+  it("returns state unchanged when inflation is missing", () => {
+    const m = member("a");
+    const c = committeeOf([m]);
+    const state = makeState({ vars: { unemployment: 0.04, policy_rate: 0.05 } });
+    const result = applyIntermeetingDrift(state, c, PARAMS);
+    expect(result).toBe(state);
+  });
+
+  it("returns state unchanged when unemployment is missing", () => {
+    const m = member("a");
+    const c = committeeOf([m]);
+    const state = makeState({ vars: { inflation: 0.02, policy_rate: 0.05 } });
+    const result = applyIntermeetingDrift(state, c, PARAMS);
+    expect(result).toBe(state);
+  });
+
+  it("returns state unchanged when policy_rate is missing (cold-start needs it)", () => {
+    const m = member("a");
+    const c = committeeOf([m]);
+    const state = makeState({ vars: { inflation: 0.02, unemployment: 0.04 } });
+    const result = applyIntermeetingDrift(state, c, PARAMS);
+    expect(result).toBe(state);
+  });
+
+  // SPEC-COMM-6: NaN stance falls back to policy_rate (guards corrupt state)
+  it("NaN stored stance falls back to policy_rate", () => {
+    const m = member("a", { inertia: 0.88 });
+    const c = committeeOf([m]);
+    const state = macroState({
+      inflation: 0.02,
+      unemployment: 0.04,
+      policy_rate: 0.05,
+      stances: { [stanceKey(m.id)]: NaN },
+    });
+    const result = applyIntermeetingDrift(state, c, PARAMS);
+    // Should behave like cold start (uses policy_rate=0.05)
+    const gapI = 0.02 - PARAMS.target_inflation;
+    const gapU = 0.04 - PARAMS.target_unemployment;
+    const taylor = PARAMS.neutral_rate + m.inflation_coef * gapI - m.output_coef * gapU;
+    const expected = m.inertia * 0.05 + (1 - m.inertia) * taylor;
+    expect(result.vars[stanceKey(m.id)]).toBeCloseTo(expected, 10);
+  });
+});

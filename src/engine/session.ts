@@ -5,6 +5,7 @@ import { loadCommittee } from "../content/committees.js";
 import { loadValidatedFile } from "../content/loader.js";
 import { tick } from "./clock.js";
 import { vote, previewVote, loadCommitteeParams } from "./fomc.js";
+import { applyIntermeetingDrift } from "./stance.js";
 import { applyMeetingOutcome, getCredibility } from "./credibility.js";
 import { applyMacroDynamics, loadDynamicsParams } from "./dynamics.js";
 import { onTarget, loadMandateParams } from "./mandate.js";
@@ -263,6 +264,9 @@ export class Session {
       expectations_anchor_pull:
         dynamicsParams.expectations_anchor_pull * stanceMultiplier(this._stance, guidanceP),
     };
+    // SPEC-COMM-6: loaders are cached singletons — hoist outside loop.
+    const committee = loadCommittee(this._committeeId);
+    const committeeParams = loadCommitteeParams();
 
     try {
       for (let i = 0; i < months; i++) {
@@ -278,6 +282,8 @@ export class Session {
 
         this._state = tick(this._state, 1);
         this._state = applyMacroDynamics(this._state, effectiveParams);
+        // SPEC-COMM-6: evolve per-member stances toward Taylor target each month.
+        this._state = applyIntermeetingDrift(this._state, committee, committeeParams);
 
         const snapshot = Session._snapshotOf(this._state);
         this._trajectoryInternal.push(snapshot);

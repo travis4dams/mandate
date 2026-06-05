@@ -2,6 +2,7 @@ import { join } from "node:path";
 import { loadValidatedFile } from "../content/loader.js";
 import type { Committee, CommitteeMember } from "../content/committees.js";
 import type { GameState } from "./state.js";
+import { stanceKey } from "./stance.js";
 
 // FOMC vote engine — SPEC-COMM-2 + SPEC-COMM-3.
 // Pure: returns a new FomcVote; never mutates state or committee.
@@ -97,13 +98,19 @@ export function previewVote(
   if (!Number.isFinite(proposedRate)) {
     throw new Error(`previewVote: proposedRate ${proposedRate} is not finite.`);
   }
-  const { laggedRate, gapInflation, gapUnemployment } = readGuardedVars(state, params);
+  const { laggedRate: globalLaggedRate, gapInflation, gapUnemployment } = readGuardedVars(state, params);
   const previews = committee.members.map((m) => {
     if (!Number.isFinite(m.compromise_band) || m.compromise_band < 0 || m.compromise_band > 0.5) {
       throw new Error(
         `previewVote: member "${m.id}" has invalid compromise_band (${m.compromise_band}); expected a finite number in [0, 0.5].`,
       );
     }
+    // SPEC-COMM-6: use the member's drifted intermeeting stance if present; fall back to policy_rate.
+    const storedStance = state.vars[stanceKey(m.id)];
+    const laggedRate =
+      storedStance !== undefined && Number.isFinite(storedStance)
+        ? storedStance
+        : globalLaggedRate;
     const preferred = memberPreferred(m, laggedRate, gapInflation, gapUnemployment, params);
     return {
       memberId: m.id,
