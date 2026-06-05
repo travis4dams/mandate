@@ -73,7 +73,7 @@ export function applyForecastQuality(
     scenarios: briefing.scenarios.map((s) => ({
       ...s,
       forecast: perturbForecast(s.forecast, noiseScale, rng),
-    })) as Briefing["scenarios"],
+    })) as unknown as Briefing["scenarios"],
   };
 }
 
