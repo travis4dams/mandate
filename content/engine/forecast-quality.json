@@ -1,0 +1,5 @@
+{
+  "base_noise_scale": 0.02,
+  "quality_slope": 0.0002,
+  "min_noise_scale": 0.002
+}

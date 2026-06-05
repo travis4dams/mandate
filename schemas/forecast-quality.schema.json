@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mandate.dev/schemas/forecast-quality.schema.json",
+  "title": "ForecastQualityParams",
+  "description": "Parameters governing how organizational investment in research capacity reduces forecast noise. SPEC-BRIEF-2.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["base_noise_scale", "quality_slope", "min_noise_scale"],
+  "properties": {
+    "base_noise_scale": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Noise half-width applied to each forecast field at investment=0 (worst quality)."
+    },
+    "quality_slope": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Noise reduction per unit of investment: noise = max(min_noise_scale, base_noise_scale - quality_slope * investment)."
+    },
+    "min_noise_scale": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Floor noise half-width reached at high investment (best achievable quality). Must be <= base_noise_scale."
+    }
+  }
+}
