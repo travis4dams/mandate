@@ -414,4 +414,91 @@ describe("vote", () => {
     const state = macroState({ inflation: 0.02, unemployment: 0.04, policy_rate: 0.05 });
     expect(() => previewVote(c, 0.05, state, PARAMS, [])).toThrow(/invalid conviction/);
   });
+
+  // SPEC-COMM-5: Math.max(0,...) floor — conviction=1 + conviction_band_factor=1.0 drives
+  // effectiveBand to exactly 0, meaning any non-zero distance produces a dissent.
+  it("SPEC-COMM-5: effectiveBand floors at 0 when conviction=1 and conviction_band_factor=1", () => {
+    // SPEC-COMM-5
+    // effectiveBand = Math.max(0, compromise_band * (1 - 1.0 * 1.0) * (1 + 0)) = Math.max(0, 0) = 0.
+    // Any non-zero |preferred - proposed| > 0 → dissent.
+    const params: CommitteeParams = { ...PARAMS, conviction_band_factor: 1.0 };
+    const c = committeeOf([member("max_conv", { compromise_band: 0.010, conviction: 1.0 })]);
+    const state = macroState({ inflation: 0.02, unemployment: 0.04, policy_rate: 0.05 });
+    // At steady state preferred = 0.05. Propose 0.0501 → tiny diff but > 0 → dissents.
+    expect(vote(c, 0.0501, state, params, []).dissents).toBe(1);
+    // Proposing exactly the preferred rate (0.05) → diff = 0 → no dissent.
+    expect(vote(c, 0.05, state, params, []).dissents).toBe(0);
+  });
+
+  // SPEC-COMM-5: combined conviction + lean — both effects apply simultaneously.
+  it("SPEC-COMM-5: conviction narrows band AND lean shifts preferred when both present", () => {
+    // SPEC-COMM-5
+    const hawkishLean: TraitEntry = {
+      id: "trait.hawkish_lean",
+      name: "trait.hawkish_lean.name",
+      desc: "trait.hawkish_lean.desc",
+      effects: { preferred_rate_shift: 0.010 },
+    };
+    // conviction=0.9: effectiveBand = 0.010 * (1 - 0.9 * 0.8) = 0.010 * 0.28 = 0.0028.
+    // preferred shifts up by 0.010 from lean.
+    // At steady state base preferred = 0.05; shifted = 0.060.
+    // Proposed = 0.05; diff = 0.010 > effectiveBand (0.0028) → dissent.
+    const m = member("hawk_conv", { compromise_band: 0.010, conviction: 0.9, traits: ["trait.hawkish_lean"] });
+    const plain = member("plain", { compromise_band: 0.010, conviction: 0.9 });
+    const c = committeeOf([m]);
+    const cPlain = committeeOf([plain]);
+    const state = macroState({ inflation: 0.02, unemployment: 0.04, policy_rate: 0.05 });
+    const { previews } = previewVote(c, 0.05, state, PARAMS, [hawkishLean]);
+    const { previews: plainPreviews } = previewVote(cPlain, 0.05, state, PARAMS, []);
+    // Lean shifts preferred up by ~0.010 relative to plain member with same conviction.
+    expect(previews[0]!.preferred - plainPreviews[0]!.preferred).toBeCloseTo(0.010, 10);
+    // Band is also narrowed by conviction — so the shifted member dissents.
+    expect(previews[0]!.wouldDissent).toBe(true);
+  });
+
+  // SPEC-COMM-5: multiple traits on one member — leanShift accumulates via += across both.
+  it("SPEC-COMM-5: two lean traits on one member accumulate leanShift additively", () => {
+    // SPEC-COMM-5
+    const leanA: TraitEntry = {
+      id: "trait.lean_a",
+      name: "trait.lean_a.name",
+      desc: "trait.lean_a.desc",
+      effects: { preferred_rate_shift: 0.005 },
+    };
+    const leanB: TraitEntry = {
+      id: "trait.lean_b",
+      name: "trait.lean_b.name",
+      desc: "trait.lean_b.desc",
+      effects: { preferred_rate_shift: 0.003 },
+    };
+    // Total lean shift = 0.005 + 0.003 = 0.008.
+    const m = member("multi_lean", { traits: ["trait.lean_a", "trait.lean_b"] });
+    const plain = member("plain");
+    const c = committeeOf([m, plain]);
+    const state = macroState({ inflation: 0.02, unemployment: 0.04, policy_rate: 0.05 });
+    const { previews } = previewVote(c, 0.05, state, PARAMS, [leanA, leanB]);
+    expect(previews[0]!.preferred - previews[1]!.preferred).toBeCloseTo(0.008, 10);
+  });
+
+  // SPEC-COMM-5: vote() with lean catalog — dissent count reflects lean-shifted preferred rates.
+  it("SPEC-COMM-5: vote() dissent count reflects lean-shifted preferred rates", () => {
+    // SPEC-COMM-5
+    const dovishLean: TraitEntry = {
+      id: "trait.dovish_lean",
+      name: "trait.dovish_lean.name",
+      desc: "trait.dovish_lean.desc",
+      effects: { preferred_rate_shift: -0.020 },
+    };
+    // At steady state base preferred = 0.05. With dovish lean, preferred ≈ 0.030.
+    // Proposed = 0.05; |0.030 - 0.05| = 0.020 > compromise_band (0.005) → dissent.
+    // Without trait, |0.05 - 0.05| = 0 → no dissent.
+    const withTrait = member("dove_lean", { traits: ["trait.dovish_lean"] });
+    const cWith = committeeOf([withTrait]);
+    const state = macroState({ inflation: 0.02, unemployment: 0.04, policy_rate: 0.05 });
+    expect(vote(cWith, 0.05, state, PARAMS, [dovishLean]).dissents).toBe(1);
+    // Get the actual shifted preferred rate and confirm proposing it clears the dissent.
+    const { previews } = previewVote(cWith, 0.05, state, PARAMS, [dovishLean]);
+    const shiftedPref = previews[0]!.preferred;
+    expect(vote(cWith, shiftedPref, state, PARAMS, [dovishLean]).dissents).toBe(0);
+  });
 });
