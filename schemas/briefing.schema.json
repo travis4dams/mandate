@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mandate.dev/schemas/briefing.schema.json",
+  "title": "Briefing",
+  "description": "A staff briefing with exactly three policy-scenario branches (raise/hold/lower), each carrying a macro forecast payload. All player-facing text is localization keys. Shape is stable for SPEC-BRIEF-2 quality scoring.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "name", "desc", "scenarios"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^brief\\.[a-z0-9_]+$",
+      "description": "Stable unique id, e.g. brief.1979_q3_stagflation."
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_.]+$",
+      "description": "Localization key for the briefing title, e.g. brief.1979_q3_stagflation.name."
+    },
+    "desc": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_.]+$",
+      "description": "Localization key for the briefing summary, e.g. brief.1979_q3_stagflation.desc."
+    },
+    "scenarios": {
+      "type": "array",
+      "description": "Exactly three policy-scenario branches in order: raise, hold, lower.",
+      "minItems": 3,
+      "maxItems": 3,
+      "prefixItems": [
+        { "$ref": "#/$defs/RaiseScenario" },
+        { "$ref": "#/$defs/HoldScenario" },
+        { "$ref": "#/$defs/LowerScenario" }
+      ],
+      "items": false
+    }
+  },
+  "$defs": {
+    "Forecast": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Macro forecast payload for a policy scenario; stable extension point for SPEC-BRIEF-2 quality scoring.",
+      "required": ["inflation_outlook", "unemployment_outlook"],
+      "properties": {
+        "inflation_outlook": {
+          "type": "number",
+          "description": "Projected annualized inflation rate over the forecast horizon (e.g. 0.12 = 12%)."
+        },
+        "unemployment_outlook": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Projected unemployment rate over the forecast horizon."
+        },
+        "growth_outlook": {
+          "type": "number",
+          "description": "Optional projected real GDP growth rate over the forecast horizon."
+        }
+      }
+    },
+    "ScenarioBase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scenario_type", "name", "forecast"],
+      "properties": {
+        "scenario_type": {
+          "type": "string",
+          "enum": ["raise", "hold", "lower"],
+          "description": "The policy direction this branch describes."
+        },
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_.]+$",
+          "description": "Localization key for this scenario branch, e.g. brief.1979_q3_stagflation.raise.name."
+        },
+        "forecast": {
+          "$ref": "#/$defs/Forecast"
+        }
+      }
+    },
+    "RaiseScenario": {
+      "allOf": [
+        { "$ref": "#/$defs/ScenarioBase" },
+        { "properties": { "scenario_type": { "const": "raise" } } }
+      ]
+    },
+    "HoldScenario": {
+      "allOf": [
+        { "$ref": "#/$defs/ScenarioBase" },
+        { "properties": { "scenario_type": { "const": "hold" } } }
+      ]
+    },
+    "LowerScenario": {
+      "allOf": [
+        { "$ref": "#/$defs/ScenarioBase" },
+        { "properties": { "scenario_type": { "const": "lower" } } }
+      ]
+    }
+  }
+}

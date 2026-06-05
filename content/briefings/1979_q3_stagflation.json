@@ -1,0 +1,34 @@
+{
+  "id": "brief.1979_q3_stagflation",
+  "name": "brief.1979_q3_stagflation.name",
+  "desc": "brief.1979_q3_stagflation.desc",
+  "scenarios": [
+    {
+      "scenario_type": "raise",
+      "name": "brief.1979_q3_stagflation.raise.name",
+      "forecast": {
+        "inflation_outlook": 0.10,
+        "unemployment_outlook": 0.072,
+        "growth_outlook": -0.01
+      }
+    },
+    {
+      "scenario_type": "hold",
+      "name": "brief.1979_q3_stagflation.hold.name",
+      "forecast": {
+        "inflation_outlook": 0.115,
+        "unemployment_outlook": 0.062,
+        "growth_outlook": 0.005
+      }
+    },
+    {
+      "scenario_type": "lower",
+      "name": "brief.1979_q3_stagflation.lower.name",
+      "forecast": {
+        "inflation_outlook": 0.13,
+        "unemployment_outlook": 0.058,
+        "growth_outlook": 0.015
+      }
+    }
+  ]
+}

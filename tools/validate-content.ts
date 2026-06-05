@@ -4,6 +4,7 @@ import { loadValidated, loadValidatedFile } from "../src/content/loader";
 // on any schema violation so a bad content file blocks the merge.
 
 const dirChecks = [
+  { schema: "schemas/briefing.schema.json", dir: "content/briefings", label: "briefings" },
   { schema: "schemas/event.schema.json", dir: "content/events", label: "events" },
   { schema: "schemas/tech.schema.json", dir: "content/tech", label: "tech" },
   { schema: "schemas/scenario.schema.json", dir: "content/scenarios", label: "scenarios" },
