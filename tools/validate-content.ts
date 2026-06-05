@@ -23,6 +23,7 @@ const fileChecks = [
   { schema: "schemas/dynamics.schema.json", file: "content/engine/dynamics.json", label: "dynamics params" },
   { schema: "schemas/mandate.schema.json", file: "content/engine/mandate.json", label: "mandate params" },
   { schema: "schemas/forecast-quality.schema.json", file: "content/engine/forecast-quality.json", label: "forecast quality params" },
+  { schema: "schemas/lags.schema.json", file: "content/engine/lags.json", label: "lags params" },
 ];
 
 let failed = false;
