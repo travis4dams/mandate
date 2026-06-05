@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mandate.dev/schemas/chair-capital.schema.json",
+  "title": "ChairCapitalParams",
+  "description": "SPEC-COMM-7: Chair capital persuasion parameters. The per-meeting budget is computed from the Chair's credibility standing and refreshed each meeting (no banking). Spending capital on a member widens their compromise band for that meeting only.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["base_capital", "credibility_weight", "band_widen_per_unit", "max_spend_per_member"],
+  "properties": {
+    "base_capital": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Minimum persuasion budget even at zero credibility (integer units)."
+    },
+    "credibility_weight": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Additional budget units per credibility point (floored): budget += floor(credibility_weight * credibility)."
+    },
+    "band_widen_per_unit": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 0.5,
+      "description": "How much (in rate units) each spent capital unit widens a member's compromise band for the current meeting."
+    },
+    "max_spend_per_member": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Maximum capital units spendable on a single member per meeting (caps over-concentration)."
+    }
+  }
+}

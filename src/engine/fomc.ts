@@ -93,6 +93,9 @@ export function previewVote(
   proposedRate: number,
   state: GameState,
   params: CommitteeParams,
+  /** SPEC-COMM-7: optional per-member effective band overrides (e.g. from Chair capital spend).
+   *  Keys are member ids; absent entries fall back to the member's own compromise_band. */
+  effectiveBands?: Readonly<Record<string, number>>,
 ): { previews: MemberVotePreview[]; gapInflation: number; gapUnemployment: number } {
   if (!Number.isFinite(proposedRate)) {
     throw new Error(`previewVote: proposedRate ${proposedRate} is not finite.`);
@@ -105,11 +108,12 @@ export function previewVote(
       );
     }
     const preferred = memberPreferred(m, laggedRate, gapInflation, gapUnemployment, params);
+    const band = effectiveBands?.[m.id] ?? m.compromise_band;
     return {
       memberId: m.id,
       nameKey: m.name,
       preferred,
-      wouldDissent: Math.abs(preferred - proposedRate) > m.compromise_band,
+      wouldDissent: Math.abs(preferred - proposedRate) > band,
     };
   });
   return { previews, gapInflation, gapUnemployment };
@@ -121,8 +125,10 @@ export function vote(
   proposedRate: number,
   state: GameState,
   params: CommitteeParams,
+  /** SPEC-COMM-7: optional per-member effective band overrides from Chair capital spend. */
+  effectiveBands?: Readonly<Record<string, number>>,
 ): FomcVote {
-  const { previews } = previewVote(committee, proposedRate, state, params);
+  const { previews } = previewVote(committee, proposedRate, state, params, effectiveBands);
   return { decided: proposedRate, dissents: previews.filter((p) => p.wouldDissent).length };
 }
 

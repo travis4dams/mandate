@@ -5,6 +5,7 @@ import { loadCommittee } from "../content/committees.js";
 import { loadValidatedFile } from "../content/loader.js";
 import { tick } from "./clock.js";
 import { vote, previewVote, loadCommitteeParams } from "./fomc.js";
+import { computeChairCapital, computeEffectiveBands, loadChairCapitalParams } from "./chair-capital.js";
 import { applyMeetingOutcome, getCredibility } from "./credibility.js";
 import { applyMacroDynamics, loadDynamicsParams } from "./dynamics.js";
 import { onTarget, loadMandateParams } from "./mandate.js";
@@ -294,14 +295,24 @@ export class Session {
   }
 
   /**
+   * Returns the Chair's persuasion budget for the current meeting.
+   * SPEC-COMM-7: computed from credibility; refreshed each meeting, never banked.
+   */
+  chairCapital(): number {
+    const credibility = getCredibility(this._state);
+    return computeChairCapital(credibility, loadChairCapitalParams());
+  }
+
+  /**
    * Preview how the committee would vote at the given proposed rate without committing.
    * Returns per-member preferred rates + dissent status, inflation/unemployment gaps, and
    * the content targets so the UI can render dynamic gap labels.
    * Pure: does not mutate any session state.
+   * SPEC-COMM-7: optional capitalSpend widens targeted members' bands for this preview.
    * @throws {Error} if proposedRate is not finite.
    * @throws {VoteMissingVarError} if state vars (inflation, unemployment, policy_rate) are missing.
    */
-  committeeBriefing(proposedRate: number): {
+  committeeBriefing(proposedRate: number, capitalSpend?: Readonly<Record<string, number>>): {
     previews: readonly MemberVotePreview[];
     gapInflation: number;
     gapUnemployment: number;
@@ -310,7 +321,10 @@ export class Session {
   } {
     const committee = loadCommittee(this._committeeId);
     const params = loadCommitteeParams();
-    const { previews, gapInflation, gapUnemployment } = previewVote(committee, proposedRate, this._state, params);
+    const effectiveBands = capitalSpend
+      ? computeEffectiveBands(capitalSpend, committee, loadChairCapitalParams())
+      : undefined;
+    const { previews, gapInflation, gapUnemployment } = previewVote(committee, proposedRate, this._state, params, effectiveBands);
     return {
       previews,
       gapInflation,
@@ -326,11 +340,13 @@ export class Session {
    * that is not on the loaded FOMC schedule throws `NotMeetingMonthError` before
    * any rate-validity check runs.
    * Returns the FomcVote for the meeting.
+   * SPEC-COMM-7: optional capitalSpend widens targeted members' bands for this meeting.
+   * The spend is ephemeral — it is not written to state and does not carry over.
    * @throws {NotMeetingMonthError} if the current month is not a scheduled meeting month.
    * @throws {Error} if `rate` is not finite (only checked once the meeting-month gate passes).
    * @throws {VoteMissingVarError} if state vars (inflation, unemployment, policy_rate) are missing or non-finite (propagated from vote()).
    */
-  proposeRate(rate: number): FomcVote {
+  proposeRate(rate: number, capitalSpend?: Readonly<Record<string, number>>): FomcVote {
     if (!this.isMeetingMonth()) {
       throw new NotMeetingMonthError(this._state.date);
     }
@@ -340,7 +356,10 @@ export class Session {
 
     const committee = loadCommittee(this._committeeId);
     const params = loadCommitteeParams();
-    const fomcVote = vote(committee, rate, this._state, params);
+    const effectiveBands = capitalSpend
+      ? computeEffectiveBands(capitalSpend, committee, loadChairCapitalParams())
+      : undefined;
+    const fomcVote = vote(committee, rate, this._state, params, effectiveBands);
 
     // Apply the decided rate and compute new credibility.
     // SPEC-CRED-1 (issue #33): dissents no longer affect credibility, so fomcVote.dissents is
