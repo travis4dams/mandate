@@ -1,4 +1,9 @@
 {
+  "brief.1979_q3_stagflation.name": "Q3 1979 Staff Economic Briefing",
+  "brief.1979_q3_stagflation.desc": "Staff outlook under three policy scenarios: tightening, holding, or easing from the current stance. Elevated inflation and energy prices dominate the near-term path.",
+  "brief.1979_q3_stagflation.raise.name": "Raise — Aggressive Tightening",
+  "brief.1979_q3_stagflation.hold.name": "Hold — Current Stance",
+  "brief.1979_q3_stagflation.lower.name": "Lower — Easing",
   "evt.oil_shock.title": "Oil Shock",
   "evt.oil_shock.desc": "Crude prices spike as overseas tensions flare. The supply shock will push headline inflation up regardless of what you do.",
   "evt.oil_shock.opt.look_through": "Look through it (treat as transitory)",
