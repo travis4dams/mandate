@@ -120,3 +120,35 @@ Implemented on branch issue-39-spec-comm-7-chair-capital:
   All checks green: 211 engine tests, 12 web tests, spec:trace 32/32, validate 15 content types.
 PR #55 opened, issue #39 commented, agent-task label removed. Stopped per Phase 0 protocol.
 Stories still passing=false: US-012..US-019.
+
+== CYCLE 10 — 2026-06-05 ==
+Phase 0 (issue queue): issue #40 (SPEC-BRIEF-1, briefing content type) was oldest agent-task.
+Implemented on branch issue-40-spec-brief-1-briefing-content:
+  - schemas/briefing.schema.json + content/briefings/1979_q3_stagflation.json
+  - src/content/briefings.ts (loadBriefing, BriefingNotFoundError, BriefingScenarioOrderError)
+  - tools/validate-content.ts (briefings dir registered), spec/requirements.md (SPEC-BRIEF-1 [testable])
+  - content/localization/en.json (5 loc-keys), test/briefings.test.ts (13 tests)
+  All checks green: 210 engine tests, 12 web tests, spec:trace 32/32, validate 16 content types.
+PR #57 opened, issue #40 commented, agent-task label removed. Stopped per Phase 0 protocol.
+Stories still passing=false: US-012..US-019.
+
+== CYCLE 11 — 2026-06-05 ==
+Phase 0 (issue queue): issue #41 (SPEC-BRIEF-2, forecast quality scales with org investment).
+  Dependency: SPEC-BRIEF-1 (PR #57) had VERDICT: APPROVE — merged first along with PRs #54 and
+  #56 (cycle 8 and 9 chore logs, both VERDICT: APPROVE). PR #56 required conflict resolution
+  (branch rebased on new main to cleanly append cycle 9 after cycle 8).
+  Implemented SPEC-BRIEF-2 on branch issue-41-spec-brief-2-forecast-quality:
+  - schemas/forecast-quality.schema.json + content/engine/forecast-quality.json
+    (base_noise=0.02, quality_slope=0.0002, min_noise=0.002)
+  - src/engine/forecast-quality.ts (computeForecastNoiseScale, applyForecastQuality, loader;
+    pure functions, seeded-RNG only, purity-safe)
+  - tools/validate-content.ts (forecast-quality registered), spec/requirements.md (SPEC-BRIEF-2 [testable])
+  - test/forecast-quality.test.ts (16 tests: noise monotonicity, floor, NaN-guard, determinism,
+    higher-investment tighter spread, tuple preservation, unemployment clamp, growth_outlook passthrough)
+  All checks green: 226 engine tests, 12 web tests, spec:trace 33/33, validate 16 content types.
+  CI fix pushed: as unknown as cast for tuple return type (strict tsc stricter than local).
+  PR #59 opened (https://github.com/travis4dams/mandate/pull/59), issue #41 commented,
+  agent-task label removed. Stopped per Phase 0 protocol.
+  Pending REQUEST_CHANGES: PR #50 (SPEC-COMM-5, round 2), PR #52 (SPEC-LAG-1), PR #53 (SPEC-COMM-6),
+  PR #55 (SPEC-COMM-7), PR #58 (cycle-10 chore). These await Phase 1 next cycle.
+Stories still passing=false: US-012..US-019.
