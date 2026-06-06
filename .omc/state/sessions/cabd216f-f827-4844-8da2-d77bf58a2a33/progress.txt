@@ -120,3 +120,25 @@ Implemented on branch issue-39-spec-comm-7-chair-capital:
   All checks green: 211 engine tests, 12 web tests, spec:trace 32/32, validate 15 content types.
 PR #55 opened, issue #39 commented, agent-task label removed. Stopped per Phase 0 protocol.
 Stories still passing=false: US-012..US-019.
+
+== CYCLE 12 — 2026-06-06 ==
+Phase 0 (issue queue): 4 agent-task issues remain (#44-#47). Oldest: #44 (SPEC-WEB-6,
+in-meeting persuasion view). Implemented on branch issue-44-spec-web-6-persuasion-view:
+  - web/src/PersuasionView.tsx: DotPlot (SVG number line, per-member dots coloured by
+    dissent, proposed-rate marker, live dissent count), ScenarioBriefingPanel (raise/
+    hold/lower forecast cards from SPEC-BRIEF-1, degrades gracefully when briefingId
+    absent/not-found), SpendCapitalControl (disabled "—" placeholder until SPEC-COMM-7).
+    Exports buildDotPlotData() for pure testing.
+  - web/src/PersuasionView.test.tsx: 12 tests // SPEC-WEB-6.
+  - web/src/engine-content.ts: register content/briefings/*.json via registerDirEntities.
+  - web/src/MeetingPanel.tsx: briefingId?: string prop; renders PersuasionView.
+  - web/src/Dashboard.tsx: passes briefingId="brief.1979_q3_stagflation".
+  - content/localization/en.json: 9 new ui.persuasion.* keys.
+  - spec/requirements.md: SPEC-WEB-6 [testable] added.
+  - src/content/briefings.ts: use REQUIRED_ORDER constant (was unused; caught by web
+    typecheck once PersuasionView imports briefings.ts).
+  All checks green: 210 engine tests, 24 web tests, spec:trace 34/34, validate, build.
+PR #63 opened (https://github.com/travis4dams/mandate/pull/63), issue #44 commented,
+agent-task label removed. Subscribed to PR #63 activity. Stopped per Phase 0 protocol.
+Open agent-task issues remaining: #45 (SPEC-SIM-6), #46 (SPEC-SCEN-2), #47 (SPEC-HEAR-1).
+Stories still passing=false: US-012..US-019.
