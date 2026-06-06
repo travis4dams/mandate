@@ -59,7 +59,7 @@ export function Dashboard(): JSX.Element {
         <TrajectoryChart trajectory={trajectory} />
       </section>
 
-      <MeetingPanel session={session} />
+      <MeetingPanel session={session} briefingId="brief.1979_q3_stagflation" />
 
       <section style={{ display: "flex", flexWrap: "wrap", gap: 8, margin: "16px 0" }}>
         <button onClick={() => run(() => session.advance(1))}>{t("ui.dashboard.button.advance_1")}</button>
