@@ -84,5 +84,7 @@
   "ui.meeting_panel.briefing.target_suffix": ")",
   "ui.dashboard.no_meeting_in_12mo": "No FOMC meeting in the next 12 months — check the meeting schedule.",
   "doctrine.inflation_targeting.name": "Inflation Targeting",
-  "doctrine.inflation_targeting.desc": "A public commitment to a numeric inflation target as the primary objective. Strengthens institutional credibility while in force; abandoning it carries reputational consequences."
+  "doctrine.inflation_targeting.desc": "A public commitment to a numeric inflation target as the primary objective. Strengthens institutional credibility while in force; abandoning it carries reputational consequences.",
+  "doctrine.dot_plot.name": "Dot Plot",
+  "doctrine.dot_plot.desc": "Publish each member's preferred rate after every meeting. Transparency strengthens anchoring while the committee agrees; a visibly divided committee pays a credibility cost proportional to the spread."
 }
