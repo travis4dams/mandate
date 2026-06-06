@@ -8,6 +8,8 @@ import { vote, previewVote, loadCommitteeParams } from "./fomc.js";
 import { applyMeetingOutcome, getCredibility } from "./credibility.js";
 import { applyMacroDynamics, loadDynamicsParams } from "./dynamics.js";
 import { onTarget, loadMandateParams } from "./mandate.js";
+import { adoptDoctrine as _adoptDoctrine, abandonDoctrine as _abandonDoctrine } from "./doctrine.js";
+import { loadDoctrineCatalog, getDoctrine, type DoctrineEntry } from "../content/doctrines.js";
 import type { GameState, GameStateSnapshot } from "./state.js";
 import type { FomcVote, MemberVotePreview } from "./fomc.js";
 import type { Replay } from "../content/replays.js";
@@ -404,6 +406,26 @@ export class Session {
   // Fires listeners (downstream UI may want to reflect the stored stance).
   setForwardGuidanceStance(stance: ForwardGuidanceStance): void {
     this._stance = stance;
+    this._notifyListeners();
+  }
+
+  /** Adopt a doctrine by id. Applies standing effects to state immediately.
+   *  @throws {DoctrineAlreadyAdoptedError} if already adopted.
+   *  @throws {DoctrineNotFoundError} if id not in catalog. */
+  adoptDoctrine(doctrineId: string, catalog: DoctrineEntry[] = loadDoctrineCatalog()): void {
+    const doctrine = getDoctrine(doctrineId, catalog);
+    this._state = _adoptDoctrine(this._state, doctrine);
+    this._rebuildCaches();
+    this._notifyListeners();
+  }
+
+  /** Abandon a doctrine by id. Reverses standing effects and deducts flip-flop credibility cost.
+   *  @throws {DoctrineNotAdoptedError} if not currently adopted.
+   *  @throws {DoctrineNotFoundError} if id not in catalog. */
+  abandonDoctrine(doctrineId: string, catalog: DoctrineEntry[] = loadDoctrineCatalog()): void {
+    const doctrine = getDoctrine(doctrineId, catalog);
+    this._state = _abandonDoctrine(this._state, doctrine);
+    this._rebuildCaches();
     this._notifyListeners();
   }
 

@@ -79,3 +79,7 @@ Tag meanings: `[testable]` = must be covered by an automated test;
 
 ## Mandate evaluator
 - **SPEC-MANDATE-1** `[testable]` A pure `onTarget(state, params): boolean` in `src/engine/mandate.ts` checks whether the economy satisfies the central bank's mandate. For `mandate_type === "single"`: returns true iff `|inflation - target_inflation| <= tolerance_band`. For `mandate_type === "dual"`: also requires `|unemployment - unemployment_target| <= unemployment_band`. Params (`target_inflation`, `tolerance_band`, `mandate_type`, `unemployment_target`, `unemployment_band`) live in `content/engine/mandate.json` (schema-governed). `onTarget` is called inside `Session.proposeRate()` to supply the `onTarget` field to `applyMeetingOutcome`, wiring the third SPEC-CRED-1 credibility lever.
+
+## Doctrine
+
+- **SPEC-DOCT-1** `[testable]` A doctrine-adoption mechanic: a doctrine is content-defined (schema + `content/doctrines/`) with declared standing effects (additive modifiers to state vars) and a flip-flop cost. `adoptDoctrine(state, doctrine): GameState` records the doctrine in `state.flags` and applies its standing effects; no credibility cost on first adoption. `abandonDoctrine(state, doctrine): GameState` reverses the standing effects and deducts `flip_flop_cost` from credibility (clamped to [0, 100]). `adoptDoctrine` throws `DoctrineAlreadyAdoptedError`; `abandonDoctrine` throws `DoctrineNotAdoptedError` if preconditions are not met. At least one example doctrine in `content/doctrines/`; `npm run validate` green.
