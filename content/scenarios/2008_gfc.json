@@ -1,0 +1,15 @@
+{
+  "id": "scen.2008_gfc",
+  "date": "2008-09",
+  "name": "scen.2008_gfc.name",
+  "desc": "scen.2008_gfc.desc",
+  "vars": {
+    "inflation": 0.054,
+    "unemployment": 0.065,
+    "credibility": 65,
+    "expectations_anchor": 0.025,
+    "policy_rate": 0.02,
+    "months_below_anchor": 0
+  },
+  "flags": {}
+}
