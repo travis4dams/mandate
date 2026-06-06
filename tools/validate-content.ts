@@ -22,6 +22,7 @@ const fileChecks = [
   { schema: "schemas/guidance.schema.json", file: "content/engine/guidance.json", label: "guidance params" },
   { schema: "schemas/dynamics.schema.json", file: "content/engine/dynamics.json", label: "dynamics params" },
   { schema: "schemas/mandate.schema.json", file: "content/engine/mandate.json", label: "mandate params" },
+  { schema: "schemas/clock-cadence.schema.json", file: "content/engine/clock-cadence.json", label: "clock cadence" },
 ];
 
 let failed = false;

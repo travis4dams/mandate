@@ -7,6 +7,7 @@ import { tick } from "./clock.js";
 import { vote, previewVote, loadCommitteeParams } from "./fomc.js";
 import { applyMeetingOutcome, getCredibility } from "./credibility.js";
 import { applyMacroDynamics, loadDynamicsParams } from "./dynamics.js";
+import { loadClockCadenceParams, scaleParamsForTick } from "./cadence.js";
 import { onTarget, loadMandateParams } from "./mandate.js";
 import type { GameState, GameStateSnapshot } from "./state.js";
 import type { FomcVote, MemberVotePreview } from "./fomc.js";
@@ -252,10 +253,9 @@ export class Session {
     const checkpointState = this._state;
     const checkpointTrajectoryLength = this._trajectoryInternal.length;
 
-    // SPEC-GUIDE-1 / SPEC-SIM-5: loaders + effectiveParams are loop-invariant — each is a
-    // cached singleton and stance is fixed for the duration of advance(). Hoisting makes that
-    // obvious to readers and removes any hint of per-month re-resolution. The forward-guidance
-    // stance scales the expectations re-anchoring pull (hawkish = faster, dovish = slower).
+    // SPEC-GUIDE-1 / SPEC-SIM-5 / SPEC-SIM-6: loaders + effectiveParams are loop-invariant.
+    // The stance multiplier scales expectations_anchor_pull before tick scaling, so hawkish/
+    // dovish guidance and sub-monthly cadence compose correctly.
     const guidanceP = loadGuidanceParams();
     const dynamicsParams = loadDynamicsParams();
     const effectiveParams = {
@@ -263,6 +263,10 @@ export class Session {
       expectations_anchor_pull:
         dynamicsParams.expectations_anchor_pull * stanceMultiplier(this._stance, guidanceP),
     };
+
+    // SPEC-SIM-6: scale monthly params down to per-tick params. Identity when ticks_per_month=1.
+    const ticksPerMonth = loadClockCadenceParams().ticks_per_month;
+    const scaledParams = scaleParamsForTick(effectiveParams, ticksPerMonth);
 
     try {
       for (let i = 0; i < months; i++) {
@@ -277,7 +281,30 @@ export class Session {
         }
 
         this._state = tick(this._state, 1);
-        this._state = applyMacroDynamics(this._state, effectiveParams);
+
+        if (ticksPerMonth === 1) {
+          this._state = applyMacroDynamics(this._state, scaledParams);
+        } else {
+          // Sub-monthly path: save the monthly counter and start-of-month credibility,
+          // run n sub-ticks, then restore the counter to monthly semantics.
+          const monthsBelowBefore = (this._state.vars.months_below_anchor ?? 0) as number;
+          const credAtMonthStart = this._state.vars.credibility as number;
+
+          for (let t = 0; t < ticksPerMonth; t++) {
+            this._state = applyMacroDynamics(this._state, scaledParams);
+          }
+
+          // months_below_anchor counts calendar months, not sub-ticks. Restore to the
+          // saved value plus 0 or 1 based on the start-of-month credibility level.
+          const correctMonthsBelow =
+            credAtMonthStart < scaledParams.anchor_threshold
+              ? monthsBelowBefore + 1
+              : monthsBelowBefore;
+          this._state = {
+            ...this._state,
+            vars: { ...this._state.vars, months_below_anchor: correctMonthsBelow },
+          };
+        }
 
         const snapshot = Session._snapshotOf(this._state);
         this._trajectoryInternal.push(snapshot);
