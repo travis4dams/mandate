@@ -120,3 +120,33 @@ Implemented on branch issue-39-spec-comm-7-chair-capital:
   All checks green: 211 engine tests, 12 web tests, spec:trace 32/32, validate 15 content types.
 PR #55 opened, issue #39 commented, agent-task label removed. Stopped per Phase 0 protocol.
 Stories still passing=false: US-012..US-019.
+
+== CYCLE 12 — 2026-06-06 ==
+Phase 0 (issue queue): issue #45 (SPEC-SIM-6, sub-monthly tick cadence) was oldest agent-task.
+  Issues #38-#44 no longer have agent-task label (PRs #50-#63 already opened in prior cycles).
+  Remaining: #45 (oldest), #46 (SPEC-SCEN-2), #47 (SPEC-HEAR-1).
+Implemented on branch issue-45-spec-sim-6-sub-monthly-tick:
+  - schemas/clock-cadence.schema.json + content/engine/clock-cadence.json (ticks_per_month: 4)
+  - src/engine/cadence.ts (loadClockCadenceParams, scaleParamsForTick — pure, no Math.random/Date.now)
+    Scaling: inflation_persistence → p^(1/n); unemployment_adjustment_speed → 1-(1-α)^(1/n);
+    flow contributions (phillips_slope, expectations_adaptivity, expectations_anchor_pull,
+    credibility_mission_gain) → /n. Structural params unchanged. Identity at n=1.
+  - src/engine/session.ts: advance() loads cadence, scales effective params, runs ticksPerMonth
+    sub-ticks per calendar month; months_below_anchor corrected to monthly semantics post-sub-ticks.
+  - tools/validate-content.ts (clock-cadence registered), spec/requirements.md (SPEC-SIM-6 [testable])
+  - test/cadence.test.ts (12 tests // SPEC-SIM-6: scaling invariants, trajectory tolerance 0.2pp,
+    steady state preservation, loader cache)
+  All checks green: 222 engine tests, 12 web tests, spec:trace 33/33, validate 16 content types.
+PR #64 opened, issue #45 commented, agent-task label removed. Stopped per Phase 0 protocol.
+Open PRs with REQUEST_CHANGES (deferred to next cycle Phase 1):
+  PR #30 (SPEC-WEB-3): STUCK (3+ rounds)
+  PR #50 (SPEC-COMM-5): 3+ rounds — at stop threshold, needs STUCK escalation
+  PR #52 (SPEC-LAG-1): round 1 REQUEST_CHANGES
+  PR #53 (SPEC-COMM-6): round 1 REQUEST_CHANGES
+  PR #55 (SPEC-COMM-7): round 1 REQUEST_CHANGES
+  PR #59 (SPEC-BRIEF-2): round 1 REQUEST_CHANGES
+  PR #60 (chore): VERDICT: APPROVE — ready to merge
+  PR #61 (SPEC-DOCT-1): round 1 REQUEST_CHANGES
+  PR #62 (SPEC-DOCT-2): round 1 REQUEST_CHANGES
+  PR #63 (SPEC-WEB-6): round 1 REQUEST_CHANGES
+Stories still passing=false: US-012..US-019.
