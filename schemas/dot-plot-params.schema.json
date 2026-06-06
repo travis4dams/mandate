@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mandate.dev/schemas/dot-plot-params.schema.json",
+  "title": "DotPlotParams",
+  "description": "Parameters governing the dot-plot doctrine's per-meeting anchoring bonus and spread-exposure cost.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["anchoring_bonus", "exposure_per_pp", "dissent_multiplier", "spread_threshold"],
+  "properties": {
+    "anchoring_bonus": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Credibility gained per FOMC meeting while the dot-plot doctrine is adopted."
+    },
+    "exposure_per_pp": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Credibility lost per percentage-point of preferred-rate spread when spread > spread_threshold."
+    },
+    "dissent_multiplier": {
+      "type": "number",
+      "minimum": 1,
+      "description": "Multiplier applied to the exposure cost when at least one member dissents."
+    },
+    "spread_threshold": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Minimum spread (decimal, e.g. 0.005 = 50 bp) below which no exposure cost applies."
+    }
+  }
+}

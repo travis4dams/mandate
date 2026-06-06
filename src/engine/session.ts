@@ -4,7 +4,7 @@ import { loadReplay } from "../content/replays.js";
 import { loadCommittee } from "../content/committees.js";
 import { loadValidatedFile } from "../content/loader.js";
 import { tick } from "./clock.js";
-import { vote, previewVote, loadCommitteeParams } from "./fomc.js";
+import { previewVote, loadCommitteeParams } from "./fomc.js";
 import { computeChairCapital, computeEffectiveBands, loadChairCapitalParams } from "./chair-capital.js";
 import type { CapitalSpend } from "./chair-capital.js";
 import { applyIntermeetingDrift } from "./stance.js";
@@ -16,10 +16,11 @@ import { applyRateToOutputGap, loadLagParams } from "./lags.js";
 import { applyTermStructure, loadTermStructureParams } from "./term-structure.js";
 import { applyProductivityDrift, loadProductivityParams } from "./productivity.js";
 import { onTarget, loadMandateParams } from "./mandate.js";
-import { adoptDoctrine as _adoptDoctrine, abandonDoctrine as _abandonDoctrine } from "./doctrine.js";
+import { adoptDoctrine as _adoptDoctrine, abandonDoctrine as _abandonDoctrine, isDoctrineAdopted } from "./doctrine.js";
 import { loadDoctrineCatalog, getDoctrine, type DoctrineEntry } from "../content/doctrines.js";
 import { applySupplyShock, loadShocksParams } from "./shocks.js";
 import { mulberry32, type SeededRng } from "./rng.js";
+import { applyDotPlotMeetingEffects, loadDotPlotParams } from "./dot-plot.js";
 import type { GameState, GameStateSnapshot } from "./state.js";
 import type { FomcVote, MemberVotePreview } from "./fomc.js";
 import type { Replay } from "../content/replays.js";
@@ -487,14 +488,16 @@ export class Session {
     const params = loadCommitteeParams();
     const traits = loadTraitCatalog();
     const effectiveBands = this._resolveEffectiveBands(committee, capitalSpend, "proposeRate");
-    const fomcVote = vote(committee, rate, this._state, params, traits, effectiveBands);
+    // SPEC-DOCT-2: use previewVote directly so member previews are available for dot-plot spread.
+    const { previews } = previewVote(committee, rate, this._state, params, traits, effectiveBands);
+    const fomcVote: FomcVote = { decided: rate, dissents: previews.filter((p) => p.wouldDissent).length };
 
     // Apply the decided rate and compute new credibility.
     // SPEC-CRED-1 (issue #33): dissents no longer affect credibility, so fomcVote.dissents is
     // reported back to the caller but not fed here.
     // SPEC-GUIDE-2: markets are surprised when the decided rate contradicts the guidance stance,
     // measured against the pre-meeting policy rate.
-    // vote() above already guaranteed policy_rate is present and finite (VoteMissingVarError),
+    // previewVote() above already guaranteed policy_rate is present and finite (VoteMissingVarError),
     // so the cast mirrors the codebase's required-var convention rather than masking a real gap.
     // Capturing it here (immediately after vote) keeps that guarantee visible.
     const guidanceP = loadGuidanceParams();
@@ -513,14 +516,17 @@ export class Session {
       },
     );
 
-    this._state = {
+    // SPEC-DOCT-2: apply dot-plot doctrine effects (anchoring bonus / spread-exposure cost).
+    const stateAfterMeeting: GameState = {
       ...this._state,
-      vars: {
-        ...this._state.vars,
-        policy_rate: fomcVote.decided,
-        credibility: newCredibility,
-      },
+      vars: { ...this._state.vars, policy_rate: fomcVote.decided, credibility: newCredibility },
     };
+    this._state = applyDotPlotMeetingEffects(
+      stateAfterMeeting,
+      previews,
+      loadDotPlotParams(),
+      isDoctrineAdopted(this._state, "doctrine.dot_plot"),
+    );
 
     this._rebuildCaches();
     this._notifyListeners();

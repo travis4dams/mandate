@@ -33,6 +33,7 @@ const fileChecks = [
   { schema: "schemas/term-structure.schema.json", file: "content/engine/term-structure.json", label: "term-structure params" },
   { schema: "schemas/calibration-thresholds.schema.json", file: "content/engine/calibration-thresholds.json", label: "calibration thresholds" },
   { schema: "schemas/productivity.schema.json", file: "content/engine/productivity.json", label: "productivity params" },
+  { schema: "schemas/dot-plot-params.schema.json", file: "content/engine/dot-plot.json", label: "dot-plot params" },
 ];
 
 let failed = false;
