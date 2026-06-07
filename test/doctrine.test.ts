@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
 import { makeState } from "../src/engine/state.js";
 import {
   adoptDoctrine,
@@ -237,6 +237,17 @@ describe("adoptDoctrine / abandonDoctrine — round-trip symmetry", () => {
     expect(() => adoptDoctrine(state, MOCK_DOCTRINE)).toThrow(
       'adoptDoctrine: var "credibility" is absent in state'
     );
+  });
+
+  // SPEC-DOCT-1
+  it("abandon after adopt restores exact original credibility (round-trip invariant)", () => {
+    const doctrine = { ...MOCK_DOCTRINE, standing_effects: [{ target: "credibility", value: 5 }] };
+    // Start at credibility 98 so +5 would exceed 100 without clamp
+    const state = makeState({ vars: { credibility: 98 } });
+    const adopted = adoptDoctrine(state, doctrine);
+    const restored = abandonDoctrine(adopted, { ...doctrine, flip_flop_cost: 0 });
+    // Should restore to exactly 98 (not 98-5+2 or similar clamp artifact)
+    expect(restored.vars.credibility).toBe(98);
   });
 });
 
