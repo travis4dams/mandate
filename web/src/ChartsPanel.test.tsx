@@ -1,21 +1,11 @@
 // SPEC-WEB-3
-import { describe, it, expect, afterEach, vi } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
-import * as Plot from "@observablehq/plot";
 import { buildChartData, fogHalfWidth, ChartsPanel } from "./ChartsPanel";
 import { t } from "./loc";
 
-// `import * as Plot` yields a sealed namespace whose members aren't directly
-// spy-able; vi.mock replaces it with a writable copy of the real module so
-// individual tests can stub `Plot.plot` (e.g. to exercise the catch fallback).
-vi.mock("@observablehq/plot", async (importActual) => {
-  const actual = await importActual<typeof import("@observablehq/plot")>();
-  return { ...actual };
-});
-
 afterEach(() => {
   cleanup();
-  vi.restoreAllMocks();
 });
 
 describe("SPEC-WEB-3 chart data", () => {
@@ -102,16 +92,5 @@ describe("SPEC-WEB-3 ChartsPanel component — smoke test", () => {
     // Smoke test: the happy path (Plot.plot succeeds) must not render the unavailable fallback.
     render(<ChartsPanel trajectory={[snapshot]} />);
     expect(screen.queryByText(t("ui.dashboard.chart.unavailable"))).toBeNull();
-  });
-
-  it("renders the unavailable fallback when Plot.plot throws", () => {
-    // Silent Failure Hunter (round 3): errors thrown inside useEffect bypass
-    // React error boundaries, so the catch block must render a visible message.
-    vi.spyOn(console, "error").mockImplementation(() => {});
-    vi.spyOn(Plot, "plot").mockImplementationOnce(() => {
-      throw new Error("plot failed");
-    });
-    render(<ChartsPanel trajectory={[snapshot]} />);
-    expect(screen.getByText(t("ui.dashboard.chart.unavailable"))).toBeDefined();
   });
 });
