@@ -38,6 +38,10 @@ const calibrationFiles = import.meta.glob<{ default: unknown }>(
   "../../content/calibration/*.json",
   { eager: true },
 );
+const briefingFiles = import.meta.glob<{ default: unknown }>(
+  "../../content/briefings/*.json",
+  { eager: true },
+);
 
 // Reject `mod.default === undefined` at registration time rather than letting
 // such a value enter the registry and surface later as an opaque AJV
@@ -89,3 +93,5 @@ registerDirEntities(scenarioFiles, "content/scenarios");
 registerDirEntities(committeeFiles, "content/committees");
 registerDirEntities(replayFiles, "content/replays");
 registerDirEntities(calibrationFiles, "content/calibration");
+registerEach(briefingFiles);
+registerDirEntities(briefingFiles, "content/briefings");

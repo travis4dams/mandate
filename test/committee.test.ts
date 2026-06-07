@@ -18,6 +18,7 @@ const M = (id: string, name: string, overrides: Partial<Record<string, unknown>>
   inertia: 0.88,
   competence: 0.9,
   compromise_band: 0.005,
+  conviction: 0.5,
   ...overrides,
 });
 
@@ -38,6 +39,9 @@ describe("loadCommittee", () => {
       expect(m.inertia).toBeLessThanOrEqual(1);
       expect(m.competence).toBeGreaterThanOrEqual(0);
       expect(m.competence).toBeLessThanOrEqual(1);
+      // SPEC-COMM-5: conviction dial present and in range.
+      expect(m.conviction).toBeGreaterThanOrEqual(0);
+      expect(m.conviction).toBeLessThanOrEqual(1);
     }
   });
 

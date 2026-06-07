@@ -450,11 +450,13 @@ describe("SPEC-SIM-5: macro dynamics wired into Session.advance()", () => {
   // inflation upward and the (negative) unemployment gap pushes inflation higher — a wage-price
   // overheating. Inflation rises above its 0.114 start. The canary for sign errors: a backwards
   // real-rate channel would instead disinflate here.
-  it("after advance(24), inflation accelerates above initial 0.114 (loose policy lets it run)", () => {
-    // SPEC-SIM-5
+  // SPEC-LAG-1: the distributed-lag kernel delays the effect ~6 months, so 36 months gives
+  // the stimulus time to fully build up in the output_gap history before inflation accelerates.
+  it("after advance(36), inflation accelerates above initial 0.114 (loose policy lets it run)", () => {
+    // SPEC-SIM-5 / SPEC-LAG-1
     const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
     expect(s.current.vars.inflation).toBe(0.114);
-    s.advance(24);
+    s.advance(36);
     expect(s.current.vars.inflation).toBeGreaterThan(0.114);
   });
 });
