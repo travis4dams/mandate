@@ -234,7 +234,7 @@ describe("Session.committeeBriefing with capitalSpend", () => {
   it("spending capital on a member can convert their dissent to assent in the briefing", () => {
     // SPEC-COMM-7
     const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
-    const capitalP = loadChairCapitalParams(); // band_widen_per_unit = 0.002, max = 3
+    // band_widen_per_unit = 0.002, max_spend_per_member = 3 (from content/engine/chair-capital.json)
 
     // Probe with a neutral rate to get preferred values.
     const probe = s.committeeBriefing(0.1075);
@@ -256,7 +256,6 @@ describe("Session.committeeBriefing with capitalSpend", () => {
     const with1 = s.committeeBriefing(rate, { [target.memberId]: 1 });
     const memberWith = with1.previews.find((p) => p.memberId === target.memberId)!;
     expect(memberWith.wouldDissent).toBe(false);
-    void capitalP; // referenced to avoid unused-import lint
   });
 
   it("is pure: committeeBriefing with capitalSpend does not mutate session state", () => {
@@ -327,5 +326,42 @@ describe("Session.proposeRate with capitalSpend (SPEC-COMM-7 AC)", () => {
     const briefingAfter = s.committeeBriefing(rate);
     const memberAfter = briefingAfter.previews.find((p) => p.memberId === target.memberId)!;
     expect(memberAfter.wouldDissent).toBe(true);
+  });
+});
+
+describe("Session: total capitalSpend budget guard (SPEC-COMM-7)", () => {
+  // SPEC-COMM-7: spending more than chairCapital() total must throw in both spend paths.
+  it("committeeBriefing throws when total spend exceeds chairCapital() budget", () => {
+    // SPEC-COMM-7
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    const budget = s.chairCapital();
+    // Build a spend map whose sum is budget + 1 (guaranteed to exceed).
+    // Use the first real member id from a probe briefing.
+    const probe = s.committeeBriefing(0.1075);
+    const firstId = probe.previews[0].memberId;
+    const overBudgetSpend = { [firstId]: budget + 1 };
+    expect(() => s.committeeBriefing(0.1075, overBudgetSpend)).toThrow(/chairCapital\(\) budget/);
+  });
+
+  it("proposeRate throws when total spend exceeds chairCapital() budget", () => {
+    // SPEC-COMM-7
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    const budget = s.chairCapital();
+    const probe = s.committeeBriefing(0.1075);
+    const firstId = probe.previews[0].memberId;
+    const overBudgetSpend = { [firstId]: budget + 1 };
+    expect(() => s.proposeRate(0.1075, overBudgetSpend)).toThrow(/chairCapital\(\) budget/);
+  });
+
+  it("committeeBriefing does not throw when total spend equals chairCapital() budget", () => {
+    // SPEC-COMM-7: spend exactly at budget is allowed
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    const budget = s.chairCapital();
+    const probe = s.committeeBriefing(0.1075);
+    const firstId = probe.previews[0].memberId;
+    // Spend exactly the budget on one member (capped at max_spend_per_member internally, but
+    // the budget guard fires before computeEffectiveBands, so total == budget is allowed).
+    const exactSpend = { [firstId]: budget };
+    expect(() => s.committeeBriefing(0.1075, exactSpend)).not.toThrow();
   });
 });

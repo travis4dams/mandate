@@ -50,9 +50,20 @@ export function computeEffectiveBands(
   const result: Record<string, number> = {};
   for (const m of committee.members) {
     const raw = capitalSpend[m.id] ?? 0;
-    if (raw <= 0) continue;
+    if (raw < 0) {
+      throw new Error(
+        `computeEffectiveBands: capitalSpend for member "${m.id}" is negative (${raw}). Negative spend is not allowed.`,
+      );
+    }
+    if (raw === 0) continue;
     const capped = Math.min(raw, params.max_spend_per_member);
-    result[m.id] = m.compromise_band + capped * params.band_widen_per_unit;
+    const widened = m.compromise_band + capped * params.band_widen_per_unit;
+    if (widened > 0.5) {
+      throw new Error(
+        `computeEffectiveBands: effective compromise_band for member "${m.id}" would be ${widened.toFixed(4)}, which exceeds the maximum allowed value of 0.5. Reduce the spend or lower the content's compromise_band.`,
+      );
+    }
+    result[m.id] = widened;
   }
   return result;
 }

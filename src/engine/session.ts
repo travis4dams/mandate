@@ -310,6 +310,7 @@ export class Session {
    * Pure: does not mutate any session state.
    * SPEC-COMM-7: optional capitalSpend widens targeted members' bands for this preview.
    * @throws {Error} if proposedRate is not finite.
+   * @throws {Error} if total capitalSpend exceeds chairCapital() budget (SPEC-COMM-7).
    * @throws {VoteMissingVarError} if state vars (inflation, unemployment, policy_rate) are missing.
    */
   committeeBriefing(proposedRate: number, capitalSpend?: Readonly<Record<string, number>>): {
@@ -321,8 +322,12 @@ export class Session {
   } {
     const committee = loadCommittee(this._committeeId);
     const params = loadCommitteeParams();
+    const chairCapitalParams = loadChairCapitalParams();
+    if (capitalSpend) {
+      Session._assertWithinBudget(capitalSpend, this.chairCapital(), "committeeBriefing");
+    }
     const effectiveBands = capitalSpend
-      ? computeEffectiveBands(capitalSpend, committee, loadChairCapitalParams())
+      ? computeEffectiveBands(capitalSpend, committee, chairCapitalParams)
       : undefined;
     const { previews, gapInflation, gapUnemployment } = previewVote(committee, proposedRate, this._state, params, effectiveBands);
     return {
@@ -344,6 +349,7 @@ export class Session {
    * The spend is ephemeral — it is not written to state and does not carry over.
    * @throws {NotMeetingMonthError} if the current month is not a scheduled meeting month.
    * @throws {Error} if `rate` is not finite (only checked once the meeting-month gate passes).
+   * @throws {Error} if total capitalSpend exceeds chairCapital() budget (SPEC-COMM-7).
    * @throws {VoteMissingVarError} if state vars (inflation, unemployment, policy_rate) are missing or non-finite (propagated from vote()).
    */
   proposeRate(rate: number, capitalSpend?: Readonly<Record<string, number>>): FomcVote {
@@ -353,11 +359,15 @@ export class Session {
     if (!Number.isFinite(rate)) {
       throw new Error(`Session.proposeRate: rate ${rate} is not finite.`);
     }
+    if (capitalSpend) {
+      Session._assertWithinBudget(capitalSpend, this.chairCapital(), "proposeRate");
+    }
 
     const committee = loadCommittee(this._committeeId);
     const params = loadCommitteeParams();
+    const chairCapitalParams = loadChairCapitalParams();
     const effectiveBands = capitalSpend
-      ? computeEffectiveBands(capitalSpend, committee, loadChairCapitalParams())
+      ? computeEffectiveBands(capitalSpend, committee, chairCapitalParams)
       : undefined;
     const fomcVote = vote(committee, rate, this._state, params, effectiveBands);
 
@@ -465,6 +475,23 @@ export class Session {
     }
     if (errors.length === 1) throw errors[0];
     if (errors.length > 1) throw new AggregateError(errors, "Session: one or more listeners threw during notification.");
+  }
+
+  /**
+   * Throw a descriptive error if the total of all capitalSpend values exceeds the budget.
+   * SPEC-COMM-7: Chair capital is a hard persuasion budget; overspending must fail loudly.
+   */
+  private static _assertWithinBudget(
+    capitalSpend: Readonly<Record<string, number>>,
+    budget: number,
+    caller: string,
+  ): void {
+    const total = Object.values(capitalSpend).reduce((sum, v) => sum + v, 0);
+    if (total > budget) {
+      throw new Error(
+        `Session.${caller}: total capitalSpend (${total}) exceeds chairCapital() budget (${budget}). Reduce spend to stay within the Chair's persuasion budget.`,
+      );
+    }
   }
 
   /** Extract a GameStateSnapshot from a GameState. */
