@@ -10,6 +10,8 @@ import { applyMeetingOutcome, getCredibility } from "./credibility.js";
 import { applyMacroDynamics, loadDynamicsParams } from "./dynamics.js";
 import { applyRateToOutputGap, loadLagParams } from "./lags.js";
 import { onTarget, loadMandateParams } from "./mandate.js";
+import { applySupplyShock, loadShocksParams } from "./shocks.js";
+import { mulberry32 } from "./rng.js";
 import type { GameState, GameStateSnapshot } from "./state.js";
 import type { FomcVote, MemberVotePreview } from "./fomc.js";
 import type { Replay } from "../content/replays.js";
@@ -161,13 +163,16 @@ export class Session {
   // Snapshot of the initial state so reset() can restore it without re-loading content.
   private readonly _initialState: GameState;
 
-  // The `_seed` parameter is accepted positionally to preserve the public factory
-  // signatures (SPEC-SESSION-0: `fromScenario(scenarioId, seed, committeeId)`). It is
-  // currently unused — a future spec will wire stochastic mechanics through it.
-  private constructor(initialState: GameState, _seed: number, replay: Replay | null, committeeId: string) {
+  // SPEC-SHOCK-1: seeded RNG for supply shocks; initialized from the seed parameter.
+  // All randomness flows through this instance (SPEC-SIM-1 — never Math.random()).
+  private readonly _rng: () => number;
+
+  // The `_seed` parameter initialises `_rng` via mulberry32 (SPEC-SHOCK-1 / SPEC-SIM-1).
+  private constructor(initialState: GameState, seed: number, replay: Replay | null, committeeId: string) {
     this._replay = replay;
     this._committeeId = committeeId;
     this._initialState = initialState;
+    this._rng = mulberry32(seed);
     this._state = { ...initialState, vars: { ...initialState.vars }, flags: { ...initialState.flags }, history: [] };
 
     const snapshot = Session._snapshotOf(this._state);
@@ -285,6 +290,8 @@ export class Session {
         // Ordering invariant: applyRateToOutputGap reads _trajectoryInternal BEFORE the new snapshot is pushed — this month's rate enters the lag kernel next month.
         this._state = applyRateToOutputGap(this._state, this._trajectoryInternal, lagParams, dynamicsParams.real_neutral_rate);
         this._state = applyMacroDynamics(this._state, effectiveParams);
+        // SPEC-SHOCK-1: apply seeded supply shock after macro dynamics each month.
+        this._state = applySupplyShock(this._state, this._rng, loadShocksParams());
 
         const snapshot = Session._snapshotOf(this._state);
         this._trajectoryInternal.push(snapshot);

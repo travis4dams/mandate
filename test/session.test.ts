@@ -447,16 +447,26 @@ describe("SPEC-SIM-5: macro dynamics wired into Session.advance()", () => {
 
   // SPEC-SIM-5: with policy not real-restrictive and credibility low, expectations track realized
   // inflation upward and the (negative) unemployment gap pushes inflation higher — a wage-price
-  // overheating. Inflation rises above its 0.114 start. The canary for sign errors: a backwards
-  // real-rate channel would instead disinflate here.
+  // overheating. Mean inflation over many seeds rises above the 0.114 start. The canary for sign
+  // errors: a backwards real-rate channel would instead disinflate here.
   // SPEC-LAG-1: the distributed-lag kernel delays the effect ~6 months, so 36 months gives
   // the stimulus time to fully build up in the output_gap history before inflation accelerates.
-  it("after advance(36), inflation accelerates above initial 0.114 (loose policy lets it run)", () => {
+  // SPEC-SHOCK-1: supply shocks are stochastic (sigma=0.003/month), so any single seed may
+  // produce a final inflation slightly above or below 0.114. The directional canary therefore
+  // asserts on the mean across 20 independent seeds rather than a single draw.
+  it("after advance(36), mean inflation over 20 seeds accelerates above initial 0.114 (loose policy lets it run)", () => {
     // SPEC-SIM-5 / SPEC-LAG-1
-    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
-    expect(s.current.vars.inflation).toBe(0.114);
-    s.advance(36);
-    expect(s.current.vars.inflation).toBeGreaterThan(0.114);
+    const INITIAL_INFLATION = 0.114;
+    const NUM_SEEDS = 20;
+    let total = 0;
+    for (let seed = 0; seed < NUM_SEEDS; seed++) {
+      const s = Session.fromScenario("scen.1979_stagflation", seed, "comm.fomc_1979");
+      expect(s.current.vars.inflation).toBe(INITIAL_INFLATION);
+      s.advance(36);
+      total += s.current.vars.inflation as number;
+    }
+    const mean = total / NUM_SEEDS;
+    expect(mean).toBeGreaterThan(INITIAL_INFLATION);
   });
 });
 
