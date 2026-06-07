@@ -153,4 +153,24 @@ describe("PersuasionView component", () => {
     render(<PersuasionView previews={THREE_MEMBERS} proposed={0.10} />);
     expect(screen.getByTestId("chair-capital-display").textContent).toBe("—");
   });
+
+  it("dissent count updates when previews change (live dissent count)", () => {
+    // SPEC-WEB-6: live dissent count must update with the proposed rate / new previews
+    const initialPreviews: MemberVotePreview[] = [
+      { memberId: "m.a", wouldDissent: false, preferred: 0.05, nameKey: "k" },
+      { memberId: "m.b", wouldDissent: true, preferred: 0.08, nameKey: "k" },
+    ];
+    const { rerender } = render(
+      <PersuasionView previews={initialPreviews} proposed={0.05} />
+    );
+    // Initially 1 dissent
+    expect(screen.getByTestId("dissent-count").textContent).toBe("1");
+    // Re-render with previews where m.b no longer dissents
+    const updatedPreviews: MemberVotePreview[] = [
+      { memberId: "m.a", wouldDissent: false, preferred: 0.05, nameKey: "k" },
+      { memberId: "m.b", wouldDissent: false, preferred: 0.08, nameKey: "k" },
+    ];
+    rerender(<PersuasionView previews={updatedPreviews} proposed={0.08} />);
+    expect(screen.getByTestId("dissent-count").textContent).toBe("0");
+  });
 });

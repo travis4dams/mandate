@@ -6,13 +6,6 @@ import { t } from "./loc";
 
 // ---- pure helper ---------------------------------------------------------
 
-export interface DotPlotDatum {
-  memberId: string;
-  nameKey: string;
-  preferred: number;
-  wouldDissent: boolean;
-}
-
 /**
  * Convert member previews + proposed rate into dot-plot layout data.
  * Pure function exported for direct unit testing.
@@ -21,7 +14,7 @@ export function buildDotPlotData(
   previews: readonly MemberVotePreview[],
   proposed: number,
 ): {
-  dots: DotPlotDatum[];
+  dots: readonly MemberVotePreview[];
   proposed: number;
   rateMin: number;
   rateMax: number;
@@ -31,23 +24,17 @@ export function buildDotPlotData(
   const allRates = previews.map((p) => p.preferred).concat([proposed]);
   const rateMin = Math.min(...allRates) - 0.005;
   const rateMax = Math.max(...allRates) + 0.005;
-  const dots: DotPlotDatum[] = previews.map((p) => ({
-    memberId: p.memberId,
-    nameKey: p.nameKey,
-    preferred: p.preferred,
-    wouldDissent: p.wouldDissent,
-  }));
-  return { dots, proposed, rateMin, rateMax, dissentCount };
+  return { dots: previews, proposed, rateMin, rateMax, dissentCount };
 }
 
 // ---- sub-components ------------------------------------------------------
 
 function DotPlot(props: {
-  previews: readonly MemberVotePreview[];
+  dots: readonly MemberVotePreview[];
   proposed: number;
 }): JSX.Element {
   const { dots, proposed, rateMin, rateMax, dissentCount } = buildDotPlotData(
-    props.previews,
+    props.dots,
     props.proposed,
   );
 
@@ -211,7 +198,7 @@ export function PersuasionView(props: PersuasionViewProps): JSX.Element {
   const { previews, proposed, briefingId } = props;
   return (
     <div style={{ marginTop: 12 }}>
-      <DotPlot previews={previews} proposed={proposed} />
+      <DotPlot dots={previews} proposed={proposed} />
       {briefingId !== undefined && <ScenarioBriefingPanel briefingId={briefingId} />}
       <SpendCapitalControl />
     </div>
