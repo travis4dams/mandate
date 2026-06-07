@@ -41,7 +41,9 @@ const NO_EFFECTS_DOCTRINE: DoctrineEntry = {
 
 describe("doctrineFlagKey", () => {
   // SPEC-DOCT-1
-  it("returns the expected flag key string without double-prefix", () => {
+  it("returns the expected flag key string", () => {
+    // Doctrine IDs follow the schema pattern ^doctrine\.[a-z0-9_]+$, so
+    // the key is simply `${id}.adopted` — e.g. "doctrine.mock.adopted".
     expect(doctrineFlagKey("doctrine.mock")).toBe("doctrine.mock.adopted");
   });
 });
@@ -107,6 +109,37 @@ describe("adoptDoctrine", () => {
     adoptDoctrine(state, MOCK_DOCTRINE);
     expect(state.flags).toEqual(flagsBefore);
     expect(state.vars).toEqual(varsBefore);
+  });
+
+  // SPEC-DOCT-1: guard fires for standing effect target absent from state.vars
+  it("throws when a standing_effect target is absent from state.vars", () => {
+    const doctrineTouchingInflation: DoctrineEntry = {
+      id: "doctrine.inflation_touch",
+      name: "doctrine.inflation_touch.name",
+      description: "doctrine.inflation_touch.desc",
+      standing_effects: [{ target: "inflation", value: 0.01 }],
+      flip_flop_cost: 0,
+    };
+    // state has no "inflation" var — should throw, not silently fabricate it
+    const state = makeState({ vars: { credibility: 50 } });
+    expect(() => adoptDoctrine(state, doctrineTouchingInflation)).toThrow(
+      /standing effect target "inflation" is absent/,
+    );
+  });
+
+  // SPEC-DOCT-1: non-credibility target is applied correctly when present in state.vars
+  it("applies a non-credibility standing effect (inflation) when var is present", () => {
+    const doctrineTouchingInflation: DoctrineEntry = {
+      id: "doctrine.inflation_touch",
+      name: "doctrine.inflation_touch.name",
+      description: "doctrine.inflation_touch.desc",
+      standing_effects: [{ target: "inflation", value: 0.01 }],
+      flip_flop_cost: 0,
+    };
+    const state = makeState({ vars: { credibility: 50, inflation: 0.05 } });
+    const next = adoptDoctrine(state, doctrineTouchingInflation);
+    expect(next.vars.inflation).toBeCloseTo(0.06, 10);
+    expect(next.vars.credibility).toBe(50); // unaffected
   });
 });
 
@@ -241,13 +274,13 @@ describe("adoptDoctrine / abandonDoctrine — round-trip symmetry", () => {
   it("adoptDoctrine throws when a target var is absent in state", () => {
     const state = makeState({ vars: {} }); // no credibility var
     expect(() => adoptDoctrine(state, MOCK_DOCTRINE)).toThrow(
-      'adoptDoctrine: var "credibility" is absent in state'
+      'standing effect target "credibility" is absent from state.vars'
     );
   });
 
   // SPEC-DOCT-1
   it("abandon after adopt restores exact original credibility (round-trip invariant)", () => {
-    const doctrine = { ...MOCK_DOCTRINE, standing_effects: [{ target: "credibility", value: 5 }] };
+    const doctrine: DoctrineEntry = { ...MOCK_DOCTRINE, standing_effects: [{ target: "credibility" as const, value: 5 }] };
     // Start at credibility 98 so +5 would exceed 100 without clamp
     const state = makeState({ vars: { credibility: 98 } });
     const adopted = adoptDoctrine(state, doctrine);
