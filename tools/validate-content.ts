@@ -6,6 +6,7 @@ import { loadValidated, loadValidatedFile } from "../src/content/loader";
 const dirChecks = [
   { schema: "schemas/briefing.schema.json", dir: "content/briefings", label: "briefings" },
   { schema: "schemas/event.schema.json", dir: "content/events", label: "events" },
+  { schema: "schemas/hearing.schema.json", dir: "content/hearings", label: "hearings" },
   { schema: "schemas/tech.schema.json", dir: "content/tech", label: "tech" },
   { schema: "schemas/scenario.schema.json", dir: "content/scenarios", label: "scenarios" },
   { schema: "schemas/replay.schema.json", dir: "content/replays", label: "replays" },
