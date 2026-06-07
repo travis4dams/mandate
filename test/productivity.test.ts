@@ -41,7 +41,7 @@ describe("applyProductivityDrift — geometric drift (SPEC-PROD-1)", () => {
     const N = 12;
     let state = makeState({ vars: {} });
     for (let i = 0; i < N; i++) {
-      state = applyProductivityDrift(state, BASE_PARAMS) as typeof state;
+      state = applyProductivityDrift(state, BASE_PARAMS);
     }
     expect(state.vars.productivity).toBeCloseTo(Math.pow(1 + BASE_PARAMS.monthly_drift_rate, N), 12);
   });
@@ -78,6 +78,19 @@ describe("applyProductivityDrift — geometric drift (SPEC-PROD-1)", () => {
     expect(result.vars.inflation).toBe(0.05);
     expect(result.vars.policy_rate).toBe(0.1);
   });
+
+  it("rate = 0 is the identity — productivity unchanged", () => {
+    // SPEC-PROD-1: zero drift rate must leave productivity exactly at 1.0.
+    const state = makeState({ vars: {} });
+    const result = applyProductivityDrift(state, { monthly_drift_rate: 0 });
+    expect(result.vars.productivity).toBe(1.0);
+  });
+
+  it("throws when state.vars.productivity is NaN", () => {
+    // SPEC-PROD-1: NaN in vars must not silently propagate.
+    const state = makeState({ vars: { productivity: NaN } });
+    expect(() => applyProductivityDrift(state, BASE_PARAMS)).toThrow(/not finite/);
+  });
 });
 
 describe("loadProductivityParams (SPEC-PROD-1)", () => {
@@ -109,6 +122,12 @@ describe("loadProductivityParams (SPEC-PROD-1)", () => {
     // SPEC-PROD-1: rate <= -1 makes (1 + rate) <= 0, driving productivity to zero or negative.
     // The schema enforces exclusiveMinimum: -1; the loader also asserts this post-load.
     registerContentFile("content/engine/productivity.json", { monthly_drift_rate: -1 });
+    expect(() => loadProductivityParams()).toThrow();
+  });
+
+  it("loader rejects monthly_drift_rate < -1 (would produce negative productivity)", () => {
+    // SPEC-PROD-1: rate below -1 makes (1 + rate) < 0, producing negative productivity.
+    registerContentFile("content/engine/productivity.json", { monthly_drift_rate: -2 });
     expect(() => loadProductivityParams()).toThrow();
   });
 });

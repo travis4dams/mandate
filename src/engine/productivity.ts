@@ -44,7 +44,9 @@ let _cached: ProductivityParams | undefined;
 
 /**
  * Load and validate `content/engine/productivity.json`.
- * Compiled AJV validator and result are cached module-level; safe to call every month.
+ * The validated result is cached in `_cached` (this module). The AJV compile
+ * cache is a separate concern in `loader.ts` — `_resetProductivityParamsCache`
+ * does not clear it.
  */
 export function loadProductivityParams(): ProductivityParams {
   if (_cached !== undefined) return _cached;
