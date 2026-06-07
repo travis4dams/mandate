@@ -7,6 +7,7 @@ import {
 } from "../src/engine/cadence.js";
 import { applyMacroDynamics, type MacroDynamicsParams } from "../src/engine/dynamics.js";
 import { makeState } from "../src/engine/state.js";
+import { Session } from "../src/engine/session.js";
 
 afterEach(() => {
   _resetClockCadenceParamsCache();
@@ -171,6 +172,31 @@ describe("trajectory invariance — SPEC-SIM-6", () => {
     expect(
       Math.abs((s4.vars.expectations_anchor as number) - (s1.vars.expectations_anchor as number)),
     ).toBeLessThan(TOLERANCE);
+  });
+});
+
+describe("Session.advance months_below_anchor with sub-monthly cadence — SPEC-SIM-6", () => {
+  it("advance(1) with n=4: months_below_anchor increments by at most 1 when credibility below anchor_threshold", () => {
+    // SPEC-SIM-6: without the correction block, each of 4 sub-ticks would increment
+    // months_below_anchor, accumulating 4 per month. The correction must clamp it to 1.
+    // scen.1979_stagflation starts with credibility=25, below anchor_threshold of 60.
+    const session = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    const mba_before = (session.current.vars.months_below_anchor ?? 0) as number;
+    session.advance(1);
+    const mba_after = (session.current.vars.months_below_anchor ?? 0) as number;
+    expect(mba_after - mba_before).toBeLessThanOrEqual(1);
+    expect(mba_after - mba_before).toBeGreaterThanOrEqual(0);
+  });
+
+  it("advance(1) with n=4: months_below_anchor unchanged when credibility above anchor_threshold", () => {
+    // SPEC-SIM-6: when credibility is above anchor_threshold (80 > 60), the correction
+    // block must not increment months_below_anchor regardless of n sub-ticks.
+    // scen.recovery_test starts with credibility=80, months_below_anchor=0.
+    const session = Session.fromScenario("scen.recovery_test", 42, "comm.fomc_1979");
+    const mba_before = (session.current.vars.months_below_anchor ?? 0) as number;
+    session.advance(1);
+    const mba_after = (session.current.vars.months_below_anchor ?? 0) as number;
+    expect(mba_after).toBeLessThanOrEqual(mba_before);
   });
 });
 
