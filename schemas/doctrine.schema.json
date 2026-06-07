@@ -5,7 +5,7 @@
   "description": "An adoptable framework. Standing effects apply while adopted; abandoning incurs a credibility flip-flop cost.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["id", "name", "flip_flop_cost"],
+  "required": ["id", "name", "description", "flip_flop_cost"],
   "properties": {
     "id": {
       "type": "string",
@@ -28,7 +28,7 @@
         "additionalProperties": false,
         "required": ["target", "value"],
         "properties": {
-          "target": { "type": "string" },
+          "target": { "type": "string", "enum": ["credibility", "inflation", "unemployment", "expectations_anchor", "policy_rate", "months_below_anchor"] },
           "value": { "type": "number" }
         }
       },

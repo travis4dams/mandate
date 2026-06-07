@@ -26,15 +26,18 @@ export function isDoctrineAdopted(state: GameState, id: string): boolean {
 
 /** Adopt a doctrine: records it in state.flags and applies its standing effects to state.vars.
  *  No flip-flop cost is charged on adoption — only on abandonment (SPEC-DOCT-1).
- *  When a standing effect targets "credibility" the result is clamped to [0,100]. */
+ *  Standing effects are applied as exact numeric deltas; credibility is NOT clamped here so
+ *  that abandonDoctrine can reverse the exact same delta and restore the original value. */
 export function adoptDoctrine(state: GameState, doctrine: DoctrineEntry): GameState {
   if (isDoctrineAdopted(state, doctrine.id)) {
     throw new DoctrineAlreadyAdoptedError(doctrine.id);
   }
   const nextVars = { ...state.vars };
   for (const effect of doctrine.standing_effects ?? []) {
-    const raw = (nextVars[effect.target] ?? 0) + effect.value;
-    nextVars[effect.target] = effect.target === "credibility" ? clampCredibility(raw) : raw;
+    if (nextVars[effect.target] === undefined) {
+      throw new Error(`adoptDoctrine: var "${effect.target}" is absent in state`);
+    }
+    nextVars[effect.target] = nextVars[effect.target]! + effect.value;
   }
   return {
     ...state,
@@ -44,15 +47,18 @@ export function adoptDoctrine(state: GameState, doctrine: DoctrineEntry): GameSt
 }
 
 /** Abandon a doctrine: reverses its standing effects and deducts the flip-flop credibility cost
- *  (only the credibility write is clamped to [0,100]). */
+ *  (only the flip-flop cost write is clamped to [0,100]). */
 export function abandonDoctrine(state: GameState, doctrine: DoctrineEntry): GameState {
   if (!isDoctrineAdopted(state, doctrine.id)) {
     throw new DoctrineNotAdoptedError(doctrine.id);
   }
   const nextVars = { ...state.vars };
-  // Reverse standing effects
+  // Reverse standing effects — exact inverse of adoption (no clamping, symmetric with adoptDoctrine)
   for (const effect of doctrine.standing_effects ?? []) {
-    nextVars[effect.target] = (nextVars[effect.target] ?? 0) - effect.value;
+    if (nextVars[effect.target] === undefined) {
+      throw new Error(`abandonDoctrine: var "${effect.target}" is absent in state`);
+    }
+    nextVars[effect.target] = nextVars[effect.target]! - effect.value;
   }
   // Apply flip-flop credibility cost only when there is an actual cost
   if (doctrine.flip_flop_cost > 0) {

@@ -203,10 +203,10 @@ describe("loadDoctrineCatalog", () => {
   });
 });
 
-describe("adoptDoctrine — credibility upper-boundary clamp", () => {
-  // SPEC-DOCT-1: credibility must not exceed 100 when a standing effect pushes it over
-  it("clamps credibility to 100 when starting value + effect would exceed 100", () => {
-    // Start at 98, adopt a doctrine with +5 credibility effect → should clamp to 100, not 103
+describe("adoptDoctrine / abandonDoctrine — round-trip symmetry", () => {
+  // SPEC-DOCT-1: adopt then abandon must restore the original credibility exactly (no clamping in adoptDoctrine)
+  it("restores original credibility after adopt then abandon (no flip-flop cost)", () => {
+    // Start at 98: adopt +5 stores 103; abandon subtracts 5 back to 98 — no permanent loss
     const state = makeState({ vars: { credibility: 98 } });
     const highGainDoctrine: DoctrineEntry = {
       id: "doctrine.high_gain",
@@ -214,21 +214,29 @@ describe("adoptDoctrine — credibility upper-boundary clamp", () => {
       standing_effects: [{ target: "credibility", value: 5 }],
       flip_flop_cost: 0,
     };
-    const next = adoptDoctrine(state, highGainDoctrine);
-    expect(next.vars.credibility).toBe(100);
+    const adopted = adoptDoctrine(state, highGainDoctrine);
+    expect(adopted.vars.credibility).toBe(103);
+    const abandoned = abandonDoctrine(adopted, highGainDoctrine);
+    // Standing effect reversed exactly; no flip-flop cost → back to original 98
+    expect(abandoned.vars.credibility).toBe(98);
   });
 
-  // SPEC-DOCT-1: credibility already at max — stays at 100
-  it("keeps credibility at 100 when already at max and effect is positive", () => {
-    const state = makeState({ vars: { credibility: 100 } });
-    const boostDoctrine: DoctrineEntry = {
-      id: "doctrine.boost",
-      name: "doctrine.boost.name",
-      standing_effects: [{ target: "credibility", value: 5 }],
-      flip_flop_cost: 0,
-    };
-    const next = adoptDoctrine(state, boostDoctrine);
-    expect(next.vars.credibility).toBe(100);
+  // SPEC-DOCT-1: flip-flop cost is separate from standing-effect reversal
+  it("charges flip-flop cost on top of exact standing-effect reversal", () => {
+    // Start at 50: adopt +5 → 55; abandon: reverse to 50, then deduct flip-flop cost 10 → 40
+    const state = makeState({ vars: { credibility: 50 } });
+    const adopted = adoptDoctrine(state, MOCK_DOCTRINE);
+    expect(adopted.vars.credibility).toBe(55);
+    const abandoned = abandonDoctrine(adopted, MOCK_DOCTRINE);
+    expect(abandoned.vars.credibility).toBe(40);
+  });
+
+  // SPEC-DOCT-1: adoptDoctrine throws when a target var is absent (symmetric with abandonDoctrine)
+  it("adoptDoctrine throws when a target var is absent in state", () => {
+    const state = makeState({ vars: {} }); // no credibility var
+    expect(() => adoptDoctrine(state, MOCK_DOCTRINE)).toThrow(
+      'adoptDoctrine: var "credibility" is absent in state'
+    );
   });
 });
 
@@ -247,8 +255,8 @@ describe("Session.adoptDoctrine / Session.abandonDoctrine", () => {
     session.adoptDoctrine(MOCK_DOCTRINE.id, MOCK_CATALOG);
     // flag is set
     expect(session.current.flags[doctrineFlagKey(MOCK_DOCTRINE.id)]).toBe(true);
-    // standing effect applied (+5 credibility, clamped to 100)
-    const expectedCred = Math.min(100, credBefore + 5);
+    // standing effect applied (+5 credibility, no clamping on adopt)
+    const expectedCred = credBefore + 5;
     expect(session.current.vars.credibility).toBe(expectedCred);
   });
 

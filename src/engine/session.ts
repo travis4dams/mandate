@@ -415,12 +415,22 @@ export class Session {
   adoptDoctrine(doctrineId: string, catalog: DoctrineEntry[] = loadDoctrineCatalog()): void {
     const doctrine = getDoctrine(doctrineId, catalog);
     const checkpointState = this._state;
+    const checkpointCache = this._currentCache;
+    const checkpointTrajectory = this._trajectoryCache;
     this._state = _adoptDoctrine(this._state, doctrine);
     try {
       this._rebuildCaches();
     } catch (err) {
+      // Restore checkpoint: reset state first, then rebuild caches from it.
+      // If the cache rebuild also throws, state is already at checkpoint so
+      // state+caches stay consistent; suppress the secondary error.
       this._state = checkpointState;
-      this._rebuildCaches();
+      try {
+        this._rebuildCaches();
+      } catch {
+        this._currentCache = checkpointCache;
+        this._trajectoryCache = checkpointTrajectory;
+      }
       throw err;
     }
     this._notifyListeners();
@@ -432,12 +442,22 @@ export class Session {
   abandonDoctrine(doctrineId: string, catalog: DoctrineEntry[] = loadDoctrineCatalog()): void {
     const doctrine = getDoctrine(doctrineId, catalog);
     const checkpointState = this._state;
+    const checkpointCache = this._currentCache;
+    const checkpointTrajectory = this._trajectoryCache;
     this._state = _abandonDoctrine(this._state, doctrine);
     try {
       this._rebuildCaches();
     } catch (err) {
+      // Restore checkpoint: reset state first, then rebuild caches from it.
+      // If the cache rebuild also throws, state is already at checkpoint so
+      // state+caches stay consistent; suppress the secondary error.
       this._state = checkpointState;
-      this._rebuildCaches();
+      try {
+        this._rebuildCaches();
+      } catch {
+        this._currentCache = checkpointCache;
+        this._trajectoryCache = checkpointTrajectory;
+      }
       throw err;
     }
     this._notifyListeners();
