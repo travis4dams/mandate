@@ -152,3 +152,18 @@ Phase 0 (issue queue): issue #41 (SPEC-BRIEF-2, forecast quality scales with org
   Pending REQUEST_CHANGES: PR #50 (SPEC-COMM-5, round 2), PR #52 (SPEC-LAG-1), PR #53 (SPEC-COMM-6),
   PR #55 (SPEC-COMM-7), PR #58 (cycle-10 chore). These await Phase 1 next cycle.
 Stories still passing=false: US-012..US-019.
+
+== CYCLE 12 — 2026-06-07 ==
+Phase 0 (issue queue): issue #47 (SPEC-HEAR-1: confirmation-hearing game start). Implemented on
+branch issue-47-spec-hear-1-confirmation-hearing:
+  - schemas/hearing.schema.json (new schema; questions/answers/scenario_weights/state_modifiers)
+  - content/hearings/confirmation.json (3-question initial hearing set)
+  - src/content/hearings.ts (HearingEntry types + loadHearing + resolveHearing pure resolver;
+    HearingNotFoundError / HearingAnswerNotFoundError / HearingNoScenariosError)
+  - tools/validate-content.ts (hearings dir registered)
+  - spec/requirements.md (SPEC-HEAR-1 [testable] added)
+  - content/localization/en.json (13 new hearing.* keys)
+  - test/hearing.test.ts (16 SPEC-HEAR-1 tests)
+  All checks green: 213 engine tests, 12 web tests, spec:trace 32/32, validate 15 types, web build.
+  PR #66 opened, issue #47 commented, agent-task label removed. Stopped per Phase 0 protocol.
+Stories still passing=false: US-012..US-019.
