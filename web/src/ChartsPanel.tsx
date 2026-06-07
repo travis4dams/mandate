@@ -18,8 +18,8 @@ export type ChartData = {
 
 type Snapshot = { date: string; vars: Record<string, number | undefined> };
 
-// Maps series name -> noise_scale from fog.json; falls back to 0 for unknown series.
-const fogParams: Record<string, FogParams> = fogJson as Record<string, FogParams>;
+// Maps series name -> FogParams from fog.json; not every series is present (e.g. credibility is absent).
+const fogParams: Partial<Record<string, FogParams>> = fogJson as Partial<Record<string, FogParams>>;
 
 // Returns the fog-band half-width (noise_scale) for a given series name.
 // Falls back to 0 if the series is not listed in content/engine/fog.json.
@@ -28,7 +28,7 @@ export function fogHalfWidth(series: string): number {
 }
 
 // Pure function: converts a trajectory snapshot array into per-series DataPoint arrays.
-// Skips any snapshot where the series value is undefined.
+// Keeps only finite numeric values — rejects undefined, null, NaN, Infinity, and -Infinity.
 export function buildChartData(
   trajectory: readonly Snapshot[],
 ): ChartData {
@@ -93,7 +93,7 @@ export function ChartsPanel(props: { trajectory: readonly Snapshot[] }): JSX.Ele
         x: { label: null },
         y: { label: null },
         color: { legend: false },
-        width: 880,
+        width: el.offsetWidth || 880,
         height: 200,
       });
 

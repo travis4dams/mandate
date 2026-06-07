@@ -1,6 +1,22 @@
 // SPEC-WEB-3
-import { describe, it, expect } from "vitest";
-import { buildChartData, fogHalfWidth } from "./ChartsPanel";
+import { describe, it, expect, afterEach, vi } from "vitest";
+import { render, screen, cleanup } from "@testing-library/react";
+import * as Plot from "@observablehq/plot";
+import { buildChartData, fogHalfWidth, ChartsPanel } from "./ChartsPanel";
+import { t } from "./loc";
+
+// `import * as Plot` yields a sealed namespace whose members aren't directly
+// spy-able; vi.mock replaces it with a writable copy of the real module so
+// individual tests can stub `Plot.plot` (e.g. to exercise the catch fallback).
+vi.mock("@observablehq/plot", async (importActual) => {
+  const actual = await importActual<typeof import("@observablehq/plot")>();
+  return { ...actual };
+});
+
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+});
 
 describe("SPEC-WEB-3 chart data", () => {
   const snapshot = {
@@ -31,7 +47,9 @@ describe("SPEC-WEB-3 chart data", () => {
   });
 
   it("fog half-width matches noise_scale from fog params", () => {
-    // inflation = 0.002, unemployment = 0.001; policy_rate has explicit noise_scale: 0 in fog.json; credibility absent from fog.json — both fall back to 0
+    // inflation = 0.002, unemployment = 0.001 from fog.json explicit entries.
+    // policy_rate returns 0: key IS present in fog.json with an explicit noise_scale: 0.
+    // credibility returns 0: key is ABSENT from fog.json entirely — the `?? 0` fallback kicks in.
     expect(fogHalfWidth("inflation")).toBeCloseTo(0.002);
     expect(fogHalfWidth("unemployment")).toBeCloseTo(0.001);
     expect(fogHalfWidth("policy_rate")).toBe(0);
@@ -56,5 +74,44 @@ describe("SPEC-WEB-3 chart data", () => {
     expect(data.unemployment).toHaveLength(1);
     expect(data.policy_rate).toHaveLength(1);
     expect(data.credibility).toHaveLength(1);
+  });
+
+  it("drops NaN and Infinity values but keeps finite ones", () => {
+    // Number.isFinite rejects NaN, Infinity, -Infinity (and non-numbers), but passes finite values.
+    const bad = [{ date: "1979-08", vars: { inflation: NaN, unemployment: Infinity, policy_rate: -Infinity, credibility: 0.5 } }];
+    const data = buildChartData(bad);
+    expect(data.inflation).toHaveLength(0);
+    expect(data.unemployment).toHaveLength(0);
+    expect(data.policy_rate).toHaveLength(0);
+    expect(data.credibility).toHaveLength(1); // 0.5 is finite
+  });
+});
+
+describe("SPEC-WEB-3 ChartsPanel component — smoke test", () => {
+  const snapshot = {
+    date: "1979-08",
+    vars: {
+      inflation: 0.11,
+      unemployment: 0.06,
+      policy_rate: 0.105,
+      credibility: 8.2,
+    },
+  };
+
+  it("mounts without showing the error fallback text", () => {
+    // Smoke test: the happy path (Plot.plot succeeds) must not render the unavailable fallback.
+    render(<ChartsPanel trajectory={[snapshot]} />);
+    expect(screen.queryByText(t("ui.dashboard.chart.unavailable"))).toBeNull();
+  });
+
+  it("renders the unavailable fallback when Plot.plot throws", () => {
+    // Silent Failure Hunter (round 3): errors thrown inside useEffect bypass
+    // React error boundaries, so the catch block must render a visible message.
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.spyOn(Plot, "plot").mockImplementationOnce(() => {
+      throw new Error("plot failed");
+    });
+    render(<ChartsPanel trajectory={[snapshot]} />);
+    expect(screen.getByText(t("ui.dashboard.chart.unavailable"))).toBeDefined();
   });
 });
