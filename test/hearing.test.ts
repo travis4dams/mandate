@@ -58,7 +58,8 @@ const sampleHearing: HearingEntry = {
 };
 
 describe("resolveHearing — scenario selection", () => {
-  it("// SPEC-HEAR-1 selects the scenario with highest total weight", () => {
+  it("selects the scenario with highest total weight", () => {
+    // SPEC-HEAR-1
     // alpha_hawkish (+3 scen.a) + beta_orthodox (+2 scen.a) → scen.a total=5, scen.b total=1
     const result = resolveHearing(
       ["hearing.a.alpha_hawkish", "hearing.a.beta_orthodox"],
@@ -67,7 +68,8 @@ describe("resolveHearing — scenario selection", () => {
     expect(result.scenarioId).toBe("scen.a");
   });
 
-  it("// SPEC-HEAR-1 different answers produce a different scenario selection", () => {
+  it("different answers produce a different scenario selection", () => {
+    // SPEC-HEAR-1
     // alpha_dovish (+3 scen.b) + beta_activist (+2 scen.b) → scen.b total=5, scen.a total=1
     const result = resolveHearing(
       ["hearing.a.alpha_dovish", "hearing.a.beta_activist"],
@@ -76,7 +78,8 @@ describe("resolveHearing — scenario selection", () => {
     expect(result.scenarioId).toBe("scen.b");
   });
 
-  it("// SPEC-HEAR-1 tiebreak is alphabetical by scenario id", () => {
+  it("tiebreak is alphabetical by scenario id", () => {
+    // SPEC-HEAR-1
     const tieHearing: HearingEntry = {
       id: "hearing.tie_test",
       name: "hearing.tie_test.name",
@@ -107,7 +110,8 @@ describe("resolveHearing — scenario selection", () => {
 });
 
 describe("resolveHearing — state modifiers", () => {
-  it("// SPEC-HEAR-1 collects state_modifiers from the chosen answer", () => {
+  it("collects state_modifiers from the chosen answer", () => {
+    // SPEC-HEAR-1
     const result = resolveHearing(
       ["hearing.a.alpha_hawkish", "hearing.a.beta_orthodox"],
       sampleHearing,
@@ -119,7 +123,8 @@ describe("resolveHearing — state modifiers", () => {
     void _target;
   });
 
-  it("// SPEC-HEAR-1 accumulates modifiers from all chosen answers", () => {
+  it("accumulates modifiers from all chosen answers", () => {
+    // SPEC-HEAR-1
     // Add a modifier to beta_orthodox for this test
     const hearingWithTwoMods: HearingEntry = {
       ...sampleHearing,
@@ -146,7 +151,8 @@ describe("resolveHearing — state modifiers", () => {
     expect(result.modifiers[1]).toEqual({ target: "policy_rate", delta: 0.005 });
   });
 
-  it("// SPEC-HEAR-1 returns empty modifiers when no answer has state_modifiers", () => {
+  it("answers without state_modifiers contribute no modifiers to the result", () => {
+    // SPEC-HEAR-1
     const result = resolveHearing(
       ["hearing.a.alpha_hawkish", "hearing.a.beta_activist"],
       sampleHearing,
@@ -157,7 +163,8 @@ describe("resolveHearing — state modifiers", () => {
 });
 
 describe("resolveHearing — determinism and purity", () => {
-  it("// SPEC-HEAR-1 is deterministic — same inputs produce same result", () => {
+  it("is deterministic — same inputs produce same result", () => {
+    // SPEC-HEAR-1
     const answers = ["hearing.a.alpha_hawkish", "hearing.a.beta_orthodox"] as const;
     const r1 = resolveHearing(answers, sampleHearing);
     const r2 = resolveHearing(answers, sampleHearing);
@@ -165,7 +172,8 @@ describe("resolveHearing — determinism and purity", () => {
     expect(r1.modifiers).toEqual(r2.modifiers);
   });
 
-  it("// SPEC-HEAR-1 does not mutate the input hearing", () => {
+  it("does not mutate the input hearing", () => {
+    // SPEC-HEAR-1
     const snapshot = JSON.stringify(sampleHearing);
     resolveHearing(["hearing.a.alpha_hawkish", "hearing.a.beta_orthodox"], sampleHearing);
     expect(JSON.stringify(sampleHearing)).toBe(snapshot);
@@ -173,13 +181,15 @@ describe("resolveHearing — determinism and purity", () => {
 });
 
 describe("resolveHearing — error cases", () => {
-  it("// SPEC-HEAR-1 throws HearingAnswerNotFoundError for an unknown answer id", () => {
+  it("throws HearingAnswerNotFoundError for an unknown answer id", () => {
+    // SPEC-HEAR-1
     expect(() =>
       resolveHearing(["hearing.a.does_not_exist", "hearing.a.beta_orthodox"], sampleHearing),
     ).toThrow(HearingAnswerNotFoundError);
   });
 
-  it("// SPEC-HEAR-1 HearingAnswerNotFoundError carries answerId and questionId", () => {
+  it("HearingAnswerNotFoundError carries answerId and questionId", () => {
+    // SPEC-HEAR-1
     let err: HearingAnswerNotFoundError | undefined;
     try {
       resolveHearing(["hearing.a.bad", "hearing.a.beta_orthodox"], sampleHearing);
@@ -192,7 +202,8 @@ describe("resolveHearing — error cases", () => {
     }
   });
 
-  it("// SPEC-HEAR-1 throws HearingNoScenariosError when no answer contributes scenario_weights", () => {
+  it("throws HearingNoScenariosError when no answer contributes scenario_weights", () => {
+    // SPEC-HEAR-1
     const noWeightsHearing: HearingEntry = {
       id: "hearing.no_weights",
       name: "hearing.no_weights.name",
@@ -213,14 +224,16 @@ describe("resolveHearing — error cases", () => {
     ).toThrow(HearingNoScenariosError);
   });
 
-  it("// SPEC-HEAR-1 throws a length error when answers.length < questions.length", () => {
+  it("throws a length error when answers.length < questions.length", () => {
+    // SPEC-HEAR-1
     // sampleHearing has 2 questions; providing only 1 answer should throw
     expect(() =>
       resolveHearing(["hearing.a.alpha_hawkish"], sampleHearing),
     ).toThrowError(/expected 2 answer\(s\)/);
   });
 
-  it("// SPEC-HEAR-1 throws a length error when answers.length > questions.length", () => {
+  it("throws a length error when answers.length > questions.length", () => {
+    // SPEC-HEAR-1
     // sampleHearing has 2 questions; providing 3 answers should throw
     expect(() =>
       resolveHearing(
@@ -236,24 +249,28 @@ describe("loadHearing — disk content", () => {
     _resetHearingCatalogCache();
   });
 
-  it("// SPEC-HEAR-1 loadHearing loads the confirmation hearing by id", () => {
+  it("loadHearing loads the confirmation hearing by id", () => {
+    // SPEC-HEAR-1
     const hearing = loadHearing(HEARING_ID);
     expect(hearing.id).toBe(HEARING_ID);
     expect(hearing.questions.length).toBeGreaterThanOrEqual(1);
   });
 
-  it("// SPEC-HEAR-1 each question has at least 2 answer choices", () => {
+  it("each question has at least 2 answer choices", () => {
+    // SPEC-HEAR-1
     const hearing = loadHearing(HEARING_ID);
     for (const q of hearing.questions) {
       expect(q.answers.length).toBeGreaterThanOrEqual(2);
     }
   });
 
-  it("// SPEC-HEAR-1 loadHearing throws HearingNotFoundError for unknown id", () => {
+  it("loadHearing throws HearingNotFoundError for unknown id", () => {
+    // SPEC-HEAR-1
     expect(() => loadHearing("hearing.nonexistent")).toThrow(HearingNotFoundError);
   });
 
-  it("// SPEC-HEAR-1 resolveHearing with disk content returns a non-empty scenario id", () => {
+  it("resolveHearing with disk content returns a non-empty scenario id", () => {
+    // SPEC-HEAR-1
     const hearing = loadHearing(HEARING_ID);
     const answers = hearing.questions.map((q) => q.answers[0].id);
     const result = resolveHearing(answers, hearing);
@@ -262,13 +279,15 @@ describe("loadHearing — disk content", () => {
     expect(Array.isArray(result.modifiers)).toBe(true);
   });
 
-  it("// SPEC-HEAR-1 loadHearingCatalog is cached — same reference on repeated calls", () => {
+  it("loadHearingCatalog is cached — same reference on repeated calls", () => {
+    // SPEC-HEAR-1
     const first = loadHearingCatalog();
     const second = loadHearingCatalog();
     expect(first).toBe(second);
   });
 
-  it("// SPEC-HEAR-1 loadHearing throws HearingNotFoundError and err.id matches requested id", () => {
+  it("loadHearing throws HearingNotFoundError and err.id matches requested id", () => {
+    // SPEC-HEAR-1
     const BAD_ID = "hearing.totally_unknown";
     let err: HearingNotFoundError | undefined;
     try {
@@ -281,7 +300,8 @@ describe("loadHearing — disk content", () => {
     }
   });
 
-  it("// SPEC-HEAR-1 loadHearingCatalog keys cache by dir — different dirs get independent arrays", () => {
+  it("loadHearingCatalog keys cache by dir — different dirs get independent arrays", () => {
+    // SPEC-HEAR-1
     // Call with the default dir twice → same reference
     const a1 = loadHearingCatalog();
     const a2 = loadHearingCatalog();

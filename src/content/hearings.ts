@@ -92,6 +92,7 @@ export function loadHearingCatalog(dir: string = DEFAULT_HEARINGS_DIR): HearingE
   return entries;
 }
 
+/** Test-only: clear the hearing catalog cache so a subsequent loadHearingCatalog() re-reads from disk. */
 export function _resetHearingCatalogCache(): void {
   _cache.clear();
 }
@@ -108,8 +109,8 @@ export function loadHearing(id: string, dir?: string): HearingEntry {
  * starting scenario id and the accumulated state modifiers.
  *
  * Scenario selection: each chosen answer contributes its scenario_weights
- * additively; the scenario with the highest total wins. Alphabetical tiebreak
- * on scenario id ensures determinism.
+ * additively; the scenario with the highest total wins. On a tie the
+ * alphabetically earliest scenario id is selected (stable determinism).
  */
 export function resolveHearing(
   answers: readonly string[],
