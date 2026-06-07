@@ -166,4 +166,25 @@ branch issue-47-spec-hear-1-confirmation-hearing:
   - test/hearing.test.ts (16 SPEC-HEAR-1 tests)
   All checks green: 213 engine tests, 12 web tests, spec:trace 32/32, validate 15 types, web build.
   PR #66 opened, issue #47 commented, agent-task label removed. Stopped per Phase 0 protocol.
+
+== CYCLE 13 — 2026-06-07 ==
+Phase 0 (issue queue): empty — fell through to Phase 1.
+Phase 1:
+  Merged PR #60 (chore: cycle 10+11 progress log, VERDICT: APPROVE, squash 762b6f6).
+  Merged PR #65 (SPEC-SCEN-2: GFC 2008 + COVID 2020 starting scenarios, VERDICT: APPROVE, squash 7b3ac44).
+    Neither corresponds to a PRD story — prd.json unchanged.
+  PR #67 (chore: cycle 12 progress) had VERDICT: REQUEST_CHANGES — 1 blocker: progress log
+    incorrectly stated 15 new hearing.* localization keys; actual count is 13. Fixed the count
+    and rebased branch chore/cycle-12b-hear1-progress onto new main (resolving the conflict with
+    #60's cycles 10+11 content). Pushed force-with-lease.
+  PR #50 (SPEC-COMM-5, issue-37-spec-comm-5-trait-catalog) — round 2 REQUEST_CHANGES fixed.
+    3 blockers: (1) TraitNotFoundError message dropped "previewVote:" prefix (error surfaces
+    from vote() too); (2) added test for conviction_band_factor NaN/out-of-range guard; (3) added
+    test for bandMod sign-flip guard (stacked modifiers ≤ -1). All 219 engine tests pass.
+    Pushed to issue-37-spec-comm-5-trait-catalog (commit acaf7e1).
+  Other open REQUEST_CHANGES PRs (not touched this cycle): #52 (SPEC-LAG-1), #53 (SPEC-COMM-6),
+    #55 (SPEC-COMM-7), #59 (SPEC-BRIEF-2), #61 (SPEC-DOCT-1), #62 (SPEC-DOCT-2),
+    #63 (SPEC-WEB-6), #64 (SPEC-SIM-6, one APPROVE + one REQUEST_CHANGES), #66 (SPEC-HEAR-1, pending),
+    #67 (chore cycle 12, awaiting re-review after rebase+fix).
+  No new PRD story dispatched this cycle (PR backlog has 10 open PRs requiring review attention).
 Stories still passing=false: US-012..US-019.
