@@ -11,6 +11,7 @@ const dirChecks = [
   { schema: "schemas/replay.schema.json", dir: "content/replays", label: "replays" },
   { schema: "schemas/committee.schema.json", dir: "content/committees", label: "committees" },
   { schema: "schemas/calibration.schema.json", dir: "content/calibration", label: "calibration" },
+  { schema: "schemas/traits.schema.json", dir: "content/traits", label: "traits" },
 ];
 
 const fileChecks = [
