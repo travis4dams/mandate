@@ -114,6 +114,15 @@ describe("Session.reset correctness", () => {
     expect(s.current.date).toBe("1979-08");
     expect(s.isMeetingMonth()).toBe(true);
   });
+
+  // SPEC-COMM-6
+  it("stance.* vars are absent from state after reset()", () => {
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    s.advance(3);
+    expect(Object.keys(s.current.vars).some((k) => k.startsWith("stance."))).toBe(true);
+    s.reset();
+    expect(Object.keys(s.current.vars).some((k) => k.startsWith("stance."))).toBe(false);
+  });
 });
 
 describe("Session.proposeRate guards", () => {
@@ -166,6 +175,19 @@ describe("Session.proposeRate guards", () => {
     expect(s.isMeetingMonth()).toBe(true);
     const vote = s.proposeRate(0.12);
     expect(vote.decided).toBe(0.12);
+  });
+
+  // SPEC-COMM-6
+  it("proposeRate() preserves stance.* vars", () => {
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    s.advance(1);
+    const stanceKeysBefore = Object.keys(s.current.vars).filter((k) => k.startsWith("stance."));
+    expect(stanceKeysBefore.length).toBeGreaterThan(0);
+    const stanceBefore = Object.fromEntries(stanceKeysBefore.map((k) => [k, s.current.vars[k]]));
+    s.proposeRate(s.current.vars.policy_rate as number);
+    for (const k of stanceKeysBefore) {
+      expect(s.current.vars[k]).toBe(stanceBefore[k]);
+    }
   });
 });
 
@@ -469,11 +491,13 @@ describe("SPEC-SIM-5: macro dynamics wired into Session.advance()", () => {
   // inflation upward and the (negative) unemployment gap pushes inflation higher — a wage-price
   // overheating. Inflation rises above its 0.114 start. The canary for sign errors: a backwards
   // real-rate channel would instead disinflate here.
-  it("after advance(24), inflation accelerates above initial 0.114 (loose policy lets it run)", () => {
-    // SPEC-SIM-5
+  // SPEC-LAG-1: the distributed-lag kernel delays the effect ~6 months, so 36 months gives
+  // the stimulus time to fully build up in the output_gap history before inflation accelerates.
+  it("after advance(36), inflation accelerates above initial 0.114 (loose policy lets it run)", () => {
+    // SPEC-SIM-5 / SPEC-LAG-1
     const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
     expect(s.current.vars.inflation).toBe(0.114);
-    s.advance(24);
+    s.advance(36);
     expect(s.current.vars.inflation).toBeGreaterThan(0.114);
   });
 });

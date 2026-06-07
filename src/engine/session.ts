@@ -6,8 +6,11 @@ import { loadValidatedFile } from "../content/loader.js";
 import { tick } from "./clock.js";
 import { vote, previewVote, loadCommitteeParams } from "./fomc.js";
 import { applyIntermeetingDrift } from "./stance.js";
+import { loadTraitCatalog } from "../content/traits.js";
 import { applyMeetingOutcome, getCredibility } from "./credibility.js";
 import { applyMacroDynamics, loadDynamicsParams } from "./dynamics.js";
+import { applyRateToOutputGap, loadLagParams } from "./lags.js";
+import { applyTermStructure, loadTermStructureParams } from "./term-structure.js";
 import { onTarget, loadMandateParams } from "./mandate.js";
 import type { GameState, GameStateSnapshot } from "./state.js";
 import type { FomcVote, MemberVotePreview } from "./fomc.js";
@@ -258,12 +261,19 @@ export class Session {
     // stance scales the expectations re-anchoring pull (hawkish = faster, dovish = slower).
     const guidanceP = loadGuidanceParams();
     const dynamicsParams = loadDynamicsParams();
+    // SPEC-LAG-1: lag params are a cached singleton; hoisted for the same reason.
+    const lagParams = loadLagParams();
+    // SPEC-TERM-1: term-structure params are a cached singleton; hoisted for the same reason.
+    const termStructureParams = loadTermStructureParams();
     const effectiveParams = {
       ...dynamicsParams,
       expectations_anchor_pull:
         dynamicsParams.expectations_anchor_pull * stanceMultiplier(this._stance, guidanceP),
     };
-    // SPEC-COMM-6: hoist outside loop; loadCommitteeParams() is memoized, loadCommittee() re-reads each call.
+    // SPEC-COMM-6: hoist loop-invariant loads. loadCommitteeParams() is memoized;
+    // loadCommittee() re-reads from disk but is loop-invariant. Both are outside the
+    // try block intentionally: if either throws before the loop starts, this._state is
+    // unchanged and no rollback is needed.
     const committee = loadCommittee(this._committeeId);
     const committeeParams = loadCommitteeParams();
 
@@ -280,9 +290,23 @@ export class Session {
         }
 
         this._state = tick(this._state, 1);
+        // SPEC-LAG-1: update output_gap from trajectory before applying macro dynamics.
+        // Ordering invariant: applyRateToOutputGap reads _trajectoryInternal BEFORE the new snapshot is pushed — this month's rate enters the lag kernel next month.
+        this._state = applyRateToOutputGap(this._state, this._trajectoryInternal, lagParams, dynamicsParams.real_neutral_rate);
         this._state = applyMacroDynamics(this._state, effectiveParams);
         // SPEC-COMM-6: evolve per-member stances toward Taylor target each month.
+        const prevStateRef = this._state;
         this._state = applyIntermeetingDrift(this._state, committee, committeeParams);
+        // applyIntermeetingDrift returns the same reference when required vars are missing.
+        // This should never occur in a live session — throw so the rollback above surfaces it.
+        if (this._state === prevStateRef) {
+          throw new Error(
+            `Session.advance: applyIntermeetingDrift skipped at ${this._state.date} — ` +
+            `inflation/unemployment/policy_rate is missing or non-finite.`,
+          );
+        }
+        // SPEC-TERM-1: update long_rate via EWMA toward policy_rate, after macro dynamics.
+        this._state = applyTermStructure(this._state, termStructureParams);
 
         const snapshot = Session._snapshotOf(this._state);
         this._trajectoryInternal.push(snapshot);
@@ -315,7 +339,8 @@ export class Session {
   } {
     const committee = loadCommittee(this._committeeId);
     const params = loadCommitteeParams();
-    const { previews, gapInflation, gapUnemployment } = previewVote(committee, proposedRate, this._state, params);
+    const traits = loadTraitCatalog();
+    const { previews, gapInflation, gapUnemployment } = previewVote(committee, proposedRate, this._state, params, traits);
     return {
       previews,
       gapInflation,
@@ -345,7 +370,8 @@ export class Session {
 
     const committee = loadCommittee(this._committeeId);
     const params = loadCommitteeParams();
-    const fomcVote = vote(committee, rate, this._state, params);
+    const traits = loadTraitCatalog();
+    const fomcVote = vote(committee, rate, this._state, params, traits);
 
     // Apply the decided rate and compute new credibility.
     // SPEC-CRED-1 (issue #33): dissents no longer affect credibility, so fomcVote.dissents is

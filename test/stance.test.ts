@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { applyIntermeetingDrift, stanceKey } from "../src/engine/stance";
-import { previewVote } from "../src/engine/fomc";
+import { previewVote, vote } from "../src/engine/fomc";
 import { makeState } from "../src/engine/state";
 import { Session } from "../src/engine/session";
 import type { Committee, CommitteeMember } from "../src/content/committees";
@@ -12,6 +12,7 @@ const PARAMS: CommitteeParams = {
   neutral_rate: 0.05,
   target_inflation: 0.02,
   target_unemployment: 0.04,
+  conviction_band_factor: 0.8,
 };
 
 function member(id: string, overrides: Partial<CommitteeMember> = {}): CommitteeMember {
@@ -23,6 +24,7 @@ function member(id: string, overrides: Partial<CommitteeMember> = {}): Committee
     inertia: 0.88,
     competence: 0.8,
     compromise_band: 0.005,
+    conviction: 0.5,
     ...overrides,
   };
 }
@@ -286,6 +288,30 @@ describe("Session.advance accumulates intermeeting stance (SPEC-COMM-6)", () => 
   });
 });
 
+describe("stanceKey format (SPEC-COMM-6)", () => {
+  // SPEC-COMM-6: pin the key format — content and UI may construct it manually.
+  it('stanceKey("member.chair") === "stance.member.chair"', () => {
+    expect(stanceKey("member.chair")).toBe("stance.member.chair");
+  });
+});
+
+describe("vote() dissent with stored stances (SPEC-COMM-6)", () => {
+  // SPEC-COMM-6: vote() delegates to previewVote() which uses stored stance as anchor.
+  it("vote() dissent count differs with stored stance vs. cold-start", () => {
+    const m = member("x", { inertia: 0.88, compromise_band: 0.005 });
+    const c = committeeOf([m]);
+    const stateWithStance = macroState({
+      inflation: PARAMS.target_inflation, unemployment: PARAMS.target_unemployment,
+      policy_rate: 0.05, stances: { [stanceKey(m.id)]: 0.10 },
+    });
+    const stateWithoutStance = macroState({
+      inflation: PARAMS.target_inflation, unemployment: PARAMS.target_unemployment, policy_rate: 0.05,
+    });
+    expect(vote(c, 0.05, stateWithoutStance, PARAMS, []).dissents).toBe(0);
+    expect(vote(c, 0.05, stateWithStance, PARAMS, []).dissents).toBe(1);
+  });
+});
+
 describe("previewVote — SPEC-COMM-6 stored-stance integration", () => {
   // SPEC-COMM-6: previewVote uses stored per-member stance as the lagged-rate anchor.
   it("member preferred rate shifts when stored stance differs from policy_rate", () => {
@@ -308,8 +334,8 @@ describe("previewVote — SPEC-COMM-6 stored-stance integration", () => {
       policy_rate: 0.05,
     });
 
-    const { previews: withStance } = previewVote(c, 0.05, stateWithStance, PARAMS);
-    const { previews: withoutStance } = previewVote(c, 0.05, stateWithoutStance, PARAMS);
+    const { previews: withStance } = previewVote(c, 0.05, stateWithStance, PARAMS, []);
+    const { previews: withoutStance } = previewVote(c, 0.05, stateWithoutStance, PARAMS, []);
 
     // Cold-start: preferred should equal neutral_rate (0.05) since gaps are 0.
     expect(withoutStance[0].preferred).toBeCloseTo(0.05, 10);

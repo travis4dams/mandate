@@ -91,3 +91,229 @@ STUCK NOTE — PR #30 (SPEC-WEB-3): three rounds of REQUEST_CHANGES is the stop 
   (c) Raise the retry cap for this SPEC in docs/ralph-runbook.md and let the agent retry.
   US-012 remains passes=false until resolved.
 Stories still passing=false: US-012..US-019.
+
+== CYCLE 8 — 2026-06-05 ==
+Phase 0 (issue queue): issue #38 (SPEC-COMM-6, between-meeting stance drift). Implemented on
+branch issue-38-spec-comm-6-stance-drift from main (SPEC-COMM-5 not yet merged; used
+member.inertia from SPEC-COMM-3 as drift responsiveness; conviction integration deferred to
+when PR #50 merges):
+  - spec/requirements.md: SPEC-COMM-6 [testable] added
+  - src/engine/stance.ts: applyIntermeetingDrift + stanceKey; pure, no Math.random/Date.now
+  - src/engine/fomc.ts: previewVote reads stored stance per member; fallback to policy_rate
+  - src/engine/session.ts: advance() calls applyIntermeetingDrift each month
+  - test/stance.test.ts: 11 tests (// SPEC-COMM-6)
+  All checks green: 208 engine + 12 web tests, spec:trace 32/32, validate, web build.
+  PR #53 opened, issue #38 commented, agent-task label removed. Stopped per Phase 0 protocol.
+  Open PRs: #30 (STUCK), #50 (round 2 REQUEST_CHANGES), #52 (round 1 REQUEST_CHANGES), #53 (new).
+Stories still passing=false: US-012..US-019.
+
+== CYCLE 9 — 2026-06-05 ==
+Phase 0 (issue queue): issue #39 (SPEC-COMM-7, Chair capital persuasion) was oldest agent-task.
+Implemented on branch issue-39-spec-comm-7-chair-capital:
+  - schemas/chair-capital.schema.json + content/engine/chair-capital.json (base_capital=3,
+    credibility_weight=0.05, band_widen_per_unit=0.002, max_spend_per_member=3)
+  - src/engine/chair-capital.ts (computeChairCapital, computeEffectiveBands, loadChairCapitalParams)
+  - src/engine/fomc.ts (previewVote + vote gain optional effectiveBands parameter)
+  - src/engine/session.ts (Session.chairCapital(), committeeBriefing/proposeRate gain optional capitalSpend)
+  - tools/validate-content.ts (chair-capital registered), spec/requirements.md (SPEC-COMM-7 [testable])
+  - test/chair-capital.test.ts (14 tests: formula, monotonicity, cap, integration, no-persist, loader)
+  All checks green: 211 engine tests, 12 web tests, spec:trace 32/32, validate 15 content types.
+PR #55 opened, issue #39 commented, agent-task label removed. Stopped per Phase 0 protocol.
+Stories still passing=false: US-012..US-019.
+
+== CYCLE 10 — 2026-06-05 ==
+Phase 0 (issue queue): issue #40 (SPEC-BRIEF-1, briefing content type) was oldest agent-task.
+Implemented on branch issue-40-spec-brief-1-briefing-content:
+  - schemas/briefing.schema.json + content/briefings/1979_q3_stagflation.json
+  - src/content/briefings.ts (loadBriefing, BriefingNotFoundError, BriefingScenarioOrderError)
+  - tools/validate-content.ts (briefings dir registered), spec/requirements.md (SPEC-BRIEF-1 [testable])
+  - content/localization/en.json (5 loc-keys), test/briefings.test.ts (13 tests)
+  All checks green: 210 engine tests, 12 web tests, spec:trace 32/32, validate 16 content types.
+PR #57 opened, issue #40 commented, agent-task label removed. Stopped per Phase 0 protocol.
+Stories still passing=false: US-012..US-019.
+
+== CYCLE 11 — 2026-06-05 ==
+Phase 0 (issue queue): issue #41 (SPEC-BRIEF-2, forecast quality scales with org investment).
+  Dependency: SPEC-BRIEF-1 (PR #57) had VERDICT: APPROVE — merged first along with PRs #54 and
+  #56 (cycle 8 and 9 chore logs, both VERDICT: APPROVE). PR #56 required conflict resolution
+  (branch rebased on new main to cleanly append cycle 9 after cycle 8).
+  Implemented SPEC-BRIEF-2 on branch issue-41-spec-brief-2-forecast-quality:
+  - schemas/forecast-quality.schema.json + content/engine/forecast-quality.json
+    (base_noise=0.02, quality_slope=0.0002, min_noise=0.002)
+  - src/engine/forecast-quality.ts (computeForecastNoiseScale, applyForecastQuality, loader;
+    pure functions, seeded-RNG only, purity-safe)
+  - tools/validate-content.ts (forecast-quality registered), spec/requirements.md (SPEC-BRIEF-2 [testable])
+  - test/forecast-quality.test.ts (16 tests: noise monotonicity, floor, NaN-guard, determinism,
+    higher-investment tighter spread, tuple preservation, unemployment clamp, growth_outlook passthrough)
+  All checks green: 226 engine tests, 12 web tests, spec:trace 33/33, validate 16 content types.
+  CI fix pushed: as unknown as cast for tuple return type (strict tsc stricter than local).
+  PR #59 opened (https://github.com/travis4dams/mandate/pull/59), issue #41 commented,
+  agent-task label removed. Stopped per Phase 0 protocol.
+  Pending REQUEST_CHANGES: PR #50 (SPEC-COMM-5, round 2), PR #52 (SPEC-LAG-1), PR #53 (SPEC-COMM-6),
+  PR #55 (SPEC-COMM-7), PR #58 (cycle-10 chore). These await Phase 1 next cycle.
+Stories still passing=false: US-012..US-019.
+
+== CYCLE 12 — 2026-06-07 ==
+Phase 0 (issue queue): issue #47 (SPEC-HEAR-1: confirmation-hearing game start). Implemented on
+branch issue-47-spec-hear-1-confirmation-hearing:
+  - schemas/hearing.schema.json (new schema; questions/answers/scenario_weights/state_modifiers)
+  - content/hearings/confirmation.json (3-question initial hearing set)
+  - src/content/hearings.ts (HearingEntry types + loadHearing + resolveHearing pure resolver;
+    HearingNotFoundError / HearingAnswerNotFoundError / HearingNoScenariosError)
+  - tools/validate-content.ts (hearings dir registered)
+  - spec/requirements.md (SPEC-HEAR-1 [testable] added)
+  - content/localization/en.json (13 new hearing.* keys)
+  - test/hearing.test.ts (16 SPEC-HEAR-1 tests)
+  All checks green: 213 engine tests, 12 web tests, spec:trace 32/32, validate 15 types, web build.
+  PR #66 opened, issue #47 commented, agent-task label removed. Stopped per Phase 0 protocol.
+Stories still passing=false: US-012..US-019.
+
+== CYCLE 13 — 2026-06-07 ==
+Phase 0 (issue queue): empty — fell through to Phase 1.
+Phase 1:
+  Merged PR #60 (chore: cycle 10+11 progress log, VERDICT: APPROVE, squash 762b6f6).
+  Merged PR #65 (SPEC-SCEN-2: GFC 2008 + COVID 2020 starting scenarios, VERDICT: APPROVE, squash 7b3ac44).
+    Neither corresponds to a PRD story — prd.json unchanged.
+  PR #67 (chore: cycle 12 progress) had VERDICT: REQUEST_CHANGES — 1 blocker: progress log
+    incorrectly stated 15 new hearing.* localization keys; actual count is 13. Fixed the count
+    and rebased branch chore/cycle-12b-hear1-progress onto new main (resolving the conflict with
+    #60's cycles 10+11 content). Pushed force-with-lease.
+  PR #50 (SPEC-COMM-5, issue-37-spec-comm-5-trait-catalog) — round 2 REQUEST_CHANGES fixed.
+    3 blockers: (1) TraitNotFoundError message dropped "previewVote:" prefix (error surfaces
+    from vote() too); (2) added test for conviction_band_factor NaN/out-of-range guard; (3) added
+    test for bandMod sign-flip guard (stacked modifiers ≤ -1). All 219 engine tests pass.
+    Pushed to issue-37-spec-comm-5-trait-catalog (commit acaf7e1).
+  Other open REQUEST_CHANGES PRs (not touched this cycle): #52 (SPEC-LAG-1), #53 (SPEC-COMM-6),
+    #55 (SPEC-COMM-7), #59 (SPEC-BRIEF-2), #61 (SPEC-DOCT-1), #62 (SPEC-DOCT-2),
+    #63 (SPEC-WEB-6), #64 (SPEC-SIM-6, one APPROVE + one REQUEST_CHANGES), #66 (SPEC-HEAR-1, pending),
+    #67 (chore cycle 12, awaiting re-review after rebase+fix).
+  No new PRD story dispatched this cycle (PR backlog has 10 open PRs requiring review attention).
+Stories still passing=false: US-012..US-019.
+
+== CYCLE 14 — 2026-06-07 ==
+Phase 0 (issue queue): empty — fell through to Phase 1.
+Phase 1:
+  Merged PR #68 (chore: cycle 13 progress log, VERDICT: APPROVE, squash bcfdb04). Branch required
+    rebase to resolve progress.txt conflict (cycle-13 branch base had cycles 1-7; main had cycles
+    1-12 from PR #60; kept all cycles by appending).
+  Merged PR #52 (SPEC-LAG-1: distributed lag kernel + output_gap state var, VERDICT: APPROVE,
+    squash 301dd64). Branch required rebase to resolve tools/validate-content.ts conflict (both
+    SPEC-BRIEF-2 and SPEC-LAG-1 added fileChecks entries at same location — kept both). Also
+    ran web/npm install to fix Cannot-find-module-react typecheck error after rebase.
+  prd.json updated: US-014 marked passes=true, pr=52.
+  PR #64 (SPEC-SIM-6, issue-45-spec-sim-6-sub-monthly-tick) — round 2 REQUEST_CHANGES:
+    (1) scaleParamsForTick missing guard for n<1 or non-integer n;
+    (2) Session.advance() sub-monthly months_below_anchor logic entirely untested at Session level.
+    Dispatched executor agent (a9815233cac6f54c2) to add RangeError guard + 2 integration tests.
+  PR #55 (SPEC-COMM-7, issue-39-spec-comm-7-chair-capital) — round 2 REQUEST_CHANGES:
+    (1) computeEffectiveBands silently discards negative spend values (should throw);
+    (2) no total budget enforcement — caller can spend more than chairCapital() returns.
+    Dispatched executor agent (a9d26161a50b9481c) to add budget cap + negative-spend throw.
+  PR #62 (SPEC-DOCT-2) deferred: blocked on PR #61 (SPEC-DOCT-1) not yet merged, AND has
+    CLAUDE.md violation (content ID hardcoded in src/engine code) requiring non-trivial redesign.
+  PRs #50, #53, #61, #63, #66 all have newer commits since last review — awaiting re-review.
+Stories still passing=false: US-012..US-019 (US-014 now passes=true as of this cycle).
+
+== CYCLE 15 — 2026-06-07 ==
+Phase 0 (issue queue): empty — fell through to Phase 1.
+Phase 1:
+  PR #50 (SPEC-COMM-5, issue-37-spec-comm-5-trait-catalog) — VERDICT: APPROVE (round 3+1
+    fix ac0aaf3). Squash-merged as ab8817a1. SPEC-COMM-5 is not a PRD story; prd.json unchanged.
+  PR #30 (SPEC-WEB-3) confirmed on main (ca28bf1) → US-012 marked passes=true, pr=30.
+  PR #53 (SPEC-COMM-6): STUCK ESCALATION — 3rd consecutive VERDICT: REQUEST_CHANGES.
+    Round 3 blockers: (1) NaN member coefficients silently poison stance state;
+    (2) resolveStoredStance typed as unknown instead of number|undefined.
+    Round-3 fix (64d0f55) pushed by prior fire; CI pending at cycle end.
+  PR #55 (SPEC-COMM-7): STUCK ESCALATION — 3rd consecutive VERDICT: REQUEST_CHANGES.
+    Round 3 blockers: (1) budget not enforced against chairCapital() total;
+    (2) negative capitalSpend silently discarded.
+    Round-3 fix (e47f6070) by cycle 14 dispatcher. Branch dirty (base out of date).
+  Open PRs awaiting review: PR #61 (SPEC-DOCT-1 round-2 fix 892d061), PR #63 (SPEC-WEB-6),
+    PR #64 (SPEC-SIM-6 fix 48244aa dirty), PR #66 (SPEC-HEAR-1 round-1 fix cfc0f90),
+    PR #69 (chore cycle 14).
+  Chore PR #70 (chore/cycle-15-progress) opened; CI in progress.
+Stories still passing=false: US-013, US-015..US-019.
+
+== CYCLE 16 — 2026-06-07 ==
+Phase 0 (issue queue): empty — fell through to Phase 1.
+Phase 1:
+  PR #69 (chore cycle 14): VERDICT: APPROVE — squash-merged as 2df775dd.
+  PR #70 (chore cycle 15): CI in progress; superseded by this chore PR (cycle 16).
+  US-018 (SPEC-CAL-2): calibration-volcker.test.ts already on main, 3/3 tests pass
+    locally → passes=true (no dedicated PR; tests landed via earlier story merges).
+  PR #53 (SPEC-COMM-6): DEFINITIVE STUCK — round 4 VERDICT: REQUEST_CHANGES (failure
+    on 64d0f55). Active blockers: member coefficient NaN not guarded; resolveStoredStance
+    stored: unknown typing; missing ±Infinity tests; inertia=0/1 boundary tests; missing
+    session.advance() stance integration test; vote() with stored stance test; stanceKey
+    format pin test; reset()/proposeRate() stance-preservation tests.
+    No executor dispatched. USER ACTION NEEDED: (a) close #53 and re-dispatch from scratch,
+    (b) manual fix, or (c) raise retry cap.
+  PR #55 (SPEC-COMM-7): round-3 fix e47f6070 has 0 check_runs (CI not triggered). Branch
+    dirty. Deferred — awaiting CI trigger.
+  PR #61 (SPEC-DOCT-1), PR #63 (SPEC-WEB-6), PR #64 (SPEC-SIM-6): 0 check_runs on current
+    HEADs. Deferred — awaiting CI trigger.
+  PR #66 (SPEC-HEAR-1): round 2 VERDICT: REQUEST_CHANGES (claude-review failure on cfc0f90).
+    Round-2 fix dispatched and pushed: JSDoc on _resetHearingCatalogCache; tiebreak direction
+    clarified ("alphabetically earliest"); SPEC id moved from test name strings to body comments;
+    test name "empty modifiers" corrected. All 256 tests pass; npm run check green.
+Dispatched new PRD story executors (all background):
+  US-015 (SPEC-PROD-1): productivity drift — state.vars.productivity geometric drift
+  US-016 (SPEC-TERM-1): term structure — long_rate EWMA toward policy_rate
+  US-017 (SPEC-SHOCK-1): stochastic shocks — seeded supply shock into Phillips curve
+  US-019 (SPEC-CAL-3): RMSE soft gate — calibrate.ts + CalibrationThresholds content type
+Stories now passing: US-001..US-012, US-014, US-018.
+Stories still passing=false: US-013, US-015..US-017, US-019.
+
+== CYCLE 17 — 2026-06-07 ==
+Phase 0 (issue queue): empty — fell through to Phase 1.
+Phase 1:
+  Merged PR #71 (chore: cycle 15+16 progress, VERDICT: APPROVE, squash 90d6381).
+  Merged PR #72 (SPEC-TERM-1: long_rate EWMA, VERDICT: APPROVE, squash f5c6f577).
+    prd.json: US-016 passes=true, pr=72.
+  Merged PR #74 (SPEC-CAL-3: calibration thresholds + RMSE soft gate, VERDICT: APPROVE,
+    squash a30487d6). Required local rebase to resolve tools/validate-content.ts conflict
+    with #72 (both added fileChecks entries at same location — kept both).
+    prd.json: US-019 passes=true, pr=74.
+  prd.json also recorded pending PR numbers: US-015 pr=73, US-017 pr=75.
+  STUCK (no executor dispatched):
+    PR #53 (SPEC-COMM-6): confirmed round 4 — definitive stuck per cycle 16.
+      USER ACTION NEEDED: (a) close #53 + re-dispatch, (b) manual fix, (c) raise retry cap.
+    PR #55 (SPEC-COMM-7): confirmed round 3 — stuck per cycle 15.
+      USER ACTION NEEDED: (a) close #55 + re-dispatch, (b) manual fix, (c) raise retry cap.
+  PR #62 (SPEC-DOCT-2): deferred — blocked on #61 + hard CLAUDE.md violation
+    (content ID hardcoded in engine code, non-trivial redesign needed).
+  Dispatched background fix executors for all remaining REQUEST_CHANGES PRs:
+    PR #61 (SPEC-DOCT-1, round 2): fix adopt+abandon credibility round-trip clamping bug.
+      Executor found fix already committed at 892d061 — no changes needed; awaiting re-review.
+    PR #63 (SPEC-WEB-6, round 1): narrow BriefingNotFoundError catch; rm cached omc file;
+      localize inline "—"; drop DotPlotDatum; add live-dissent-count test.
+    PR #64 (SPEC-SIM-6, round 2): RangeError guard for n<1 in scaleParamsForTick;
+      2 Session-level months_below_anchor integration tests.
+    PR #66 (SPEC-HEAR-1, round 2): guard zero-weight scenario winner; schema exclusiveMinimum;
+      remove 0-value weights from confirmation.json; add all-zero-weight test.
+    PR #73 (SPEC-PROD-1, round 1): schema exclusiveMinimum:-1; error-enrichment wrapper;
+      NaN guard; fix integration test hardcoded rate constant.
+    PR #75 (SPEC-SHOCK-1, round 1): store+restore _seed in reset(); Box-Muller while loop;
+      Number.isFinite guard on inflation; hoist loadShocksParams; update JSDoc.
+Stories now passing: US-001..US-012, US-014, US-016, US-018, US-019.
+Stories still passing=false: US-013, US-015, US-017.
+
+== CYCLE 18 — 2026-06-07 ==
+Phase 0 (issue queue): empty — fell through to Phase 1.
+Phase 1:
+  Merged PR #76 (chore: mark US-016/US-019 as passing, VERDICT: APPROVE, squash 38e6e76).
+  Merged PR #66 (SPEC-HEAR-1: confirmation-hearing mechanism, VERDICT: APPROVE, squash d88c8c9).
+    SPEC-HEAR-1 is not a PRD story — prd.json unchanged for passes flags.
+    prd.json updated: US-013 pr=63 (PR exists but was not recorded in prior cycles).
+  All other open PRs have newer commits pushed since their last REQUEST_CHANGES verdict —
+    awaiting re-review by claude-review. No executor dispatched this cycle.
+  PRs awaiting re-review (cycle 17 executors already pushed fixes):
+    PR #61 (SPEC-DOCT-1, head 892d061 — round-2 fix, awaiting re-review)
+    PR #63 (SPEC-WEB-6, head bfeb5e0 — round-2 fix, awaiting re-review)
+    PR #64 (SPEC-SIM-6, head 48244aa — round-2 fix, awaiting re-review)
+    PR #73 (SPEC-PROD-1, head 0a2ac1f4 — round-1 fix, awaiting re-review)
+    PR #75 (SPEC-SHOCK-1, head 066cf105 — round-1 fix, awaiting re-review)
+  STUCK (no executor): PR #53 (SPEC-COMM-6, round 4+), PR #55 (SPEC-COMM-7, round 3+).
+  Blocked on #61: PR #62 (SPEC-DOCT-2).
+Stories now passing: US-001..US-012, US-014, US-016, US-018, US-019.
+Stories still passing=false: US-013, US-015, US-017.

@@ -76,17 +76,22 @@ describe("dynamics loader (SPEC-SIM-5)", () => {
   });
 });
 
-describe("committee params loader (SPEC-PARAMS-1 + SPEC-COMM-3 + SPEC-COMM-4)", () => {
-  it("loadValidatedFile returns committee params with required fields", () => {
+describe("committee params loader (SPEC-PARAMS-1 + SPEC-COMM-3 + SPEC-COMM-4 + SPEC-COMM-5)", () => {
+  it("loadValidatedFile returns committee params with all required fields", () => {
     // SPEC-COMM-4: dissent_tolerance removed; per-member compromise_band now governs dissent.
+    // SPEC-COMM-5: conviction_band_factor added.
     const result = loadValidatedFile<{
       neutral_rate: number;
       target_inflation: number;
       target_unemployment: number;
+      conviction_band_factor: number;
     }>("schemas/committee-params.schema.json", "content/engine/committee.json");
     expect(result.neutral_rate).toBeGreaterThan(0);
     expect(result.target_inflation).toBeGreaterThan(0);
     expect(result.target_unemployment).toBeGreaterThan(0);
+    // SPEC-COMM-5
+    expect(result.conviction_band_factor).toBeGreaterThanOrEqual(0);
+    expect(result.conviction_band_factor).toBeLessThanOrEqual(1);
   });
 });
 

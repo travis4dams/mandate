@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mandate.dev/schemas/traits.schema.json",
+  "title": "Trait",
+  "description": "A named committee-member trait. SPEC-COMM-5: each trait declares always-on effects (preferred_rate_shift, band_modifier) and optional signal-reactive hooks that are dormant until the referenced world-state series exists.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "name", "desc", "effects", "signal_hooks"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^trait\\.[a-z0-9_]+$",
+      "description": "Stable unique trait id, e.g. trait.hawkish_lean."
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_.]+$",
+      "description": "Localization key for the trait name."
+    },
+    "desc": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_.]+$",
+      "description": "Localization key for the trait description."
+    },
+    "effects": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Always-on effects applied every meeting regardless of world-state signal.",
+      "properties": {
+        "preferred_rate_shift": {
+          "type": "number",
+          "minimum": -0.5,
+          "maximum": 0.5,
+          "description": "Additive shift to the member's preferred rate in rate units. Positive = hawkish lean."
+        },
+        "band_modifier": {
+          "type": "number",
+          "minimum": -0.99,
+          "maximum": 1.0,
+          "description": "Fractional adjustment to compromise_band. -0.3 narrows the band by 30%; 0 = no effect."
+        }
+      }
+    },
+    "signal_hooks": {
+      "type": "array",
+      "description": "Signal-reactive effects declared but dormant until the referenced world-state series exists (awaiting sectoral price modeling).",
+      "items": {
+        "type": "object",
+        "required": ["signal", "direction", "magnitude"],
+        "additionalProperties": false,
+        "properties": {
+          "signal": {
+            "type": "string",
+            "description": "World-state series id this hook reacts to (e.g. sector.ag_prices). Dormant while absent from state.vars."
+          },
+          "direction": {
+            "type": "number",
+            "enum": [1, -1],
+            "description": "1 = hawkish reaction (rates rise with signal deviation), -1 = dovish."
+          },
+          "magnitude": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Rate shift per unit of signal deviation above its reference level."
+          }
+        }
+      }
+    }
+  }
+}
