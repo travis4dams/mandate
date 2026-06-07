@@ -130,7 +130,10 @@ export function previewVote(
   /** SPEC-COMM-7: optional per-member effective band overrides from Chair capital spend.
    *  Keys are member ids; when present for a member, the override replaces the
    *  trait-computed effectiveBand for that member (leanShift still applies).
-   *  Absent entries fall through to the trait-computed band. */
+   *  Absent entries fall through to the trait-computed band.
+   *  Note: an entry of `0` is a valid override (zero-tolerance band) — it is not a no-op.
+   *  Use `computeEffectiveBands` (which skips zero-spend entries) rather than constructing
+   *  this map manually if no-op behaviour for zero is desired. */
   effectiveBands?: EffectiveBands,
 ): { previews: MemberVotePreview[]; gapInflation: number; gapUnemployment: number } {
   if (!Number.isFinite(proposedRate)) {

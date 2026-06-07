@@ -36,10 +36,13 @@ export function computeChairCapital(credibility: number, params: ChairCapitalPar
 /**
  * Compute per-member effective compromise bands after applying capital spend.
  * Returns only the members who received positive spend (callers merge with the member's
- * original compromise_band via `effectiveBands?.[m.id] ?? m.compromise_band`).
+ * trait-computed effective band via the fallback in `previewVote`/`vote`).
  * Zero spend is a no-op (member absent from result); negative or over-limit spend throws.
- * Each member's result: `compromise_band + spend * band_widen_per_unit` (spend must be ≤ max_spend_per_member; over-limit throws).
+ * Each member's result: `compromise_band + spend * band_widen_per_unit`
+ * (spend must be ≤ max_spend_per_member; over-limit throws rather than silently capping).
+ * Duplicate member ids in the committee are detected and throw a descriptive error.
  * Pure: does not mutate committee or params.
+ * @throws {Error} if the committee contains duplicate member ids.
  * @throws {Error} if any capitalSpend key does not match a member id in the committee.
  * @throws {Error} if any spend value is negative.
  * @throws {Error} if any spend value exceeds max_spend_per_member (SPEC-COMM-7 hard budget).
@@ -50,6 +53,17 @@ export function computeEffectiveBands(
   committee: Committee,
   params: ChairCapitalParams,
 ): EffectiveBands {
+  // Guard against duplicate member ids: Map construction silently drops earlier entries,
+  // so check explicitly rather than relying on `membersById.size` equality.
+  const seenIds = new Set<string>();
+  for (const m of committee.members) {
+    if (seenIds.has(m.id)) {
+      throw new Error(
+        `computeEffectiveBands: committee "${committee.id}" contains duplicate member id "${m.id}".`,
+      );
+    }
+    seenIds.add(m.id);
+  }
   const membersById = new Map(committee.members.map((m) => [m.id, m]));
   const result: Record<string, number> = {};
   for (const [id, raw] of Object.entries(capitalSpend)) {

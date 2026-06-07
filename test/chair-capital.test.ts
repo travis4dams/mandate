@@ -73,6 +73,14 @@ describe("computeChairCapital", () => {
     expect(computeChairCapital(100, PARAMS)).toBe(8);
   });
 
+  // SPEC-COMM-7: Math.floor truncation — credibility=19: floor(0.05*19)=0, round(0.05*19)=1.
+  // This distinguishes Math.floor from Math.round; replacing floor with round would pass
+  // the credibility=60/100 cases above but fail here.
+  it("Math.floor: credibility=19 yields base_capital + 0 (not +1 from rounding)", () => {
+    // 3 + floor(0.05 * 19) = 3 + floor(0.95) = 3 + 0 = 3
+    expect(computeChairCapital(19, PARAMS)).toBe(3);
+  });
+
   // SPEC-COMM-7: pure — same inputs → same output
   it("is deterministic", () => {
     expect(computeChairCapital(55, PARAMS)).toBe(computeChairCapital(55, PARAMS));
@@ -218,6 +226,21 @@ describe("loadChairCapitalParams", () => {
     expect(p.credibility_weight).toBeGreaterThanOrEqual(0);
     expect(p.band_widen_per_unit).toBeGreaterThanOrEqual(0);
     expect(p.max_spend_per_member).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe("computeEffectiveBands: duplicate member ids throw", () => {
+  // SPEC-COMM-7: computeEffectiveBands accepts any Committee value (not just loadCommittee output).
+  // Callers that construct Committee objects directly bypass the uniqueness guard in loadCommittee,
+  // so computeEffectiveBands must detect duplicates itself rather than silently discarding entries.
+  it("throws when the committee contains duplicate member ids", () => {
+    // SPEC-COMM-7
+    const m = member("a");
+    // Two entries with the same id — Map construction would silently drop the first.
+    const committee = committeeOf([m, { ...m }]);
+    expect(() =>
+      computeEffectiveBands({ "member.a": 1 }, committee, PARAMS),
+    ).toThrow(/duplicate member id/);
   });
 });
 

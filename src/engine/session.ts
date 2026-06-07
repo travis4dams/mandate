@@ -571,8 +571,8 @@ export class Session {
   /**
    * Resolve the per-member effectiveBands from an optional capitalSpend map.
    * Runs `_assertWithinBudget` then `computeEffectiveBands`; returns `undefined` when
-   * no spend is provided. Extracting this eliminates the identical 4-line block that
-   * previously appeared in both `committeeBriefing` and `proposeRate`. (SPEC-COMM-7)
+   * no spend is provided. Shared by `committeeBriefing` and `proposeRate` to ensure both
+   * entry points run identical validation and cannot drift independently. (SPEC-COMM-7)
    */
   private _resolveEffectiveBands(
     committee: import("../content/committees.js").Committee,
