@@ -6,8 +6,16 @@ import { loadValidated } from "./loader.js";
 // choices that contribute scenario weights and optional state modifiers.
 // The resolver is pure and deterministic. SPEC-HEAR-1.
 
+/** The five state variables a hearing answer is allowed to modify (mirrors the schema enum). */
+export type HearingModifierTarget =
+  | "credibility"
+  | "policy_rate"
+  | "inflation"
+  | "unemployment"
+  | "expectations_anchor";
+
 export interface HearingStateModifier {
-  readonly target: string;
+  readonly target: HearingModifierTarget;
   readonly delta: number;
 }
 
@@ -74,16 +82,18 @@ const SCHEMA_PATH = join(
   "../../schemas/hearing.schema.json",
 );
 
-let _cache: HearingEntry[] | undefined;
+const _cache = new Map<string, HearingEntry[]>();
 
 export function loadHearingCatalog(dir: string = DEFAULT_HEARINGS_DIR): HearingEntry[] {
-  if (_cache !== undefined) return _cache;
-  _cache = loadValidated<HearingEntry>(SCHEMA_PATH, dir);
-  return _cache;
+  const cached = _cache.get(dir);
+  if (cached !== undefined) return cached;
+  const entries = loadValidated<HearingEntry>(SCHEMA_PATH, dir);
+  _cache.set(dir, entries);
+  return entries;
 }
 
 export function _resetHearingCatalogCache(): void {
-  _cache = undefined;
+  _cache.clear();
 }
 
 export function loadHearing(id: string, dir?: string): HearingEntry {
@@ -105,6 +115,12 @@ export function resolveHearing(
   answers: readonly string[],
   hearing: HearingEntry,
 ): HearingResult {
+  if (answers.length !== hearing.questions.length) {
+    throw new Error(
+      `resolveHearing: expected ${hearing.questions.length} answer(s) for hearing "${hearing.id}", got ${answers.length}`,
+    );
+  }
+
   const scores: Record<string, number> = {};
   const modifiers: HearingStateModifier[] = [];
 
