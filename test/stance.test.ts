@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { applyIntermeetingDrift, stanceKey } from "../src/engine/stance";
 import { previewVote } from "../src/engine/fomc";
 import { makeState } from "../src/engine/state";
+import { Session } from "../src/engine/session";
 import type { Committee, CommitteeMember } from "../src/content/committees";
 import type { CommitteeParams } from "../src/engine/fomc";
 
@@ -265,6 +266,23 @@ describe("applyIntermeetingDrift", () => {
     });
     const result = applyIntermeetingDrift(state, c, PARAMS);
     expect(result.vars[stanceKey(m.id)]).toBeCloseTo(prevStance, 10);
+  });
+});
+
+// SPEC-COMM-6
+describe("Session.advance accumulates intermeeting stance (SPEC-COMM-6)", () => {
+  it("stance.* vars are set on state after advance(1)", () => {
+    // SPEC-COMM-6
+    const session = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    session.advance(1);
+    const state = session.current;
+    // At least one member should have a stance var set
+    const stanceVars = Object.keys(state.vars).filter(k => k.startsWith("stance."));
+    expect(stanceVars.length).toBeGreaterThan(0);
+    // All stance vars should be finite numbers
+    for (const key of stanceVars) {
+      expect(Number.isFinite(state.vars[key] as number)).toBe(true);
+    }
   });
 });
 
