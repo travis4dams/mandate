@@ -68,6 +68,13 @@ export function applyDotPlotMeetingEffects(
 ): GameState {
   if (!adopted) return state;
 
+  if (state.vars.credibility === undefined) {
+    throw new Error(
+      "applyDotPlotMeetingEffects: state.vars.credibility is missing. " +
+      "All scenarios must initialise 'credibility' (it is in REQUIRED_VARS).",
+    );
+  }
+
   const spread = computeVoteSpread(previews);
   const dissents = previews.filter((p) => p.wouldDissent).length;
 
@@ -78,12 +85,6 @@ export function applyDotPlotMeetingEffects(
     credDelta -= spread * 100 * params.exposure_per_pp * multiplier;
   }
 
-  if (state.vars.credibility === undefined) {
-    throw new Error(
-      "applyDotPlotMeetingEffects: state.vars.credibility is missing. " +
-      "All scenarios must initialise 'credibility' (it is in REQUIRED_VARS).",
-    );
-  }
   const current = state.vars.credibility;
   return {
     ...state,

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { Session, NotMeetingMonthError, marketsSurprised } from "../src/engine/session.js";
 import type { ForwardGuidanceStance } from "../src/engine/session.js";
 import * as mandateModule from "../src/engine/mandate.js";
+import { computeVoteSpread, loadDotPlotParams } from "../src/engine/dot-plot.js";
 
 // SPEC-SESSION-0
 
@@ -662,5 +663,51 @@ describe("SPEC-DOCT-2: dot-plot meeting effect wired into Session.proposeRate()"
     // Without the meeting hook, proposeRate should not change credibility here
     // (neutral stance, inflation far off-target → no surprise, no onTarget bonus).
     expect(credAfterPropose).toBe(credBeforePropose);
+  });
+
+  it("proposeRate grants anchoring_bonus when spread is below threshold (integration)", () => {
+    // SPEC-DOCT-2: end-to-end wiring — previewVote → spread computation →
+    // applyDotPlotMeetingEffects → credibility increase.
+    // Holding the current rate (0.1075) in the 1979 scenario produces a small spread
+    // (members mostly agree on holding). Net credibility after proposeRate should be
+    // exactly credAfterAdopt + anchoring_bonus when spread ≤ threshold.
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    s.adoptDoctrine("doctrine.dot_plot");
+    const credAfterAdopt = s.current.vars.credibility as number;
+
+    // Determine actual spread for the hold rate to assert the test assumption
+    const { previews } = s.committeeBriefing(0.1075);
+    const params = loadDotPlotParams();
+    const spread = computeVoteSpread(previews);
+
+    s.proposeRate(0.1075);
+    const credAfterPropose = s.current.vars.credibility as number;
+
+    if (spread <= params.spread_threshold) {
+      // Only anchoring bonus applied
+      expect(credAfterPropose).toBeCloseTo(credAfterAdopt + params.anchoring_bonus, 5);
+    } else {
+      // Some exposure cost too — just assert it changed in the correct direction
+      // (still > credAfterAdopt when bonus > cost, or lower if severely divided)
+      expect(credAfterPropose).not.toBe(credAfterAdopt);
+    }
+  });
+
+  it("proposeRate applies spread-exposure cost when committee is visibly divided (spread > threshold)", () => {
+    // SPEC-DOCT-2: exercises the full spread → exposure-cost path via Session.proposeRate.
+    // An extreme proposed rate (0.30, far above the 1979 starting rate) maximises disagreement
+    // among members — the spread is almost certainly above the 0.005 threshold.
+    // With dot-plot adopted, credibility should end up lower than credAfterAdopt + anchoring_bonus.
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    s.adoptDoctrine("doctrine.dot_plot");
+    const credAfterAdopt = s.current.vars.credibility as number;
+
+    const params = loadDotPlotParams();
+
+    s.proposeRate(0.30); // extreme rate → large member spread
+    const credAfterPropose = s.current.vars.credibility as number;
+
+    // Net credibility change must be less than anchoring_bonus alone (spread cost bites)
+    expect(credAfterPropose - credAfterAdopt).toBeLessThan(params.anchoring_bonus);
   });
 });

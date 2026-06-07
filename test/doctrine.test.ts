@@ -38,7 +38,9 @@ const NO_EFFECTS_DOCTRINE: DoctrineEntry = {
 describe("doctrineFlagKey", () => {
   // SPEC-DOCT-1
   it("returns the expected flag key string", () => {
-    expect(doctrineFlagKey("doctrine.mock")).toBe("doctrine.doctrine.mock.adopted");
+    // Doctrine IDs follow the schema pattern ^doctrine\.[a-z0-9_]+$, so
+    // the key is simply `${id}.adopted` — e.g. "doctrine.mock.adopted".
+    expect(doctrineFlagKey("doctrine.mock")).toBe("doctrine.mock.adopted");
   });
 });
 
@@ -103,6 +105,35 @@ describe("adoptDoctrine", () => {
     adoptDoctrine(state, MOCK_DOCTRINE);
     expect(state.flags).toEqual(flagsBefore);
     expect(state.vars).toEqual(varsBefore);
+  });
+
+  // SPEC-DOCT-1: guard fires for standing effect target absent from state.vars
+  it("throws when a standing_effect target is absent from state.vars", () => {
+    const doctrineTouchingInflation: DoctrineEntry = {
+      id: "doctrine.inflation_touch",
+      name: "doctrine.inflation_touch.name",
+      standing_effects: [{ target: "inflation", value: 0.01 }],
+      flip_flop_cost: 0,
+    };
+    // state has no "inflation" var — should throw, not silently fabricate it
+    const state = makeState({ vars: { credibility: 50 } });
+    expect(() => adoptDoctrine(state, doctrineTouchingInflation)).toThrow(
+      /standing effect target "inflation" is absent/,
+    );
+  });
+
+  // SPEC-DOCT-1: non-credibility target is applied correctly when present in state.vars
+  it("applies a non-credibility standing effect (inflation) when var is present", () => {
+    const doctrineTouchingInflation: DoctrineEntry = {
+      id: "doctrine.inflation_touch",
+      name: "doctrine.inflation_touch.name",
+      standing_effects: [{ target: "inflation", value: 0.01 }],
+      flip_flop_cost: 0,
+    };
+    const state = makeState({ vars: { credibility: 50, inflation: 0.05 } });
+    const next = adoptDoctrine(state, doctrineTouchingInflation);
+    expect(next.vars.inflation).toBeCloseTo(0.06, 10);
+    expect(next.vars.credibility).toBe(50); // unaffected
   });
 });
 

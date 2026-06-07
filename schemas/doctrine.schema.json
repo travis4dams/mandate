@@ -5,7 +5,7 @@
   "description": "An adoptable framework. Standing effects apply while adopted; abandoning incurs a credibility flip-flop cost.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["id", "name", "flip_flop_cost"],
+  "required": ["id", "name", "standing_effects", "flip_flop_cost"],
   "properties": {
     "id": {
       "type": "string",

@@ -9,8 +9,7 @@ import { applyMeetingOutcome, getCredibility } from "./credibility.js";
 import { applyMacroDynamics, loadDynamicsParams } from "./dynamics.js";
 import { onTarget, loadMandateParams } from "./mandate.js";
 import { adoptDoctrine as _adoptDoctrine, abandonDoctrine as _abandonDoctrine, doctrineFlagKey } from "./doctrine.js";
-import { loadDoctrineCatalog, getDoctrine, type DoctrineEntry } from "../content/doctrines.js";
-import { applyDotPlotMeetingEffects, loadDotPlotParams } from "./dot-plot.js";
+import { loadDoctrineCatalog, getDoctrine, HOOK_HANDLERS, type DoctrineEntry } from "../content/doctrines.js";
 import type { GameState, GameStateSnapshot } from "./state.js";
 import type { FomcVote, MemberVotePreview } from "./fomc.js";
 import type { Replay } from "../content/replays.js";
@@ -372,27 +371,30 @@ export class Session {
     );
 
     // SPEC-DOCT-2: apply meeting-hook effects generically over all adopted doctrines.
-    // No content IDs are hardcoded here — each doctrine declares its own `meeting_hook`
-    // and the engine dispatches to the matching handler. New doctrines with meeting-time
-    // effects only need a new hook string in content; no engine changes required.
-    let stateAfterMeeting: GameState = {
-      ...this._state,
-      vars: { ...this._state.vars, policy_rate: fomcVote.decided, credibility: newCredibility },
-    };
-    const catalog = loadDoctrineCatalog();
-    for (const doctrine of catalog) {
-      if (doctrine.meeting_hook === undefined) continue;
-      if (stateAfterMeeting.flags[doctrineFlagKey(doctrine.id)] !== true) continue;
-      if (doctrine.meeting_hook === "dot_plot_meeting") {
-        stateAfterMeeting = applyDotPlotMeetingEffects(
-          stateAfterMeeting,
-          previews,
-          loadDotPlotParams(),
-          true,
-        );
+    // No content IDs are hardcoded in engine code — the HOOK_HANDLERS registry in
+    // src/content/doctrines.ts maps each hook name to its handler. To add a new
+    // meeting hook: add the string to DoctrineHook + schema enum, implement a handler,
+    // and register it in HOOK_HANDLERS — no changes to this file needed.
+    const checkpoint = this._state;
+    try {
+      let stateAfterMeeting: GameState = {
+        ...this._state,
+        vars: { ...this._state.vars, policy_rate: fomcVote.decided, credibility: newCredibility },
+      };
+      const catalog = loadDoctrineCatalog();
+      for (const doctrine of catalog) {
+        if (doctrine.meeting_hook === undefined) continue;
+        if (stateAfterMeeting.flags[doctrineFlagKey(doctrine.id)] !== true) continue;
+        const handler = HOOK_HANDLERS[doctrine.meeting_hook];
+        if (handler !== undefined) {
+          stateAfterMeeting = handler(stateAfterMeeting, previews, true);
+        }
       }
+      this._state = stateAfterMeeting;
+    } catch (err) {
+      this._state = checkpoint;
+      throw err;
     }
-    this._state = stateAfterMeeting;
 
     this._rebuildCaches();
     this._notifyListeners();
