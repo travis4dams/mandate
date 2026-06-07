@@ -26,6 +26,7 @@ const fileChecks = [
   { schema: "schemas/forecast-quality.schema.json", file: "content/engine/forecast-quality.json", label: "forecast quality params" },
   { schema: "schemas/lags.schema.json", file: "content/engine/lags.json", label: "lags params" },
   { schema: "schemas/term-structure.schema.json", file: "content/engine/term-structure.json", label: "term-structure params" },
+  { schema: "schemas/calibration-thresholds.schema.json", file: "content/engine/calibration-thresholds.json", label: "calibration thresholds" },
 ];
 
 let failed = false;
