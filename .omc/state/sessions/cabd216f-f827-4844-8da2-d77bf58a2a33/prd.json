@@ -95,8 +95,8 @@
       "id": "US-012",
       "spec": "SPEC-WEB-3",
       "title": "Time-series charts: 4 series via Observable Plot with fog overlay",
-      "passes": false,
-      "pr": null,
+      "passes": true,
+      "pr": 30,
       "dependencies": ["US-007"]
     },
     {
@@ -111,8 +111,8 @@
       "id": "US-014",
       "spec": "SPEC-LAG-1",
       "title": "Distributed lag kernel: policy-to-output-gap weights from content",
-      "passes": false,
-      "pr": null,
+      "passes": true,
+      "pr": 52,
       "dependencies": ["US-003"]
     },
     {

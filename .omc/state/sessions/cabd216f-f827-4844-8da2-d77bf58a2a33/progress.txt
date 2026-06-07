@@ -188,3 +188,26 @@ Phase 1:
     #67 (chore cycle 12, awaiting re-review after rebase+fix).
   No new PRD story dispatched this cycle (PR backlog has 10 open PRs requiring review attention).
 Stories still passing=false: US-012..US-019.
+
+== CYCLE 15 — 2026-06-07 ==
+Phase 0 (issue queue): empty — fell through to Phase 1.
+Phase 1:
+  PR #50 (SPEC-COMM-5, issue-37-spec-comm-5-trait-catalog) — VERDICT: APPROVE (round 3+1 fix
+    ac0aaf3). Merged as squash ab8817a1. SPEC-COMM-5 is not a PRD story; prd.json unchanged.
+  PR #30 (SPEC-WEB-3) confirmed on main (ca28bf1) — US-012 marked passes=true, pr=30.
+  PR #52 (SPEC-LAG-1) confirmed on main (301dd64) — US-014 marked passes=true, pr=52.
+    (Cycle 14 chore PR #69 also targets US-014; both set passes=true so no semantic conflict.)
+  PR #53 (SPEC-COMM-6): STUCK ESCALATION. This is the 3rd consecutive VERDICT: REQUEST_CHANGES.
+    Round 3 blockers: (1) NaN member coefficients silently poison stance state; (2) resolveStoredStance
+    typed as unknown instead of number|undefined. A round-3 fix (64d0f55) was already pushed by a
+    prior fire before STUCK threshold was applied. CI is pending on 64d0f55 (mergeable_state: unstable).
+    If 64d0f55 gets APPROVE it will be merged; if REQUEST_CHANGES (round 4) = definitive STUCK.
+  PR #55 (SPEC-COMM-7): STUCK ESCALATION. This is the 3rd consecutive VERDICT: REQUEST_CHANGES.
+    Round 3 blockers: (1) budget not enforced against chairCapital() total; (2) negative capitalSpend
+    silently discarded. Cycle 14 dispatcher pushed round-3 fix (e47f6070). mergeable_state: dirty
+    (base out of date). If fix passes review (round 4 APPROVE) it will be merged after rebase.
+  Open PRs awaiting first/next review (no executor action needed this cycle):
+    PR #61 (SPEC-DOCT-1, round 2 fix 892d061), PR #63 (SPEC-WEB-6, fix pushed), PR #64 (SPEC-SIM-6,
+    fix 48244aa, dirty), PR #66 (SPEC-HEAR-1, round 1 fix cfc0f90), PR #69 (chore cycle 14).
+Stories still passing=false: US-013, US-015..US-019.
+  (US-012 and US-014 now pass; US-013 depends on US-007+US-010+US-012, all now true → unblocked.)
