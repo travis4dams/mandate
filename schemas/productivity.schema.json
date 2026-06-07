@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mandate.dev/schemas/productivity.schema.json",
+  "title": "ProductivityParams",
+  "description": "Total-factor productivity drift params. SPEC-PROD-1.",
+  "type": "object",
+  "required": ["monthly_drift_rate"],
+  "properties": {
+    "monthly_drift_rate": {
+      "type": "number",
+      "description": "Fractional monthly growth rate for total-factor productivity (e.g. 0.002 = 0.2%/month)."
+    }
+  },
+  "additionalProperties": false
+}

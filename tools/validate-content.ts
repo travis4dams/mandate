@@ -30,6 +30,7 @@ const fileChecks = [
   { schema: "schemas/shocks.schema.json", file: "content/engine/shocks.json", label: "shocks params" },
   { schema: "schemas/term-structure.schema.json", file: "content/engine/term-structure.json", label: "term-structure params" },
   { schema: "schemas/calibration-thresholds.schema.json", file: "content/engine/calibration-thresholds.json", label: "calibration thresholds" },
+  { schema: "schemas/productivity.schema.json", file: "content/engine/productivity.json", label: "productivity params" },
 ];
 
 let failed = false;

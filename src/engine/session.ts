@@ -12,6 +12,7 @@ import { applyMacroDynamics, loadDynamicsParams } from "./dynamics.js";
 import { loadClockCadenceParams, scaleParamsForTick } from "./cadence.js";
 import { applyRateToOutputGap, loadLagParams } from "./lags.js";
 import { applyTermStructure, loadTermStructureParams } from "./term-structure.js";
+import { applyProductivityDrift, loadProductivityParams } from "./productivity.js";
 import { onTarget, loadMandateParams } from "./mandate.js";
 import { applySupplyShock, loadShocksParams } from "./shocks.js";
 import { mulberry32, type SeededRng } from "./rng.js";
@@ -280,6 +281,8 @@ export class Session {
     const shocksParams = loadShocksParams();
     // SPEC-TERM-1: term-structure params are a cached singleton; hoisted for the same reason.
     const termStructureParams = loadTermStructureParams();
+    // SPEC-PROD-1: productivity params are a cached singleton; hoisted for the same reason.
+    const productivityParams = loadProductivityParams();
     const effectiveParams = {
       ...dynamicsParams,
       expectations_anchor_pull:
@@ -381,6 +384,9 @@ export class Session {
 
         // SPEC-TERM-1: update long_rate via EWMA toward policy_rate, after macro dynamics.
         this._state = applyTermStructure(this._state, termStructureParams);
+
+        // SPEC-PROD-1: drift productivity after macro dynamics each month.
+        this._state = applyProductivityDrift(this._state, productivityParams);
 
         const snapshot = Session._snapshotOf(this._state);
         this._trajectoryInternal.push(snapshot);
