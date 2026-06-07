@@ -1,9 +1,3 @@
-// SPEC-PROD-1: total-factor productivity drift.
-//
-// A pure `applyProductivityDrift(state, params)` evolves `state.vars.productivity`
-// each month by a content-governed fractional growth rate. The rate lives in
-// `content/engine/productivity.json` (schema: `schemas/productivity.schema.json`).
-// No content is hardcoded here — all numbers flow from content. (CLAUDE.md)
 import { join } from "node:path";
 import { loadValidatedFile } from "../content/loader.js";
 import type { GameState } from "./state.js";
@@ -20,49 +14,51 @@ export interface ProductivityParams {
  * `monthly_drift_rate` may be positive (growth) or negative (stagnation/decline).
  */
 export function applyProductivityDrift(state: GameState, params: ProductivityParams): GameState {
-  const prev = state.vars.productivity;
-  if (prev !== undefined && !Number.isFinite(prev)) {
+  if (!Number.isFinite(params.monthly_drift_rate)) {
+    throw new Error(`productivity: params.monthly_drift_rate is not finite (got ${params.monthly_drift_rate})`);
+  }
+  const prev = state.vars.productivity ?? 1.0;
+  if (!Number.isFinite(prev)) {
     throw new Error("productivity: state.vars.productivity is not finite");
   }
-  const current = prev ?? 1.0;
   return {
     ...state,
-    vars: { ...state.vars, productivity: current * (1 + params.monthly_drift_rate) },
+    vars: { ...state.vars, productivity: prev * (1 + params.monthly_drift_rate) },
   };
 }
 
-const SCHEMA = join(
+const SCHEMA_PATH = join(
   new URL(".", import.meta.url).pathname,
   "../../schemas/productivity.schema.json",
 );
-const FILE = join(
+const FILE_PATH = join(
   new URL(".", import.meta.url).pathname,
   "../../content/engine/productivity.json",
 );
 
-let _cached: ProductivityParams | undefined;
+let _cachedParams: ProductivityParams | undefined;
 
 /**
  * Load and validate `content/engine/productivity.json`.
- * The validated result is cached in `_cached` (this module). The AJV compile
+ * The validated result is cached in `_cachedParams` (this module). The AJV compile
  * cache is a separate concern in `loader.ts` — `_resetProductivityParamsCache`
  * does not clear it.
  */
 export function loadProductivityParams(): ProductivityParams {
-  if (_cached !== undefined) return _cached;
+  if (_cachedParams !== undefined) return _cachedParams;
   try {
-    _cached = loadValidatedFile<ProductivityParams>(SCHEMA, FILE);
+    _cachedParams = loadValidatedFile<ProductivityParams>(SCHEMA_PATH, FILE_PATH);
   } catch (e) {
     throw new Error("Failed to load productivity params from content/engine/productivity.json", { cause: e });
   }
   // SPEC-PROD-1: JSON Schema enforces exclusiveMinimum: -1, but assert here for defence-in-depth.
-  if (_cached.monthly_drift_rate <= -1) {
-    throw new Error(`productivity: monthly_drift_rate must be > -1, got ${_cached.monthly_drift_rate}`);
+  if (_cachedParams.monthly_drift_rate <= -1) {
+    throw new Error(`productivity: monthly_drift_rate must be > -1, got ${_cachedParams.monthly_drift_rate}`);
   }
-  return _cached;
+  return _cachedParams;
 }
 
 /** Test-only: clear the cache so the next `loadProductivityParams()` re-reads. */
 export function _resetProductivityParamsCache(): void {
-  _cached = undefined;
+  _cachedParams = undefined;
 }

@@ -9,6 +9,7 @@
     "monthly_drift_rate": {
       "type": "number",
       "exclusiveMinimum": -1,
+      "maximum": 1,
       "description": "Fractional monthly growth rate for total-factor productivity (e.g. 0.002 = 0.2%/month). Must be > -1 so (1 + rate) remains positive."
     }
   },

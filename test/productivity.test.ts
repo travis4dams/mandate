@@ -91,6 +91,27 @@ describe("applyProductivityDrift — geometric drift (SPEC-PROD-1)", () => {
     const state = makeState({ vars: { productivity: NaN } });
     expect(() => applyProductivityDrift(state, BASE_PARAMS)).toThrow(/not finite/);
   });
+
+  it("throws when state.vars.productivity is Infinity or -Infinity", () => {
+    // SPEC-PROD-1: guard uses Number.isFinite, which rejects NaN, +Infinity, -Infinity.
+    for (const bad of [Infinity, -Infinity]) {
+      const state = makeState({ vars: { productivity: bad } });
+      expect(() => applyProductivityDrift(state, BASE_PARAMS)).toThrow(/not finite/);
+    }
+  });
+
+  it("throws when params.monthly_drift_rate is NaN", () => {
+    // SPEC-PROD-1: non-finite params must not silently corrupt state.
+    const state = makeState({ vars: {} });
+    expect(() => applyProductivityDrift(state, { monthly_drift_rate: NaN })).toThrow(/not finite/);
+  });
+
+  it("throws when params.monthly_drift_rate is Infinity or -Infinity", () => {
+    // SPEC-PROD-1: guard uses Number.isFinite, which rejects NaN, +Infinity, -Infinity.
+    for (const bad of [Infinity, -Infinity]) {
+      expect(() => applyProductivityDrift(makeState({ vars: {} }), { monthly_drift_rate: bad })).toThrow(/not finite/);
+    }
+  });
 });
 
 describe("loadProductivityParams (SPEC-PROD-1)", () => {
@@ -136,18 +157,24 @@ describe("Session.advance integration (SPEC-PROD-1)", () => {
   it("advance(12) produces a finite productivity var in the resulting state", () => {
     // SPEC-PROD-1
     const session = Session.fromScenario("scen.1979_stagflation", 1, "comm.fomc_1979");
+    // Precondition: scenario must not set an initial productivity value.
     expect(session.current.vars.productivity).toBeUndefined();
     session.advance(12);
-    const productivity = session.current.vars.productivity as number | undefined;
+    const productivity = session.current.vars.productivity;
     expect(productivity).toBeDefined();
     expect(Number.isFinite(productivity as number)).toBe(true);
     expect(productivity).toBeGreaterThan(0);
+    // productivity.json currently has a positive rate; assert direction holds regardless of exact value.
+    expect(productivity).toBeGreaterThan(1.0);
   });
 
   it("productivity after 12 months equals (1 + rate)^12 starting from 1.0", () => {
     // SPEC-PROD-1
+    // Load actual params so the assertion always reflects the real content file.
     const params = loadProductivityParams();
     const session = Session.fromScenario("scen.1979_stagflation", 1, "comm.fomc_1979");
+    // Precondition: scenario must not set an initial productivity value;
+    // applyProductivityDrift defaults to 1.0 when absent.
     expect(session.current.vars.productivity).toBeUndefined();
     session.advance(12);
     const productivity = session.current.vars.productivity as number;
