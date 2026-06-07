@@ -5,8 +5,11 @@ import { loadCommittee } from "../content/committees.js";
 import { loadValidatedFile } from "../content/loader.js";
 import { tick } from "./clock.js";
 import { vote, previewVote, loadCommitteeParams } from "./fomc.js";
+import { loadTraitCatalog } from "../content/traits.js";
 import { applyMeetingOutcome, getCredibility } from "./credibility.js";
 import { applyMacroDynamics, loadDynamicsParams } from "./dynamics.js";
+import { applyRateToOutputGap, loadLagParams } from "./lags.js";
+import { applyTermStructure, loadTermStructureParams } from "./term-structure.js";
 import { onTarget, loadMandateParams } from "./mandate.js";
 import { adoptDoctrine as _adoptDoctrine, abandonDoctrine as _abandonDoctrine } from "./doctrine.js";
 import { loadDoctrineCatalog, getDoctrine, type DoctrineEntry } from "../content/doctrines.js";
@@ -260,6 +263,10 @@ export class Session {
     // stance scales the expectations re-anchoring pull (hawkish = faster, dovish = slower).
     const guidanceP = loadGuidanceParams();
     const dynamicsParams = loadDynamicsParams();
+    // SPEC-LAG-1: lag params are a cached singleton; hoisted for the same reason.
+    const lagParams = loadLagParams();
+    // SPEC-TERM-1: term-structure params are a cached singleton; hoisted for the same reason.
+    const termStructureParams = loadTermStructureParams();
     const effectiveParams = {
       ...dynamicsParams,
       expectations_anchor_pull:
@@ -279,7 +286,12 @@ export class Session {
         }
 
         this._state = tick(this._state, 1);
+        // SPEC-LAG-1: update output_gap from trajectory before applying macro dynamics.
+        // Ordering invariant: applyRateToOutputGap reads _trajectoryInternal BEFORE the new snapshot is pushed — this month's rate enters the lag kernel next month.
+        this._state = applyRateToOutputGap(this._state, this._trajectoryInternal, lagParams, dynamicsParams.real_neutral_rate);
         this._state = applyMacroDynamics(this._state, effectiveParams);
+        // SPEC-TERM-1: update long_rate via EWMA toward policy_rate, after macro dynamics.
+        this._state = applyTermStructure(this._state, termStructureParams);
 
         const snapshot = Session._snapshotOf(this._state);
         this._trajectoryInternal.push(snapshot);
@@ -312,7 +324,8 @@ export class Session {
   } {
     const committee = loadCommittee(this._committeeId);
     const params = loadCommitteeParams();
-    const { previews, gapInflation, gapUnemployment } = previewVote(committee, proposedRate, this._state, params);
+    const traits = loadTraitCatalog();
+    const { previews, gapInflation, gapUnemployment } = previewVote(committee, proposedRate, this._state, params, traits);
     return {
       previews,
       gapInflation,
@@ -342,7 +355,8 @@ export class Session {
 
     const committee = loadCommittee(this._committeeId);
     const params = loadCommitteeParams();
-    const fomcVote = vote(committee, rate, this._state, params);
+    const traits = loadTraitCatalog();
+    const fomcVote = vote(committee, rate, this._state, params, traits);
 
     // Apply the decided rate and compute new credibility.
     // SPEC-CRED-1 (issue #33): dissents no longer affect credibility, so fomcVote.dissents is

@@ -8,7 +8,8 @@
   "required": [
     "neutral_rate",
     "target_inflation",
-    "target_unemployment"
+    "target_unemployment",
+    "conviction_band_factor"
   ],
   "properties": {
     "neutral_rate": {
@@ -25,6 +26,12 @@
       "type": "number",
       "minimum": 0,
       "description": "Natural rate of unemployment used by all members when computing the unemployment gap."
+    },
+    "conviction_band_factor": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Scales how much a member's conviction narrows their effective compromise band. effective_band = compromise_band * (1 - conviction * conviction_band_factor). SPEC-COMM-5."
     }
   }
 }

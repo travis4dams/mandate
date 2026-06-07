@@ -1,0 +1,5 @@
+{
+  "inflation_rmse_max": 0.025,
+  "unemployment_rmse_max": 0.020,
+  "policy_rate_rmse_max": 0.050
+}
