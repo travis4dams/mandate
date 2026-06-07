@@ -539,4 +539,43 @@ describe("vote", () => {
     const state = macroState({ inflation: 0.02, unemployment: 0.04, policy_rate: 0.05 });
     expect(() => previewVote(c, 0.05, state, PARAMS, [traitA, traitB])).toThrow(/band_modifier sum/);
   });
+
+  // SPEC-COMM-5 item 6a: effect-free trait (effects: {}) behaves like no trait —
+  // preferred and wouldDissent are unchanged vs an untagged member.
+  it("SPEC-COMM-5: effect-free trait leaves preferred rate and wouldDissent unchanged", () => {
+    // SPEC-COMM-5
+    const noopTrait: TraitEntry = {
+      id: "trait.noop",
+      name: "trait.noop.name",
+      desc: "trait.noop.desc",
+      effects: {},
+    };
+    const tagged = member("tagged", { traits: ["trait.noop"] });
+    const plain  = member("plain");
+    const c = committeeOf([tagged, plain]);
+    const state = macroState({ inflation: 0.02, unemployment: 0.04, policy_rate: 0.05 });
+    const { previews } = previewVote(c, 0.057, state, PARAMS, [noopTrait]);
+    // preferred rates must be identical (zero lean shift).
+    expect(previews[0]!.preferred).toBeCloseTo(previews[1]!.preferred, 10);
+    // dissent decision must be identical (zero band modification).
+    expect(previews[0]!.wouldDissent).toBe(previews[1]!.wouldDissent);
+  });
+
+  // SPEC-COMM-5 item 6b: conviction_band_factor = 0 disables conviction narrowing —
+  // member behaves as if conviction = 0 regardless of actual conviction value.
+  it("SPEC-COMM-5: conviction_band_factor=0 disables conviction narrowing (behaves like conviction=0)", () => {
+    // SPEC-COMM-5
+    // effectiveBand = compromise_band * (1 - conviction * 0) * (1 + 0) = compromise_band.
+    // With factor=0 even conviction=1 leaves the band at its full width (0.010).
+    // diff = |0.05 - 0.057| = 0.007 < 0.010 → no dissent.
+    const params: CommitteeParams = { ...PARAMS, conviction_band_factor: 0 };
+    const c = committeeOf([member("max_conv", { compromise_band: 0.010, conviction: 1.0 })]);
+    const state = macroState({ inflation: 0.02, unemployment: 0.04, policy_rate: 0.05 });
+    // No dissent — band fully open despite conviction=1.
+    expect(vote(c, 0.057, state, params, []).dissents).toBe(0);
+    // Same result as the conviction=0 baseline (band unmodified).
+    const paramsConv0: CommitteeParams = { ...PARAMS, conviction_band_factor: 0 };
+    const cConv0 = committeeOf([member("zero_conv", { compromise_band: 0.010, conviction: 0 })]);
+    expect(vote(cConv0, 0.057, state, paramsConv0, []).dissents).toBe(0);
+  });
 });

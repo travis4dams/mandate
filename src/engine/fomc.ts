@@ -23,7 +23,7 @@ export interface CommitteeParams {
   /** Natural rate of unemployment used to compute the unemployment gap. */
   target_unemployment: number;
   /** Scales how much a member's conviction narrows their effective compromise band.
-   *  effective_band = compromise_band * (1 - conviction * conviction_band_factor). SPEC-COMM-5. */
+   *  effective_band = compromise_band * (1 - conviction * conviction_band_factor) * (1 + bandMod). SPEC-COMM-5. */
   conviction_band_factor: number;
 }
 
@@ -106,16 +106,16 @@ function readGuardedVars(state: GameState, params: CommitteeParams): {
   };
 }
 
-// SPEC-COMM-5: resolve always-on trait effects for a member against the catalog.
+// SPEC-COMM-5: resolve always-on trait effects for a member against the catalog map.
 // Signal-reactive hooks are dormant — skipped regardless of state.vars content.
+// catalogMap is built once in previewVote and passed in to avoid rebuilding per member.
 function resolveTraitEffects(
   member: CommitteeMember,
-  catalog: readonly TraitEntry[],
+  catalogMap: ReadonlyMap<string, TraitEntry>,
 ): { leanShift: number; bandMod: number } {
   const memberTraits = member.traits ?? [];
   if (memberTraits.length === 0) return { leanShift: 0, bandMod: 0 };
 
-  const catalogMap = new Map(catalog.map((t) => [t.id, t]));
   let leanShift = 0;
   let bandMod = 0;
   for (const traitId of memberTraits) {
@@ -141,6 +141,8 @@ export function previewVote(
     throw new Error(`previewVote: invalid conviction_band_factor (${params.conviction_band_factor}); expected finite in [0,1].`);
   }
   const { laggedRate, gapInflation, gapUnemployment } = readGuardedVars(state, params);
+  // Build the catalog map once per previewVote call rather than once per member. SPEC-COMM-5.
+  const catalogMap: ReadonlyMap<string, TraitEntry> = new Map(traitCatalog.map((t) => [t.id, t]));
   const previews = committee.members.map((m) => {
     if (!Number.isFinite(m.compromise_band) || m.compromise_band < 0 || m.compromise_band > 0.5) {
       throw new Error(
@@ -153,12 +155,17 @@ export function previewVote(
       );
     }
     // SPEC-COMM-5: resolve trait lean shift and band modifier; signal hooks stay dormant.
-    const { leanShift, bandMod } = resolveTraitEffects(m, traitCatalog);
+    const { leanShift, bandMod } = resolveTraitEffects(m, catalogMap);
     if (1 + bandMod <= 0) {
-      throw new Error(`member "${m.id}" trait band_modifier sum (${bandMod}) causes effectiveBand ≤ 0; reduce band_modifier magnitudes in the trait catalog.`);
+      // bandMod <= -1: the (1 + bandMod) factor would flip the band's sign, which is
+      // nonsensical. Throw rather than silently flooring — this is a content authoring
+      // error, not a normal game state. Math.max(0,...) below handles the legitimate
+      // conviction=1/factor=1 case where the band naturally reaches 0.
+      throw new Error(`previewVote: member "${m.id}" trait band_modifier sum (${bandMod}) causes effectiveBand ≤ 0; reduce band_modifier magnitudes in the trait catalog.`);
     }
     const preferred = memberPreferred(m, laggedRate, gapInflation, gapUnemployment, params, leanShift);
-    // conviction narrows the base band; trait band_modifier adjusts further; floor at 0.
+    // conviction narrows the base band; trait band_modifier scales further; floor at 0
+    // guards the conviction=1/factor=1 case where the product reaches exactly 0.
     const effectiveBand = Math.max(
       0,
       m.compromise_band * (1 - m.conviction * params.conviction_band_factor) * (1 + bandMod),

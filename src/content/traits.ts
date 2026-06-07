@@ -22,27 +22,49 @@ export interface TraitEntry {
   readonly signal_hooks?: readonly SignalHook[];
 }
 
+// Thrown when the trait catalog contains duplicate ids — the schema can't express this.
+export class TraitDuplicateIdError extends Error {
+  constructor(public readonly duplicateId: string) {
+    super(`Trait catalog: duplicate trait id "${duplicateId}".`);
+    this.name = "TraitDuplicateIdError";
+  }
+}
+
 const DEFAULT_TRAITS_DIR = join(new URL(".", import.meta.url).pathname, "../../content/traits");
 const SCHEMA_PATH = join(new URL(".", import.meta.url).pathname, "../../schemas/traits.schema.json");
 
 let _cachedTraitCatalog: TraitEntry[] | undefined;
 
+function checkDuplicateIds(entries: TraitEntry[]): void {
+  const seen = new Set<string>();
+  for (const t of entries) {
+    if (seen.has(t.id)) throw new TraitDuplicateIdError(t.id);
+    seen.add(t.id);
+  }
+}
+
 export function loadTraitCatalog(dir: string = DEFAULT_TRAITS_DIR): TraitEntry[] {
   if (dir === DEFAULT_TRAITS_DIR) {
     if (_cachedTraitCatalog === undefined) {
+      let entries: TraitEntry[];
       try {
-        _cachedTraitCatalog = loadValidated<TraitEntry>(SCHEMA_PATH, dir);
+        entries = loadValidated<TraitEntry>(SCHEMA_PATH, dir);
       } catch (e) {
         throw new Error("Failed to load trait catalog from content/traits/catalog.json", { cause: e });
       }
+      checkDuplicateIds(entries);
+      _cachedTraitCatalog = entries;
     }
     return _cachedTraitCatalog;
   }
+  let entries: TraitEntry[];
   try {
-    return loadValidated<TraitEntry>(SCHEMA_PATH, dir);
+    entries = loadValidated<TraitEntry>(SCHEMA_PATH, dir);
   } catch (e) {
     throw new Error(`Failed to load trait catalog from ${dir}`, { cause: e });
   }
+  checkDuplicateIds(entries);
+  return entries;
 }
 
 export function _resetTraitCatalogCache(): void {

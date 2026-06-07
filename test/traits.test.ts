@@ -3,7 +3,7 @@ import { writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { loadValidated, _resetValidateFileCache } from "../src/content/loader";
-import { loadTraitCatalog, _resetTraitCatalogCache } from "../src/content/traits";
+import { loadTraitCatalog, _resetTraitCatalogCache, TraitDuplicateIdError } from "../src/content/traits";
 
 // SPEC-COMM-5: trait catalog schema + loader.
 
@@ -19,6 +19,32 @@ describe("trait catalog loader (SPEC-COMM-5)", () => {
     // SPEC-COMM-5
     const catalog = loadTraitCatalog();
     expect(catalog.length).toBeGreaterThan(0);
+  });
+
+  it("throws TraitDuplicateIdError when catalog contains duplicate trait ids", () => {
+    // SPEC-COMM-5: eager duplicate-id check in loadTraitCatalog.
+    const dir = join(tmpdir(), `mandate-test-traits-dup-${process.pid}`);
+    mkdirSync(dir, { recursive: true });
+    try {
+      const dup = [
+        {
+          id: "trait.duplicate_id",
+          name: "trait.duplicate_id.name",
+          desc: "trait.duplicate_id.desc",
+          effects: {},
+        },
+        {
+          id: "trait.duplicate_id",  // same id repeated
+          name: "trait.duplicate_id2.name",
+          desc: "trait.duplicate_id2.desc",
+          effects: { preferred_rate_shift: 0.001 },
+        },
+      ];
+      writeFileSync(join(dir, "dup.json"), JSON.stringify(dup));
+      expect(() => loadTraitCatalog(dir)).toThrow(TraitDuplicateIdError);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it("every committed trait has a loc-key name and desc, and a valid id prefix", () => {
