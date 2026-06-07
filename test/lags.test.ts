@@ -1,6 +1,8 @@
 // SPEC-LAG-1: distributed-lag kernel tests.
 import { describe, it, expect, beforeEach } from "vitest";
 import { applyRateToOutputGap, loadLagParams, _resetLagParamsCache, type LagParams } from "../src/engine/lags";
+import { applyMacroDynamics, type MacroDynamicsParams } from "../src/engine/dynamics";
+import { Session } from "../src/engine/session";
 import { makeState } from "../src/engine/state";
 import type { GameStateSnapshot } from "../src/engine/state";
 
@@ -128,5 +130,54 @@ describe("applyRateToOutputGap (SPEC-LAG-1)", () => {
     expect(params.policy_to_output_gap).toHaveLength(24);
     const sum = params.policy_to_output_gap.reduce((a, b) => a + b, 0);
     expect(Math.abs(sum - 1.0)).toBeLessThan(0.001);
+  });
+});
+
+// Macro-dynamics params matching content files, used by items 2 and 3.
+const MACRO_PARAMS: MacroDynamicsParams = {
+  inflation_persistence: 0.952,
+  phillips_slope: 0.106,
+  unemployment_natural_rate: 0.0645,
+  real_neutral_rate: 0.027,
+  okun_coefficient: 1.14,
+  unemployment_adjustment_speed: 0.045,
+  target_inflation: 0.02,
+  unemployment_target: 0.055,
+  expectations_adaptivity: 0.051,
+  expectations_anchor_pull: 0.025,
+  credibility_mission_gain: 300,
+  credibility_unemployment_weight: 0.5,
+  anchor_threshold: 60,
+};
+
+const BASE_VARS = {
+  policy_rate: 0.05,
+  inflation: 0.05,
+  unemployment: 0.0645,
+  expectations_anchor: 0.05,
+  credibility: 50,
+};
+
+describe("applyMacroDynamics uses output_gap when present (SPEC-LAG-1)", () => {
+  it("state with output_gap=0.20 produces different unemployment than state without output_gap", () => {
+    // SPEC-LAG-1: dynamics.ts must branch on output_gap when present.
+    // A large positive output_gap (0.20) drives a much higher unemployment equilibrium
+    // than the immediate realGap (≈0 here), so the two states must diverge.
+    const stateWith = makeState({ vars: { ...BASE_VARS, output_gap: 0.20 } });
+    const stateWithout = makeState({ vars: { ...BASE_VARS } });
+    const resultWith = applyMacroDynamics(stateWith, MACRO_PARAMS);
+    const resultWithout = applyMacroDynamics(stateWithout, MACRO_PARAMS);
+    expect(resultWith.vars.unemployment).not.toBeCloseTo(resultWithout.vars.unemployment as number, 10);
+  });
+});
+
+describe("Session.advance sets output_gap on state (SPEC-LAG-1)", () => {
+  it("output_gap is a finite number after one advance step", () => {
+    // SPEC-LAG-1: applyRateToOutputGap must write a finite output_gap onto the state.
+    const session = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    session.advance(1);
+    const gap = session.current.vars.output_gap;
+    expect(typeof gap).toBe("number");
+    expect(Number.isFinite(gap)).toBe(true);
   });
 });

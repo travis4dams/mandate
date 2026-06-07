@@ -23,6 +23,11 @@ export function loadLagParams(): LagParams {
   } catch (e) {
     throw new Error("Failed to load lag params from content/engine/lags.json", { cause: e });
   }
+  // SPEC-LAG-1: JSON Schema cannot enforce a numeric sum, so assert it here at load time.
+  const sum = _cachedLagParams.policy_to_output_gap.reduce((a, b) => a + b, 0);
+  if (Math.abs(sum - 1.0) > 0.001) {
+    throw new Error(`lags.json: policy_to_output_gap weights sum to ${sum.toFixed(6)}, expected 1.0 ±0.001`);
+  }
   return _cachedLagParams;
 }
 
@@ -54,9 +59,7 @@ export function applyRateToOutputGap(
   // Take the most recent N snapshots in reverse-chron order (index 0 = most recent).
   const recent = trajectory.slice(-N).reverse();
   let outputGap = 0;
-  for (let k = 0; k < weights.length; k++) {
-    const snap = recent[k];
-    if (snap === undefined) break;
+  for (const [k, snap] of recent.entries()) {
     const pr = snap.vars.policy_rate;
     const ea = snap.vars.expectations_anchor;
     if (pr === undefined || ea === undefined) continue;

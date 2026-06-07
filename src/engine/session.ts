@@ -281,6 +281,7 @@ export class Session {
 
         this._state = tick(this._state, 1);
         // SPEC-LAG-1: update output_gap from trajectory before applying macro dynamics.
+        // Ordering invariant: applyRateToOutputGap reads _trajectoryInternal BEFORE the new snapshot is pushed — this month's rate enters the lag kernel next month.
         this._state = applyRateToOutputGap(this._state, this._trajectoryInternal, lagParams, dynamicsParams.real_neutral_rate);
         this._state = applyMacroDynamics(this._state, effectiveParams);
 
