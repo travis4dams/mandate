@@ -44,7 +44,7 @@ export class TraitNotFoundError extends Error {
     public readonly memberId: string,
     public readonly traitId: string,
   ) {
-    super(`previewVote: member "${memberId}" references unknown trait "${traitId}".`);
+    super(`member "${memberId}" references unknown trait "${traitId}".`);
     this.name = "TraitNotFoundError";
   }
 }

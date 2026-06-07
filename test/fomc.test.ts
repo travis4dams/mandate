@@ -501,4 +501,42 @@ describe("vote", () => {
     const shiftedPref = previews[0]!.preferred;
     expect(vote(cWith, shiftedPref, state, PARAMS, [dovishLean]).dissents).toBe(0);
   });
+
+  // SPEC-COMM-5: conviction_band_factor guard — NaN and out-of-range values throw.
+  it("SPEC-COMM-5: previewVote throws for NaN conviction_band_factor", () => {
+    // SPEC-COMM-5
+    const params: CommitteeParams = { ...PARAMS, conviction_band_factor: NaN };
+    const c = committeeOf([member("a")]);
+    const state = macroState({ inflation: 0.02, unemployment: 0.04, policy_rate: 0.05 });
+    expect(() => previewVote(c, 0.05, state, params, [])).toThrow(/invalid conviction_band_factor/);
+  });
+
+  it("SPEC-COMM-5: previewVote throws for conviction_band_factor greater than 1", () => {
+    // SPEC-COMM-5
+    const params: CommitteeParams = { ...PARAMS, conviction_band_factor: 1.5 };
+    const c = committeeOf([member("a")]);
+    const state = macroState({ inflation: 0.02, unemployment: 0.04, policy_rate: 0.05 });
+    expect(() => previewVote(c, 0.05, state, params, [])).toThrow(/invalid conviction_band_factor/);
+  });
+
+  // SPEC-COMM-5: stacked band_modifiers ≤ -1 throw to protect effectiveBand from sign flip.
+  it("SPEC-COMM-5: previewVote throws when stacked band_modifiers sum to ≤ -1", () => {
+    // SPEC-COMM-5
+    // Combined bandMod = -0.6 + (-0.6) = -1.2; 1 + bandMod = -0.2 ≤ 0 → should throw.
+    const traitA: TraitEntry = {
+      id: "trait.extreme_narrower_a",
+      name: "trait.extreme_narrower_a.name",
+      desc: "trait.extreme_narrower_a.desc",
+      effects: { band_modifier: -0.6 },
+    };
+    const traitB: TraitEntry = {
+      id: "trait.extreme_narrower_b",
+      name: "trait.extreme_narrower_b.name",
+      desc: "trait.extreme_narrower_b.desc",
+      effects: { band_modifier: -0.6 },
+    };
+    const c = committeeOf([member("a", { traits: ["trait.extreme_narrower_a", "trait.extreme_narrower_b"] })]);
+    const state = macroState({ inflation: 0.02, unemployment: 0.04, policy_rate: 0.05 });
+    expect(() => previewVote(c, 0.05, state, PARAMS, [traitA, traitB])).toThrow(/band_modifier sum/);
+  });
 });
