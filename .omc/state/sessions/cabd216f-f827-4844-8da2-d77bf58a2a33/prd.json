@@ -128,7 +128,7 @@
       "spec": "SPEC-WEB-6",
       "title": "Four-question tooltip (sparse): what/how/levers/trust on focus/hover",
       "passes": false,
-      "pr": null,
+      "pr": 63,
       "dependencies": [
         "US-007",
         "US-010",

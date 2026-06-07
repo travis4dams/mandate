@@ -297,3 +297,23 @@ Phase 1:
       Number.isFinite guard on inflation; hoist loadShocksParams; update JSDoc.
 Stories now passing: US-001..US-012, US-014, US-016, US-018, US-019.
 Stories still passing=false: US-013, US-015, US-017.
+
+== CYCLE 18 — 2026-06-07 ==
+Phase 0 (issue queue): empty — fell through to Phase 1.
+Phase 1:
+  Merged PR #76 (chore: mark US-016/US-019 as passing, VERDICT: APPROVE, squash 38e6e76).
+  Merged PR #66 (SPEC-HEAR-1: confirmation-hearing mechanism, VERDICT: APPROVE, squash d88c8c9).
+    SPEC-HEAR-1 is not a PRD story — prd.json unchanged for passes flags.
+    prd.json updated: US-013 pr=63 (PR exists but was not recorded in prior cycles).
+  All other open PRs have newer commits pushed since their last REQUEST_CHANGES verdict —
+    awaiting re-review by claude-review. No executor dispatched this cycle.
+  PRs awaiting re-review (cycle 17 executors already pushed fixes):
+    PR #61 (SPEC-DOCT-1, head 892d061 — round-2 fix, awaiting re-review)
+    PR #63 (SPEC-WEB-6, head bfeb5e0 — round-2 fix, awaiting re-review)
+    PR #64 (SPEC-SIM-6, head 48244aa — round-2 fix, awaiting re-review)
+    PR #73 (SPEC-PROD-1, head 0a2ac1f4 — round-1 fix, awaiting re-review)
+    PR #75 (SPEC-SHOCK-1, head 066cf105 — round-1 fix, awaiting re-review)
+  STUCK (no executor): PR #53 (SPEC-COMM-6, round 4+), PR #55 (SPEC-COMM-7, round 3+).
+  Blocked on #61: PR #62 (SPEC-DOCT-2).
+Stories now passing: US-001..US-012, US-014, US-016, US-018, US-019.
+Stories still passing=false: US-013, US-015, US-017.
