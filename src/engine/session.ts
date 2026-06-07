@@ -151,7 +151,7 @@ export class Session {
   // Committee id used by proposeRate; passed as a required factory argument.
   private readonly _committeeId: string;
 
-  // SPEC-GUIDE-1: stored stance; wired to the spiral recovery path in advance() via stanceMultiplier().
+  // SPEC-GUIDE-1: stored stance; wired to expectations_anchor_pull in advance() via stanceMultiplier().
   private _stance: ForwardGuidanceStance = "neutral";
 
   // Subscriber set for the subscribe/unsubscribe protocol.
@@ -238,8 +238,7 @@ export class Session {
   // --- Mutators ---
 
   /**
-   * Advance the session by `months` months.
-   * For each month, applies any matching replay action then calls tick().
+   * Advance the session by `months` months, applying per-month: replay action (if any), tick(), applyMacroDynamics(), applyIntermeetingDrift().
    * @throws {Error} if months is not a positive integer.
    */
   advance(months: number): void {
@@ -264,7 +263,7 @@ export class Session {
       expectations_anchor_pull:
         dynamicsParams.expectations_anchor_pull * stanceMultiplier(this._stance, guidanceP),
     };
-    // SPEC-COMM-6: loaders are cached singletons — hoist outside loop.
+    // SPEC-COMM-6: hoist outside loop; loadCommitteeParams() is memoized, loadCommittee() re-reads each call.
     const committee = loadCommittee(this._committeeId);
     const committeeParams = loadCommitteeParams();
 
@@ -405,7 +404,7 @@ export class Session {
     this._notifyListeners();
   }
 
-  // SPEC-GUIDE-1: Store the forward-guidance stance; wired to the spiral recovery path via stanceMultiplier().
+  // SPEC-GUIDE-1: Store the forward-guidance stance; wired to expectations_anchor_pull via stanceMultiplier().
   // The value is NOT written into state.vars; the stance is a Session-level concern, not a var.
   // Fires listeners (downstream UI may want to reflect the stored stance).
   setForwardGuidanceStance(stance: ForwardGuidanceStance): void {

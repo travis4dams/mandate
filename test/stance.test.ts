@@ -197,6 +197,75 @@ describe("applyIntermeetingDrift", () => {
     const expected = m.inertia * 0.05 + (1 - m.inertia) * taylor;
     expect(result.vars[stanceKey(m.id)]).toBeCloseTo(expected, 10);
   });
+
+  // SPEC-COMM-6: +Infinity stored stance falls back to policy_rate (guards corrupt state)
+  it("+Infinity stored stance falls back to policy_rate", () => {
+    const m = member("a", { inertia: 0.88 });
+    const c = committeeOf([m]);
+    const state = macroState({
+      inflation: 0.02,
+      unemployment: 0.04,
+      policy_rate: 0.05,
+      stances: { [stanceKey(m.id)]: Infinity },
+    });
+    const result = applyIntermeetingDrift(state, c, PARAMS);
+    const gapI = 0.02 - PARAMS.target_inflation;
+    const gapU = 0.04 - PARAMS.target_unemployment;
+    const taylor = PARAMS.neutral_rate + m.inflation_coef * gapI - m.output_coef * gapU;
+    const expected = m.inertia * 0.05 + (1 - m.inertia) * taylor;
+    expect(result.vars[stanceKey(m.id)]).toBeCloseTo(expected, 10);
+  });
+
+  // SPEC-COMM-6: -Infinity stored stance falls back to policy_rate (guards corrupt state)
+  it("-Infinity stored stance falls back to policy_rate", () => {
+    const m = member("a", { inertia: 0.88 });
+    const c = committeeOf([m]);
+    const state = macroState({
+      inflation: 0.02,
+      unemployment: 0.04,
+      policy_rate: 0.05,
+      stances: { [stanceKey(m.id)]: -Infinity },
+    });
+    const result = applyIntermeetingDrift(state, c, PARAMS);
+    const gapI = 0.02 - PARAMS.target_inflation;
+    const gapU = 0.04 - PARAMS.target_unemployment;
+    const taylor = PARAMS.neutral_rate + m.inflation_coef * gapI - m.output_coef * gapU;
+    const expected = m.inertia * 0.05 + (1 - m.inertia) * taylor;
+    expect(result.vars[stanceKey(m.id)]).toBeCloseTo(expected, 10);
+  });
+
+  // SPEC-COMM-6: inertia boundary — inertia=0 means full Taylor snap each step
+  it("inertia=0 produces full Taylor snap (new stance equals Taylor target)", () => {
+    const m = member("a", { inertia: 0, inflation_coef: 1.7, output_coef: 0.4 });
+    const c = committeeOf([m]);
+    const prevStance = 0.12;
+    const state = macroState({
+      inflation: 0.06,
+      unemployment: 0.04,
+      policy_rate: 0.05,
+      stances: { [stanceKey(m.id)]: prevStance },
+    });
+    const result = applyIntermeetingDrift(state, c, PARAMS);
+    const gapI = 0.06 - PARAMS.target_inflation;
+    const gapU = 0.04 - PARAMS.target_unemployment;
+    const taylor = PARAMS.neutral_rate + m.inflation_coef * gapI - m.output_coef * gapU;
+    expect(result.vars[stanceKey(m.id)]).toBeCloseTo(taylor, 10);
+  });
+
+  // SPEC-COMM-6: inertia boundary — inertia=1 means no drift (stance frozen at previous value)
+  it("inertia=1 produces no drift (stance frozen at previous value)", () => {
+    const m = member("a", { inertia: 1, inflation_coef: 1.7, output_coef: 0.4 });
+    const c = committeeOf([m]);
+    const prevStance = 0.12;
+    const state = macroState({
+      inflation: 0.06,
+      unemployment: 0.04,
+      policy_rate: 0.05,
+      stances: { [stanceKey(m.id)]: prevStance },
+    });
+    const result = applyIntermeetingDrift(state, c, PARAMS);
+    expect(result.vars[stanceKey(m.id)]).toBeCloseTo(prevStance, 10);
+  });
 });
 
 describe("previewVote — SPEC-COMM-6 stored-stance integration", () => {

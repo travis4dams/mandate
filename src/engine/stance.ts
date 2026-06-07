@@ -1,5 +1,5 @@
 import type { Committee } from "../content/committees.js";
-import type { CommitteeParams } from "./fomc.js";
+import type { CommitteeParams } from "./committee-types.js";
 import type { GameState } from "./state.js";
 
 // SPEC-COMM-6: between-meeting stance drift.
@@ -9,7 +9,13 @@ export function stanceKey(memberId: string): string {
   return `stance.${memberId}`;
 }
 
-// new = inertia*prev + (1-inertia)*taylor
+/** Returns the stored stance for a member if finite, otherwise falls back to policy_rate. */
+export function resolveStoredStance(stored: unknown, policyRate: number): number {
+  return stored !== undefined && Number.isFinite(stored as number)
+    ? (stored as number)
+    : policyRate;
+}
+
 export function applyIntermeetingDrift(
   state: GameState,
   committee: Committee,
@@ -32,9 +38,7 @@ export function applyIntermeetingDrift(
   const newVars = { ...state.vars };
   for (const m of committee.members) {
     const key = stanceKey(m.id);
-    const stored = state.vars[key];
-    const prevStance =
-      stored !== undefined && Number.isFinite(stored) ? stored : (policyRate as number);
+    const prevStance = resolveStoredStance(state.vars[key], policyRate as number);
 
     const taylorTarget =
       params.neutral_rate +

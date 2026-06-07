@@ -2,25 +2,19 @@ import { join } from "node:path";
 import { loadValidatedFile } from "../content/loader.js";
 import type { Committee, CommitteeMember } from "../content/committees.js";
 import type { GameState } from "./state.js";
-import { stanceKey } from "./stance.js";
+import { stanceKey, resolveStoredStance } from "./stance.js";
+import type { CommitteeParams } from "./committee-types.js";
 
 // FOMC vote engine — SPEC-COMM-2 + SPEC-COMM-3.
 // Pure: returns a new FomcVote; never mutates state or committee.
+
+export type { CommitteeParams } from "./committee-types.js";
 
 export interface FomcVote {
   /** The enacted rate. Always equals proposedRate in slice 1 (the committee has no override power yet); a future slice may add majority-override. */
   decided: number;
   /** Count of members whose `|preferred - proposedRate| > member.compromise_band`. */
   dissents: number;
-}
-
-export interface CommitteeParams {
-  /** Anchor for every member's preferred-rate computation — the rate the committee would set at target inflation and natural unemployment. */
-  neutral_rate: number;
-  /** Long-run inflation target used to compute the inflation gap. */
-  target_inflation: number;
-  /** Natural rate of unemployment used to compute the unemployment gap. */
-  target_unemployment: number;
 }
 
 // Thrown when vote() is called against a state whose required vars are missing or non-finite.
@@ -34,12 +28,7 @@ export class VoteMissingVarError extends Error {
   }
 }
 
-// SPEC-COMM-3: per-member preferred rate via a Taylor-rule reaction function with
-// member-specific coefficients (inflation_coef, output_coef) anchored at neutral_rate,
-// smoothed by per-member inertia against the lagged policy rate. Empirically, FOMC
-// participants' Taylor-rule prescriptions cluster within ~150bp at the 1-2y horizon
-// thanks to high inertia (~0.85-0.92); the old trichotomy produced 1500bp spreads
-// at the 1979 starting state, which is roughly an order of magnitude too wide.
+// SPEC-COMM-3: Taylor-rule preferred rate smoothed by per-member inertia.
 function memberPreferred(
   member: CommitteeMember,
   laggedRate: number,
@@ -106,11 +95,7 @@ export function previewVote(
       );
     }
     // SPEC-COMM-6: use the member's drifted intermeeting stance if present; fall back to policy_rate.
-    const storedStance = state.vars[stanceKey(m.id)];
-    const laggedRate =
-      storedStance !== undefined && Number.isFinite(storedStance)
-        ? storedStance
-        : globalLaggedRate;
+    const laggedRate = resolveStoredStance(state.vars[stanceKey(m.id)], globalLaggedRate);
     const preferred = memberPreferred(m, laggedRate, gapInflation, gapUnemployment, params);
     return {
       memberId: m.id,

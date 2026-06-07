@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { Session, NotMeetingMonthError, marketsSurprised } from "../src/engine/session.js";
 import type { ForwardGuidanceStance } from "../src/engine/session.js";
 import * as mandateModule from "../src/engine/mandate.js";
+import { stanceKey } from "../src/engine/stance.js";
 
 // SPEC-SESSION-0
 
@@ -70,6 +71,25 @@ describe("Session.advance integration", () => {
   it("advance(1.5) throws", () => {
     const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
     expect(() => s.advance(1.5)).toThrow();
+  });
+});
+
+describe("SPEC-COMM-6: stance drift wired into Session.advance()", () => {
+  // SPEC-COMM-6: after advance(1), at least one member's stance var must exist and differ from
+  // the cold-start policy_rate — confirming applyIntermeetingDrift is called each month.
+  // Removing the applyIntermeetingDrift call from session.ts would leave all stance.* vars absent.
+  it("after advance(1) a stance.* var is present and has drifted from the initial policy_rate", () => {
+    // SPEC-COMM-6
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    const initialRate = s.current.vars.policy_rate as number;
+    s.advance(1);
+    // At least one member should have a stored stance after one advance
+    const stanceVars = Object.keys(s.current.vars).filter((k) => k.startsWith("stance."));
+    expect(stanceVars.length).toBeGreaterThan(0);
+    // The 1979 scenario starts far from steady state — stances drift from the policy_rate anchor
+    const firstStance = s.current.vars[stanceVars[0]] as number;
+    expect(Number.isFinite(firstStance)).toBe(true);
+    expect(firstStance).not.toBe(initialRate);
   });
 });
 
