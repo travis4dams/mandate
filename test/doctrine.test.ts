@@ -25,6 +25,7 @@ const INFLATION_TARGETING_ID = "doctrine.inflation_targeting";
 const MOCK_DOCTRINE: DoctrineEntry = {
   id: "doctrine.mock",
   name: "doctrine.mock.name",
+  description: "doctrine.mock.desc",
   standing_effects: [{ target: "credibility", value: 5 }],
   flip_flop_cost: 10,
 };
@@ -32,6 +33,7 @@ const MOCK_DOCTRINE: DoctrineEntry = {
 const NO_EFFECTS_DOCTRINE: DoctrineEntry = {
   id: "doctrine.no_effects",
   name: "doctrine.no_effects.name",
+  description: "doctrine.no_effects.desc",
   standing_effects: [],
   flip_flop_cost: 15,
 };
@@ -136,6 +138,7 @@ describe("abandonDoctrine", () => {
     const highCostDoctrine: DoctrineEntry = {
       id: "doctrine.costly",
       name: "doctrine.costly.name",
+      description: "doctrine.costly.desc",
       standing_effects: [],
       flip_flop_cost: 100,
     };
@@ -211,6 +214,7 @@ describe("adoptDoctrine / abandonDoctrine — round-trip symmetry", () => {
     const highGainDoctrine: DoctrineEntry = {
       id: "doctrine.high_gain",
       name: "doctrine.high_gain.name",
+      description: "doctrine.high_gain.desc",
       standing_effects: [{ target: "credibility", value: 5 }],
       flip_flop_cost: 0,
     };

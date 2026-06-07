@@ -33,7 +33,7 @@ export function adoptDoctrine(state: GameState, doctrine: DoctrineEntry): GameSt
     throw new DoctrineAlreadyAdoptedError(doctrine.id);
   }
   const nextVars = { ...state.vars };
-  for (const effect of doctrine.standing_effects ?? []) {
+  for (const effect of doctrine.standing_effects) {
     if (nextVars[effect.target] === undefined) {
       throw new Error(`adoptDoctrine: var "${effect.target}" is absent in state`);
     }
@@ -46,15 +46,14 @@ export function adoptDoctrine(state: GameState, doctrine: DoctrineEntry): GameSt
   };
 }
 
-/** Abandon a doctrine: reverses its standing effects and deducts the flip-flop credibility cost
- *  (only the flip-flop cost write is clamped to [0,100]). */
+/** Abandon a doctrine: reverses its standing effects and deducts the flip-flop credibility cost.
+ *  The resulting credibility is clamped to [0, 100]; other standing-effect targets are unclamped. */
 export function abandonDoctrine(state: GameState, doctrine: DoctrineEntry): GameState {
   if (!isDoctrineAdopted(state, doctrine.id)) {
     throw new DoctrineNotAdoptedError(doctrine.id);
   }
   const nextVars = { ...state.vars };
-  // Reverse standing effects — exact inverse of adoption (no clamping, symmetric with adoptDoctrine)
-  for (const effect of doctrine.standing_effects ?? []) {
+  for (const effect of doctrine.standing_effects) {
     if (nextVars[effect.target] === undefined) {
       throw new Error(`abandonDoctrine: var "${effect.target}" is absent in state`);
     }

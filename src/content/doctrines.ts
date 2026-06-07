@@ -9,8 +9,8 @@ export interface StandingEffect {
 export interface DoctrineEntry {
   id: string;
   name: string;
-  description?: string;
-  standing_effects?: StandingEffect[];
+  description: string;
+  standing_effects: StandingEffect[];
   flip_flop_cost: number;
 }
 
@@ -34,7 +34,9 @@ let _cache: DoctrineEntry[] | null = null;
 
 export function loadDoctrineCatalog(): DoctrineEntry[] {
   if (_cache !== null) return _cache;
-  _cache = loadValidated<DoctrineEntry>(SCHEMA_PATH, DOCTRINES_DIR);
+  type RawDoctrine = Omit<DoctrineEntry, "standing_effects"> & { standing_effects?: StandingEffect[] };
+  const raw = loadValidated<RawDoctrine>(SCHEMA_PATH, DOCTRINES_DIR);
+  _cache = raw.map((d) => ({ ...d, standing_effects: d.standing_effects ?? [] }));
   return _cache;
 }
 
