@@ -5,7 +5,7 @@
 // macro trajectory is invariant to cadence:
 //   - AR(1) persistence: p_tick = p_monthly^(1/n)  [exact for geometric decay]
 //   - Mean-reversion speed: α_tick = 1 − (1−α_monthly)^(1/n)  [exact for linear AR]
-//   - Flow contributions (slopes, pull, gain): divided by n  [first-order approximation]
+//   - Flow contributions (phillips_slope, expectations_adaptivity, expectations_anchor_pull, credibility_mission_gain): divided by n  [first-order approximation, error O(α²/n)]
 //   - Structural params (natural rates, targets, thresholds): unchanged
 //
 // Documented tolerance: monthly and weekly (n=4) trajectories agree within 0.2pp
@@ -15,7 +15,7 @@ import { loadValidatedFile } from "../content/loader.js";
 import type { MacroDynamicsParams } from "./dynamics.js";
 
 export interface ClockCadenceParams {
-  /** Number of simulation ticks per calendar month. 1 = monthly, 4 = weekly. */
+  /** Number of simulation ticks per calendar month. 1 = monthly, 4 = weekly. Integer in [1, 31]; validated by schemas/clock-cadence.schema.json. */
   ticks_per_month: number;
 }
 
@@ -36,7 +36,7 @@ export function loadClockCadenceParams(): ClockCadenceParams {
     _cachedClockCadenceParams = loadValidatedFile<ClockCadenceParams>(SCHEMA_PATH, FILE_PATH);
   } catch (e) {
     throw new Error(
-      "Failed to load clock cadence params from content/engine/clock-cadence.json",
+      `Failed to load clock cadence params from content/engine/clock-cadence.json: ${e instanceof Error ? e.message : String(e)}`,
       { cause: e },
     );
   }
@@ -52,7 +52,7 @@ export function _resetClockCadenceParamsCache(): void {
  * Re-express monthly MacroDynamicsParams as per-tick params for n ticks per month.
  * Returns the same reference when n === 1 (identity, no allocation).
  */
-export function scaleParamsForTick(params: MacroDynamicsParams, n: number): MacroDynamicsParams {
+export function scaleParamsForTick(params: MacroDynamicsParams, n: number): Readonly<MacroDynamicsParams> {
   if (!Number.isInteger(n) || n < 1) {
     throw new RangeError(`scaleParamsForTick: n must be a positive integer, got ${n}`);
   }
