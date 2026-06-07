@@ -9,6 +9,7 @@ import { loadTraitCatalog } from "../content/traits.js";
 import { applyMeetingOutcome, getCredibility } from "./credibility.js";
 import { applyMacroDynamics, loadDynamicsParams } from "./dynamics.js";
 import { applyRateToOutputGap, loadLagParams } from "./lags.js";
+import { applyTermStructure, loadTermStructureParams } from "./term-structure.js";
 import { onTarget, loadMandateParams } from "./mandate.js";
 import type { GameState, GameStateSnapshot } from "./state.js";
 import type { FomcVote, MemberVotePreview } from "./fomc.js";
@@ -262,6 +263,8 @@ export class Session {
     const dynamicsParams = loadDynamicsParams();
     // SPEC-LAG-1: lag params are a cached singleton; hoisted for the same reason.
     const lagParams = loadLagParams();
+    // SPEC-TERM-1: term-structure params are a cached singleton; hoisted for the same reason.
+    const termStructureParams = loadTermStructureParams();
     const effectiveParams = {
       ...dynamicsParams,
       expectations_anchor_pull:
@@ -285,6 +288,8 @@ export class Session {
         // Ordering invariant: applyRateToOutputGap reads _trajectoryInternal BEFORE the new snapshot is pushed — this month's rate enters the lag kernel next month.
         this._state = applyRateToOutputGap(this._state, this._trajectoryInternal, lagParams, dynamicsParams.real_neutral_rate);
         this._state = applyMacroDynamics(this._state, effectiveParams);
+        // SPEC-TERM-1: update long_rate via EWMA toward policy_rate, after macro dynamics.
+        this._state = applyTermStructure(this._state, termStructureParams);
 
         const snapshot = Session._snapshotOf(this._state);
         this._trajectoryInternal.push(snapshot);
