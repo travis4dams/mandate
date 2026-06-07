@@ -54,7 +54,7 @@ export function _resetClockCadenceParamsCache(): void {
  */
 export function scaleParamsForTick(params: MacroDynamicsParams, n: number): MacroDynamicsParams {
   if (!Number.isInteger(n) || n < 1) {
-    throw new Error(`scaleParamsForTick: n must be a positive integer, got ${n}`);
+    throw new RangeError(`scaleParamsForTick: n must be a positive integer, got ${n}`);
   }
   if (n === 1) return params;
   return {

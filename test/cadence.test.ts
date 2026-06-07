@@ -40,6 +40,17 @@ const STEADY_VARS = {
 };
 
 describe("scaleParamsForTick — SPEC-SIM-6", () => {
+  it("throws RangeError for n=0", () => {
+    // SPEC-SIM-6: n=0 would cause Math.pow(x, Infinity) = 0 for persistence params and
+    // division by zero for flow params, silently corrupting the simulation. Must throw.
+    expect(() => scaleParamsForTick(BASE, 0)).toThrow(RangeError);
+  });
+
+  it("throws RangeError for non-integer n", () => {
+    // SPEC-SIM-6: non-integer n (e.g. 1.5) is not a valid tick count and must throw.
+    expect(() => scaleParamsForTick(BASE, 1.5)).toThrow(RangeError);
+  });
+
   it("returns the same reference for n=1 (identity)", () => {
     // SPEC-SIM-6
     const scaled = scaleParamsForTick(BASE, 1);
@@ -176,27 +187,31 @@ describe("trajectory invariance — SPEC-SIM-6", () => {
 });
 
 describe("Session.advance months_below_anchor with sub-monthly cadence — SPEC-SIM-6", () => {
-  it("advance(1) with n=4: months_below_anchor increments by at most 1 when credibility below anchor_threshold", () => {
-    // SPEC-SIM-6: without the correction block, each of 4 sub-ticks would increment
-    // months_below_anchor, accumulating 4 per month. The correction must clamp it to 1.
+  it("advance(1) with n=4: months_below_anchor increments by exactly 1 when credibility below anchor_threshold", () => {
+    // SPEC-SIM-6: without the correction block, each of the 4 sub-ticks would increment
+    // months_below_anchor, accumulating 4 per advance(1). The correction must clamp it to
+    // exactly 1 per calendar month.
     // scen.1979_stagflation starts with credibility=25, below anchor_threshold of 60.
+    // Production clock-cadence.json has ticks_per_month=4 so this exercises the sub-monthly path.
     const session = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
     const mba_before = (session.current.vars.months_below_anchor ?? 0) as number;
     session.advance(1);
     const mba_after = (session.current.vars.months_below_anchor ?? 0) as number;
-    expect(mba_after - mba_before).toBeLessThanOrEqual(1);
-    expect(mba_after - mba_before).toBeGreaterThanOrEqual(0);
+    // Exact assertion: must be exactly 1 (not 4, which is what would happen without the correction).
+    expect(mba_after - mba_before).toBe(1);
   });
 
   it("advance(1) with n=4: months_below_anchor unchanged when credibility above anchor_threshold", () => {
     // SPEC-SIM-6: when credibility is above anchor_threshold (80 > 60), the correction
     // block must not increment months_below_anchor regardless of n sub-ticks.
     // scen.recovery_test starts with credibility=80, months_below_anchor=0.
+    // Production clock-cadence.json has ticks_per_month=4 so this exercises the sub-monthly path.
     const session = Session.fromScenario("scen.recovery_test", 42, "comm.fomc_1979");
     const mba_before = (session.current.vars.months_below_anchor ?? 0) as number;
     session.advance(1);
     const mba_after = (session.current.vars.months_below_anchor ?? 0) as number;
-    expect(mba_after).toBeLessThanOrEqual(mba_before);
+    // Exact assertion: must stay at 0 (credibility=80 is above the 60 threshold).
+    expect(mba_after).toBe(mba_before);
   });
 });
 
