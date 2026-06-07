@@ -154,7 +154,7 @@ export class Session {
   // Committee id used by proposeRate; passed as a required factory argument.
   private readonly _committeeId: string;
 
-  // SPEC-GUIDE-1: stored stance; wired to the spiral recovery path in advance() via stanceMultiplier().
+  // SPEC-GUIDE-1: stored stance; scales `expectations_anchor_pull` passed to `applyMacroDynamics` via stanceMultiplier().
   private _stance: ForwardGuidanceStance = "neutral";
 
   // Subscriber set for the subscribe/unsubscribe protocol.
@@ -242,7 +242,9 @@ export class Session {
 
   /**
    * Advance the session by `months` months.
-   * For each month, applies any matching replay action then calls tick().
+   * For each month: applies any matching replay action, calls tick(), then calls
+   * applyMacroDynamics() to evolve all macro variables (inflation, unemployment,
+   * expectations_anchor, output_gap, etc.) with the forward-guidance stance applied.
    * @throws {Error} if months is not a positive integer.
    */
   advance(months: number): void {
@@ -322,8 +324,13 @@ export class Session {
    * Pure: does not mutate any session state.
    * SPEC-COMM-7: optional capitalSpend widens targeted members' bands for this preview.
    * @throws {Error} if proposedRate is not finite.
+   * @throws {Error} if any capitalSpend entry is not a non-negative finite number (SPEC-COMM-7).
    * @throws {Error} if total capitalSpend exceeds chairCapital() budget (SPEC-COMM-7).
-   * @throws {VoteMissingVarError} if state vars (inflation, unemployment, policy_rate) are missing.
+   * @throws {Error} if a capitalSpend key does not match any member id in the loaded committee,
+   *   if any spend value is negative, or if the resulting widened band would exceed 0.5
+   *   (propagated from computeEffectiveBands).
+   * @throws {VoteMissingVarError} if state vars (inflation, unemployment, policy_rate) are missing or non-finite
+   *   (propagated from previewVote()).
    */
   committeeBriefing(proposedRate: number, capitalSpend?: Readonly<Record<string, number>>): {
     previews: readonly MemberVotePreview[];
@@ -337,7 +344,7 @@ export class Session {
     const traits = loadTraitCatalog();
     const chairCapitalParams = loadChairCapitalParams();
     if (capitalSpend) {
-      Session._assertWithinBudget(capitalSpend, this.chairCapital(), "committeeBriefing");
+      Session._assertWithinBudget(capitalSpend, this.chairCapital(), chairCapitalParams.max_spend_per_member, "committeeBriefing");
     }
     const effectiveBands = capitalSpend
       ? computeEffectiveBands(capitalSpend, committee, chairCapitalParams)
@@ -362,7 +369,11 @@ export class Session {
    * The spend is ephemeral — it is not written to state and does not carry over.
    * @throws {NotMeetingMonthError} if the current month is not a scheduled meeting month.
    * @throws {Error} if `rate` is not finite (only checked once the meeting-month gate passes).
+   * @throws {Error} if any capitalSpend entry is not a non-negative finite number (SPEC-COMM-7).
+   * @throws {Error} if any capitalSpend entry exceeds max_spend_per_member (SPEC-COMM-7).
    * @throws {Error} if total capitalSpend exceeds chairCapital() budget (SPEC-COMM-7).
+   * @throws {Error} if a capitalSpend key does not match any member id, or the resulting widened
+   *   band would exceed 0.5 (propagated from computeEffectiveBands).
    * @throws {VoteMissingVarError} if state vars (inflation, unemployment, policy_rate) are missing or non-finite (propagated from vote()).
    */
   proposeRate(rate: number, capitalSpend?: Readonly<Record<string, number>>): FomcVote {
@@ -372,14 +383,13 @@ export class Session {
     if (!Number.isFinite(rate)) {
       throw new Error(`Session.proposeRate: rate ${rate} is not finite.`);
     }
-    if (capitalSpend) {
-      Session._assertWithinBudget(capitalSpend, this.chairCapital(), "proposeRate");
-    }
-
     const committee = loadCommittee(this._committeeId);
     const params = loadCommitteeParams();
     const traits = loadTraitCatalog();
     const chairCapitalParams = loadChairCapitalParams();
+    if (capitalSpend) {
+      Session._assertWithinBudget(capitalSpend, this.chairCapital(), chairCapitalParams.max_spend_per_member, "proposeRate");
+    }
     const effectiveBands = capitalSpend
       ? computeEffectiveBands(capitalSpend, committee, chairCapitalParams)
       : undefined;
@@ -442,7 +452,7 @@ export class Session {
     this._notifyListeners();
   }
 
-  // SPEC-GUIDE-1: Store the forward-guidance stance; wired to the spiral recovery path via stanceMultiplier().
+  // SPEC-GUIDE-1: Store the forward-guidance stance; scales `expectations_anchor_pull` passed to `applyMacroDynamics` via stanceMultiplier().
   // The value is NOT written into state.vars; the stance is a Session-level concern, not a var.
   // Fires listeners (downstream UI may want to reflect the stored stance).
   setForwardGuidanceStance(stance: ForwardGuidanceStance): void {
@@ -492,21 +502,31 @@ export class Session {
   }
 
   /**
-   * Throw a descriptive error if the total of all capitalSpend values exceeds the budget.
-   * SPEC-COMM-7: Chair capital is a hard persuasion budget; overspending must fail loudly.
-   * Each entry is validated for finiteness and non-negativity before aggregating, so that
-   * NaN or negative values (which would silently corrupt the budget total) fail early with
-   * a clear message rather than propagating into computeEffectiveBands.
+   * Throw a descriptive error if any capitalSpend entry is invalid or if the total exceeds
+   * the budget. Also throws if any single member's spend exceeds max_spend_per_member —
+   * over-allocating one member wastes budget silently, which contradicts the "hard persuasion
+   * budget" contract (SPEC-COMM-7).
+   *
+   * Validation order:
+   *  1. Per-entry: must be a non-negative finite number.
+   *  2. Per-entry: must not exceed max_spend_per_member (over-allocation fails loudly).
+   *  3. Total: sum must not exceed budget.
    */
   private static _assertWithinBudget(
     capitalSpend: Readonly<Record<string, number>>,
     budget: number,
+    maxPerMember: number,
     caller: string,
   ): void {
     for (const [id, v] of Object.entries(capitalSpend)) {
       if (!Number.isFinite(v) || v < 0) {
         throw new Error(
           `Session.${caller}: capitalSpend["${id}"] must be a non-negative finite number, got ${v}.`,
+        );
+      }
+      if (v > maxPerMember) {
+        throw new Error(
+          `Session.${caller}: capitalSpend["${id}"] (${v}) exceeds max_spend_per_member (${maxPerMember}). Reduce spend for this member.`,
         );
       }
     }

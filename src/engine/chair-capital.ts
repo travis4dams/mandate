@@ -29,8 +29,9 @@ export function computeChairCapital(credibility: number, params: ChairCapitalPar
 
 /**
  * Compute per-member effective compromise bands after applying capital spend.
- * Returns only the members who received spend > 0 (callers merge with the member's
+ * Returns only the members who received positive spend (callers merge with the member's
  * original compromise_band via `effectiveBands?.[m.id] ?? m.compromise_band`).
+ * Zero spend is a no-op (member absent from result); negative spend throws.
  * Spend is capped at params.max_spend_per_member per member.
  * Pure: does not mutate committee or params.
  */
@@ -39,20 +40,18 @@ export function computeEffectiveBands(
   committee: Committee,
   params: ChairCapitalParams,
 ): Readonly<Record<string, number>> {
-  const knownIds = new Set(committee.members.map((m) => m.id));
-  for (const key of Object.keys(capitalSpend)) {
-    if (!knownIds.has(key)) {
+  const membersById = new Map(committee.members.map((m) => [m.id, m]));
+  const result: Record<string, number> = {};
+  for (const [id, raw] of Object.entries(capitalSpend)) {
+    const m = membersById.get(id);
+    if (!m) {
       throw new Error(
-        `computeEffectiveBands: capitalSpend key "${key}" does not match any member id in committee "${committee.id}".`,
+        `computeEffectiveBands: capitalSpend key "${id}" does not match any member id in committee "${committee.id}".`,
       );
     }
-  }
-  const result: Record<string, number> = {};
-  for (const m of committee.members) {
-    const raw = capitalSpend[m.id] ?? 0;
     if (raw < 0) {
       throw new Error(
-        `computeEffectiveBands: capitalSpend for member "${m.id}" is negative (${raw}). Negative spend is not allowed.`,
+        `computeEffectiveBands: capitalSpend for member "${id}" is negative (${raw}). Negative spend is not allowed.`,
       );
     }
     if (raw === 0) continue;
@@ -60,10 +59,10 @@ export function computeEffectiveBands(
     const widened = m.compromise_band + capped * params.band_widen_per_unit;
     if (widened > 0.5) {
       throw new Error(
-        `computeEffectiveBands: effective compromise_band for member "${m.id}" would be ${widened.toFixed(4)}, which exceeds the maximum allowed value of 0.5. Reduce the spend or lower the content's compromise_band.`,
+        `computeEffectiveBands: effective compromise_band for member "${id}" would be ${widened.toFixed(4)}, which exceeds the maximum allowed value of 0.5. Reduce the spend or lower the content's compromise_band.`,
       );
     }
-    result[m.id] = widened;
+    result[id] = widened;
   }
   return result;
 }
@@ -83,7 +82,7 @@ export function loadChairCapitalParams(): ChairCapitalParams {
   return _cachedChairCapitalParams;
 }
 
-/** Test-only: clear the module-level cache. */
-export function _resetChairCapitalCache(): void {
+/** Test-only: clear the module-level params cache. */
+export function _resetChairCapitalParamsCache(): void {
   _cachedChairCapitalParams = undefined;
 }

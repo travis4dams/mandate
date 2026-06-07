@@ -5,6 +5,7 @@ import type { TraitEntry } from "../content/traits.js";
 import type { GameState } from "./state.js";
 
 // FOMC vote engine — SPEC-COMM-2 + SPEC-COMM-3 + SPEC-COMM-5 + SPEC-COMM-7.
+// SPEC-COMM-7 adds optional Chair capital effectiveBands that override the trait-computed band.
 // Pure: returns a new FomcVote; never mutates state or committee.
 
 export interface FomcVote {

@@ -3,7 +3,7 @@ import {
   computeChairCapital,
   computeEffectiveBands,
   loadChairCapitalParams,
-  _resetChairCapitalCache,
+  _resetChairCapitalParamsCache,
   type ChairCapitalParams,
 } from "../src/engine/chair-capital";
 import { vote, previewVote, type CommitteeParams } from "../src/engine/fomc";
@@ -87,6 +87,14 @@ describe("computeEffectiveBands", () => {
     expect(bands["member.a"]).toBeUndefined();
   });
 
+  // SPEC-COMM-7: empty spend map returns empty result (truthy object, no entries)
+  it("empty capitalSpend {} returns empty result", () => {
+    // SPEC-COMM-7
+    const committee = committeeOf([member("a")]);
+    const bands = computeEffectiveBands({}, committee, PARAMS);
+    expect(Object.keys(bands)).toHaveLength(0);
+  });
+
   // SPEC-COMM-7: spending units widens the band by band_widen_per_unit per unit
   it("1 unit spend widens band by band_widen_per_unit", () => {
     const m = member("a", { compromise_band: 0.005 });
@@ -121,6 +129,27 @@ describe("computeEffectiveBands", () => {
     const bands = computeEffectiveBands({ "member.a": 2, "member.b": 1 }, committee, PARAMS);
     expect(bands["member.a"]).toBeCloseTo(0.005 + 2 * 0.002, 6);
     expect(bands["member.b"]).toBeCloseTo(0.010 + 1 * 0.002, 6);
+  });
+
+  // SPEC-COMM-7: post-widen band exceeding 0.5 throws
+  it("throws when spend would widen a band past 0.5", () => {
+    // SPEC-COMM-7
+    // 1 unit × band_widen_per_unit (0.002) → 0.499 + 0.002 = 0.501 > 0.5
+    const m = member("a", { compromise_band: 0.499 });
+    const committee = committeeOf([m]);
+    expect(() =>
+      computeEffectiveBands({ "member.a": 1 }, committee, PARAMS),
+    ).toThrow(/exceeds the maximum allowed value of 0\.5/);
+  });
+
+  // SPEC-COMM-7: negative spend value throws (not silently dropped)
+  it("throws on negative spend value (Session entry point)", () => {
+    // SPEC-COMM-7: negative spend is a caller bug; it must throw, not be silently ignored.
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    const probe = s.committeeBriefing(0.1075);
+    const firstId = probe.previews[0].memberId;
+    // _assertWithinBudget catches this before computeEffectiveBands is reached.
+    expect(() => s.committeeBriefing(0.1075, { [firstId]: -1 })).toThrow(/non-negative finite/);
   });
 });
 
@@ -174,12 +203,12 @@ describe("chair capital integration with previewVote / vote", () => {
 describe("loadChairCapitalParams", () => {
   // SPEC-COMM-7: loader reads content/engine/chair-capital.json
   it("loads without throwing", () => {
-    _resetChairCapitalCache();
+    _resetChairCapitalParamsCache();
     expect(() => loadChairCapitalParams()).not.toThrow();
   });
 
   it("returns valid params", () => {
-    _resetChairCapitalCache();
+    _resetChairCapitalParamsCache();
     const p = loadChairCapitalParams();
     expect(p.base_capital).toBeGreaterThanOrEqual(0);
     expect(p.credibility_weight).toBeGreaterThanOrEqual(0);
@@ -207,6 +236,30 @@ describe("computeEffectiveBands: unknown capitalSpend key throws", () => {
   });
 });
 
+describe("previewVote: effectiveBands entry validation (SPEC-COMM-7)", () => {
+  // SPEC-COMM-7: fomc.ts validates each effectiveBands entry at vote time.
+  // Callers can construct effectiveBands manually without going through computeEffectiveBands.
+  it("previewVote throws on NaN effectiveBands entry", () => {
+    // SPEC-COMM-7
+    const m = member("a");
+    const committee = committeeOf([m]);
+    const state = stateWithCredibility(50);
+    expect(() =>
+      previewVote(committee, 0.05, state, COMMITTEE_PARAMS, [], { "member.a": NaN }),
+    ).toThrow(/invalid/);
+  });
+
+  it("previewVote throws on out-of-range effectiveBands entry (> 0.5)", () => {
+    // SPEC-COMM-7
+    const m = member("a");
+    const committee = committeeOf([m]);
+    const state = stateWithCredibility(50);
+    expect(() =>
+      previewVote(committee, 0.05, state, COMMITTEE_PARAMS, [], { "member.a": 0.6 }),
+    ).toThrow(/invalid/);
+  });
+});
+
 describe("Session.chairCapital()", () => {
   // SPEC-COMM-7: chairCapital() wires getCredibility → computeChairCapital correctly.
   it("returns a non-negative integer for the 1979 scenario (credibility=25)", () => {
@@ -223,6 +276,16 @@ describe("Session.chairCapital()", () => {
     const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
     const credibility = s.current.vars.credibility as number; // 25 from scenario
     const expected = computeChairCapital(credibility, loadChairCapitalParams());
+    expect(s.chairCapital()).toBe(expected);
+  });
+
+  it("chairCapital() reflects updated credibility after proposeRate", () => {
+    // SPEC-COMM-7: proposeRate calls applyMeetingOutcome which updates credibility in _state.vars.
+    // chairCapital() must read the current (post-meeting) credibility, not the stale initial value.
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    s.proposeRate(0.1075);
+    const credAfter = s.current.vars.credibility as number;
+    const expected = computeChairCapital(credAfter, loadChairCapitalParams());
     expect(s.chairCapital()).toBe(expected);
   });
 });
@@ -332,16 +395,33 @@ describe("Session.proposeRate with capitalSpend (SPEC-COMM-7 AC)", () => {
 });
 
 describe("Session: total capitalSpend budget guard (SPEC-COMM-7)", () => {
+  // Helper: build a spend map that totals targetTotal without any single member exceeding
+  // max_spend_per_member (3), by spreading across the first N members in the briefing.
+  function spreadSpend(
+    previews: readonly { memberId: string }[],
+    totalUnits: number,
+    maxPerMember = 3,
+  ): Record<string, number> {
+    const result: Record<string, number> = {};
+    let remaining = totalUnits;
+    for (const p of previews) {
+      if (remaining <= 0) break;
+      const chunk = Math.min(remaining, maxPerMember);
+      result[p.memberId] = chunk;
+      remaining -= chunk;
+    }
+    return result;
+  }
+
   // SPEC-COMM-7: spending more than chairCapital() total must throw in both spend paths.
+  // Spread budget+1 across members so no single member exceeds max_spend_per_member,
+  // isolating the total-budget check from the per-member cap check.
   it("committeeBriefing throws when total spend exceeds chairCapital() budget", () => {
     // SPEC-COMM-7
     const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
     const budget = s.chairCapital();
-    // Build a spend map whose sum is budget + 1 (guaranteed to exceed).
-    // Use the first real member id from a probe briefing.
     const probe = s.committeeBriefing(0.1075);
-    const firstId = probe.previews[0].memberId;
-    const overBudgetSpend = { [firstId]: budget + 1 };
+    const overBudgetSpend = spreadSpend(probe.previews, budget + 1);
     expect(() => s.committeeBriefing(0.1075, overBudgetSpend)).toThrow(/chairCapital\(\) budget/);
   });
 
@@ -350,21 +430,39 @@ describe("Session: total capitalSpend budget guard (SPEC-COMM-7)", () => {
     const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
     const budget = s.chairCapital();
     const probe = s.committeeBriefing(0.1075);
-    const firstId = probe.previews[0].memberId;
-    const overBudgetSpend = { [firstId]: budget + 1 };
+    const overBudgetSpend = spreadSpend(probe.previews, budget + 1);
     expect(() => s.proposeRate(0.1075, overBudgetSpend)).toThrow(/chairCapital\(\) budget/);
   });
 
+  // SPEC-COMM-7: exact-budget spend (total === budget) is allowed in both paths.
   it("committeeBriefing does not throw when total spend equals chairCapital() budget", () => {
     // SPEC-COMM-7: spend exactly at budget is allowed
     const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
     const budget = s.chairCapital();
     const probe = s.committeeBriefing(0.1075);
-    const firstId = probe.previews[0].memberId;
-    // Spend exactly the budget on one member (capped at max_spend_per_member internally, but
-    // the budget guard fires before computeEffectiveBands, so total == budget is allowed).
-    const exactSpend = { [firstId]: budget };
+    // Spread exactly budget units across members (each ≤ max_spend_per_member).
+    const exactSpend = spreadSpend(probe.previews, budget);
     expect(() => s.committeeBriefing(0.1075, exactSpend)).not.toThrow();
+  });
+
+  it("proposeRate does not throw when total spend equals chairCapital() budget", () => {
+    // SPEC-COMM-7: spend exactly at budget is allowed (_assertWithinBudget uses strict >).
+    // If a future refactor changes > to >=, this test catches the regression in proposeRate.
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    const budget = s.chairCapital();
+    const probe = s.committeeBriefing(0.1075);
+    const exactSpend = spreadSpend(probe.previews, budget);
+    expect(() => s.proposeRate(0.1075, exactSpend)).not.toThrow();
+  });
+
+  // SPEC-COMM-7: over-allocating a single member beyond max_spend_per_member fails loudly.
+  it("committeeBriefing throws when a single member's spend exceeds max_spend_per_member", () => {
+    // SPEC-COMM-7: over-allocation wastes budget silently; fail loudly instead.
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    const probe = s.committeeBriefing(0.1075);
+    const firstId = probe.previews[0].memberId;
+    // max_spend_per_member = 3; spend 4 on one member.
+    expect(() => s.committeeBriefing(0.1075, { [firstId]: 4 })).toThrow(/max_spend_per_member/);
   });
 
   it("committeeBriefing throws on NaN capitalSpend entry (SPEC-COMM-7)", () => {
@@ -386,9 +484,7 @@ describe("Session: total capitalSpend budget guard (SPEC-COMM-7)", () => {
   });
 
   it("committeeBriefing throws on negative capitalSpend entry (SPEC-COMM-7)", () => {
-    // SPEC-COMM-7: a negative entry combined with a large positive could pass the total
-    // budget sum (e.g. { a: budget+2, b: -3 } totals budget-1) but is a caller bug.
-    // Per-entry validation must catch it before the sum is computed.
+    // SPEC-COMM-7: a negative entry is a caller bug; per-entry validation catches it early.
     const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
     const probe = s.committeeBriefing(0.1075);
     const firstId = probe.previews[0].memberId;
