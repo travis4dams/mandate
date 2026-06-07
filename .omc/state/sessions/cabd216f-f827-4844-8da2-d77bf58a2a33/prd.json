@@ -117,8 +117,8 @@
       "id": "US-012",
       "spec": "SPEC-WEB-3",
       "title": "Time-series charts: 4 series via Observable Plot with fog overlay",
-      "passes": false,
-      "pr": null,
+      "passes": true,
+      "pr": 30,
       "dependencies": [
         "US-007"
       ]
@@ -179,7 +179,7 @@
       "id": "US-018",
       "spec": "SPEC-CAL-2",
       "title": "Calibration thresholds content type + schema + validate registration",
-      "passes": false,
+      "passes": true,
       "pr": null,
       "dependencies": []
     },

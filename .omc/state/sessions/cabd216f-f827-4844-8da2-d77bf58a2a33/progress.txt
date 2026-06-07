@@ -213,3 +213,53 @@ Phase 1:
     CLAUDE.md violation (content ID hardcoded in src/engine code) requiring non-trivial redesign.
   PRs #50, #53, #61, #63, #66 all have newer commits since last review — awaiting re-review.
 Stories still passing=false: US-012..US-019 (US-014 now passes=true as of this cycle).
+
+== CYCLE 15 — 2026-06-07 ==
+Phase 0 (issue queue): empty — fell through to Phase 1.
+Phase 1:
+  PR #50 (SPEC-COMM-5, issue-37-spec-comm-5-trait-catalog) — VERDICT: APPROVE (round 3+1
+    fix ac0aaf3). Squash-merged as ab8817a1. SPEC-COMM-5 is not a PRD story; prd.json unchanged.
+  PR #30 (SPEC-WEB-3) confirmed on main (ca28bf1) → US-012 marked passes=true, pr=30.
+  PR #53 (SPEC-COMM-6): STUCK ESCALATION — 3rd consecutive VERDICT: REQUEST_CHANGES.
+    Round 3 blockers: (1) NaN member coefficients silently poison stance state;
+    (2) resolveStoredStance typed as unknown instead of number|undefined.
+    Round-3 fix (64d0f55) pushed by prior fire; CI pending at cycle end.
+  PR #55 (SPEC-COMM-7): STUCK ESCALATION — 3rd consecutive VERDICT: REQUEST_CHANGES.
+    Round 3 blockers: (1) budget not enforced against chairCapital() total;
+    (2) negative capitalSpend silently discarded.
+    Round-3 fix (e47f6070) by cycle 14 dispatcher. Branch dirty (base out of date).
+  Open PRs awaiting review: PR #61 (SPEC-DOCT-1 round-2 fix 892d061), PR #63 (SPEC-WEB-6),
+    PR #64 (SPEC-SIM-6 fix 48244aa dirty), PR #66 (SPEC-HEAR-1 round-1 fix cfc0f90),
+    PR #69 (chore cycle 14).
+  Chore PR #70 (chore/cycle-15-progress) opened; CI in progress.
+Stories still passing=false: US-013, US-015..US-019.
+
+== CYCLE 16 — 2026-06-07 ==
+Phase 0 (issue queue): empty — fell through to Phase 1.
+Phase 1:
+  PR #69 (chore cycle 14): VERDICT: APPROVE — squash-merged as 2df775dd.
+  PR #70 (chore cycle 15): CI in progress; superseded by this chore PR (cycle 16).
+  US-018 (SPEC-CAL-2): calibration-volcker.test.ts already on main, 3/3 tests pass
+    locally → passes=true (no dedicated PR; tests landed via earlier story merges).
+  PR #53 (SPEC-COMM-6): DEFINITIVE STUCK — round 4 VERDICT: REQUEST_CHANGES (failure
+    on 64d0f55). Active blockers: member coefficient NaN not guarded; resolveStoredStance
+    stored: unknown typing; missing ±Infinity tests; inertia=0/1 boundary tests; missing
+    session.advance() stance integration test; vote() with stored stance test; stanceKey
+    format pin test; reset()/proposeRate() stance-preservation tests.
+    No executor dispatched. USER ACTION NEEDED: (a) close #53 and re-dispatch from scratch,
+    (b) manual fix, or (c) raise retry cap.
+  PR #55 (SPEC-COMM-7): round-3 fix e47f6070 has 0 check_runs (CI not triggered). Branch
+    dirty. Deferred — awaiting CI trigger.
+  PR #61 (SPEC-DOCT-1), PR #63 (SPEC-WEB-6), PR #64 (SPEC-SIM-6): 0 check_runs on current
+    HEADs. Deferred — awaiting CI trigger.
+  PR #66 (SPEC-HEAR-1): round 2 VERDICT: REQUEST_CHANGES (claude-review failure on cfc0f90).
+    Round-2 fix dispatched and pushed: JSDoc on _resetHearingCatalogCache; tiebreak direction
+    clarified ("alphabetically earliest"); SPEC id moved from test name strings to body comments;
+    test name "empty modifiers" corrected. All 256 tests pass; npm run check green.
+Dispatched new PRD story executors (all background):
+  US-015 (SPEC-PROD-1): productivity drift — state.vars.productivity geometric drift
+  US-016 (SPEC-TERM-1): term structure — long_rate EWMA toward policy_rate
+  US-017 (SPEC-SHOCK-1): stochastic shocks — seeded supply shock into Phillips curve
+  US-019 (SPEC-CAL-3): RMSE soft gate — calibrate.ts + CalibrationThresholds content type
+Stories now passing: US-001..US-012, US-014, US-018.
+Stories still passing=false: US-013, US-015..US-017, US-019.
