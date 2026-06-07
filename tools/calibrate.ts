@@ -3,9 +3,11 @@
 // (Session.advance runs the real-rate dynamics, expectations, and mission-tied credibility), and
 // emits a CSV comparing engine output to real FRED observations.
 // No runtime API calls — all data is committed as content. SPEC-CAL-2 pins the RMSE tolerances
-// asserted here as a test.
+// asserted here as a test. SPEC-CAL-3: thresholds are content-governed; a PASS/FAIL verdict is
+// emitted per metric. The harness exits 0 even on FAIL (soft gate — warns without blocking CI).
 
 import { loadCalibration } from "../src/content/calibration.js";
+import { loadCalibrationThresholds } from "../src/content/calibration-thresholds.js";
 import { Session } from "../src/engine/session.js";
 
 // 1979-08 + 88 months = 1986-12; fromReplay seeds trajectory[0] at 1979-08 → 89 aligned entries.
@@ -86,7 +88,31 @@ for (let i = 0; i < cal.series.length; i++) {
 }
 
 const n = cal.series.length;
-const rmse = (sumSq: number): string => Math.sqrt(sumSq / n).toFixed(4);
-console.error(`policy_rate  RMSE: ${rmse(sumSqRate)} (n=${n})`);
-console.error(`inflation    RMSE: ${rmse(sumSqInfl)} (n=${n})  [SPEC-CAL-2 tolerance < 0.0250]`);
-console.error(`unemployment RMSE: ${rmse(sumSqUnemp)} (n=${n})  [SPEC-CAL-2 tolerance < 0.0200]`);
+const rmseVal = (sumSq: number): number => Math.sqrt(sumSq / n);
+
+// SPEC-CAL-3: load content-governed thresholds and emit a PASS/FAIL verdict per metric.
+// The process exits 0 regardless of verdict — this is a soft gate (warns without blocking CI).
+let thresholds;
+try {
+  thresholds = loadCalibrationThresholds();
+} catch (e) {
+  console.error(`calibrate: loadCalibrationThresholds() failed: ${(e as Error).message}`);
+  process.exit(1);
+}
+
+function verdict(label: string, val: number, max: number): void {
+  const valStr = val.toFixed(4);
+  const maxStr = max.toFixed(4);
+  const pass = val < max;
+  const status = pass ? "PASS" : "FAIL";
+  const suffix = pass ? `(< ${maxStr})` : `(< ${maxStr}) ← threshold exceeded`;
+  console.error(`${label} RMSE: ${valStr} ${status} ${suffix}`);
+}
+
+const inflRmse = rmseVal(sumSqInfl);
+const unempRmse = rmseVal(sumSqUnemp);
+const rateRmse = rmseVal(sumSqRate);
+
+verdict("inflation   ", inflRmse, thresholds.inflation_rmse_max);
+verdict("unemployment", unempRmse, thresholds.unemployment_rmse_max);
+verdict("policy_rate ", rateRmse, thresholds.policy_rate_rmse_max);

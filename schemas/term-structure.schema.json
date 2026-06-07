@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mandate.dev/schemas/term-structure.schema.json",
+  "title": "TermStructureParams",
+  "description": "EWMA half-life for long_rate convergence toward policy_rate. SPEC-TERM-1.",
+  "type": "object",
+  "required": ["half_life_months"],
+  "properties": {
+    "half_life_months": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "EWMA half-life in months for long_rate convergence toward policy_rate."
+    }
+  },
+  "additionalProperties": false
+}

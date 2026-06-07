@@ -24,6 +24,7 @@ const COMMITTEE_PARAMS: CommitteeParams = {
   neutral_rate: 0.05,
   target_inflation: 0.02,
   target_unemployment: 0.04,
+  conviction_band_factor: 0, // 0 = no conviction narrowing; isolates chair-capital band widening
 };
 
 function member(id: string, overrides: Partial<CommitteeMember> = {}): CommitteeMember {
@@ -35,6 +36,7 @@ function member(id: string, overrides: Partial<CommitteeMember> = {}): Committee
     inertia: 0.88,
     competence: 0.8,
     compromise_band: 0.005,
+    conviction: 0, // 0 = no conviction narrowing; isolates chair-capital band widening
     ...overrides,
   };
 }
@@ -131,12 +133,12 @@ describe("chair capital integration with previewVote / vote", () => {
     const state = stateWithCredibility(50);
 
     // Without capital, member dissents at a proposal 0.003 above preferred.
-    const noBands = previewVote(committee, 0.053, state, COMMITTEE_PARAMS);
+    const noBands = previewVote(committee, 0.053, state, COMMITTEE_PARAMS, []);
     expect(noBands.previews[0].wouldDissent).toBe(true);
 
     // With enough capital spend (2 units → +0.004 band → effective 0.005 > 0.003), member assents.
     const effectiveBands = computeEffectiveBands({ "member.a": 2 }, committee, PARAMS);
-    const withBands = previewVote(committee, 0.053, state, COMMITTEE_PARAMS, effectiveBands);
+    const withBands = previewVote(committee, 0.053, state, COMMITTEE_PARAMS, [], effectiveBands);
     expect(withBands.previews[0].wouldDissent).toBe(false);
   });
 
@@ -147,10 +149,10 @@ describe("chair capital integration with previewVote / vote", () => {
     const state = stateWithCredibility(50);
 
     const effectiveBands = computeEffectiveBands({ "member.a": 3 }, committee, PARAMS);
-    previewVote(committee, 0.053, state, COMMITTEE_PARAMS, effectiveBands);
+    previewVote(committee, 0.053, state, COMMITTEE_PARAMS, [], effectiveBands);
 
     // Subsequent call without bands uses original compromise_band
-    const fresh = previewVote(committee, 0.053, state, COMMITTEE_PARAMS);
+    const fresh = previewVote(committee, 0.053, state, COMMITTEE_PARAMS, []);
     expect(fresh.previews[0].wouldDissent).toBe(true);
   });
 
@@ -160,11 +162,11 @@ describe("chair capital integration with previewVote / vote", () => {
     const committee = committeeOf([m]);
     const state = stateWithCredibility(50);
 
-    const withoutSpend = vote(committee, 0.053, state, COMMITTEE_PARAMS);
+    const withoutSpend = vote(committee, 0.053, state, COMMITTEE_PARAMS, []);
     expect(withoutSpend.dissents).toBe(1);
 
     const effectiveBands = computeEffectiveBands({ "member.a": 3 }, committee, PARAMS);
-    const withSpend = vote(committee, 0.053, state, COMMITTEE_PARAMS, effectiveBands);
+    const withSpend = vote(committee, 0.053, state, COMMITTEE_PARAMS, [], effectiveBands);
     expect(withSpend.dissents).toBe(0);
   });
 });

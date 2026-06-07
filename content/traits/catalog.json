@@ -1,0 +1,51 @@
+[
+  {
+    "id": "trait.hawkish_lean",
+    "name": "trait.hawkish_lean.name",
+    "desc": "trait.hawkish_lean.desc",
+    "effects": {
+      "preferred_rate_shift": 0.005
+    },
+    "signal_hooks": [
+      { "signal": "sector.energy_prices", "direction": 1, "magnitude": 0.002 }
+    ]
+  },
+  {
+    "id": "trait.dovish_lean",
+    "name": "trait.dovish_lean.name",
+    "desc": "trait.dovish_lean.desc",
+    "effects": {
+      "preferred_rate_shift": -0.005
+    },
+    "signal_hooks": [
+      { "signal": "sector.labor_demand", "direction": -1, "magnitude": 0.003 }
+    ]
+  },
+  {
+    "id": "trait.principled_dissenter",
+    "name": "trait.principled_dissenter.name",
+    "desc": "trait.principled_dissenter.desc",
+    "effects": {
+      "band_modifier": -0.3
+    },
+    "signal_hooks": []
+  },
+  {
+    "id": "trait.ag_hawk",
+    "name": "trait.ag_hawk.name",
+    "desc": "trait.ag_hawk.desc",
+    "effects": {},
+    "signal_hooks": [
+      { "signal": "sector.ag_prices", "direction": 1, "magnitude": 0.003 }
+    ]
+  },
+  {
+    "id": "trait.manufacturing_dove",
+    "name": "trait.manufacturing_dove.name",
+    "desc": "trait.manufacturing_dove.desc",
+    "effects": {},
+    "signal_hooks": [
+      { "signal": "sector.manufacturing_employment", "direction": -1, "magnitude": 0.002 }
+    ]
+  }
+]
