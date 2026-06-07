@@ -104,5 +104,7 @@
   "hearing.q.crisis_response.text": "Looking at the current macroeconomic environment, how would you characterize the primary risk, and what is your preferred first-response framework?",
   "hearing.a.crisis_orthodox.text": "The primary risk is entrenched inflation expectations. Conventional rate policy remains the right tool; I am prepared to accept near-term output costs.",
   "hearing.a.crisis_activist.text": "The situation calls for an active, broad toolkit — including balance-sheet measures — deployed swiftly before conditions deteriorate further.",
-  "hearing.a.crisis_pragmatic.text": "I will assess the data as it arrives and choose instruments proportionate to the threat. Flexibility is a virtue, not a vice."
+  "hearing.a.crisis_pragmatic.text": "I will assess the data as it arrives and choose instruments proportionate to the threat. Flexibility is a virtue, not a vice.",
+  "ui.dashboard.chart.legend.credibility": "Credibility",
+  "ui.dashboard.chart.unavailable": "Chart unavailable."
 }

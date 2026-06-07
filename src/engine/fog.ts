@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { loadValidatedFile } from "../content/loader.js";
 import type { GameState } from "./state.js";
 
-interface FogParams {
+export interface FogParams {
   noise_scale: number;
   lag_months: number;
 }
@@ -44,19 +44,22 @@ export function observe(
     if (!(seriesId in state.vars)) {
       throw new Error(`fog: series "${seriesId}" missing from state.vars`);
     }
-    truth = state.vars[seriesId];
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    truth = state.vars[seriesId]!;
   } else if (state.history.length >= lag_months) {
-    const slot = state.history[lag_months - 1];
+    const slot = state.history[lag_months - 1]!;
     if (!(seriesId in slot.vars)) {
       throw new Error(`fog: series "${seriesId}" missing from state.history[${lag_months - 1}].vars`);
     }
-    truth = slot.vars[seriesId];
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    truth = slot.vars[seriesId]!;
   } else {
     // History is shorter than requested lag — fall back to current value.
     if (!(seriesId in state.vars)) {
       throw new Error(`fog: series "${seriesId}" missing from state.vars (fallback path)`);
     }
-    truth = state.vars[seriesId];
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    truth = state.vars[seriesId]!;
   }
 
   if (noise_scale === 0) {
