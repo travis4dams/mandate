@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mandate.dev/schemas/lags.schema.json",
+  "title": "Lags params",
+  "description": "Distributed-lag kernel weights. SPEC-LAG-1: policy_to_output_gap maps past real-rate gaps to output_gap.",
+  "type": "object",
+  "required": ["policy_to_output_gap"],
+  "additionalProperties": false,
+  "properties": {
+    "policy_to_output_gap": {
+      "type": "array",
+      "description": "Exponentially-decaying lag weights mapping past real-rate gaps to output_gap. Runtime loader (loadLagParams) asserts sum = 1.0 ±0.001.",
+      "items": { "type": "number", "minimum": 0, "maximum": 1 },
+      "minItems": 1,
+      "maxItems": 60
+    }
+  }
+}

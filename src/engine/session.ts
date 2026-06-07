@@ -5,9 +5,12 @@ import { loadCommittee } from "../content/committees.js";
 import { loadValidatedFile } from "../content/loader.js";
 import { tick } from "./clock.js";
 import { vote, previewVote, loadCommitteeParams } from "./fomc.js";
+import { loadTraitCatalog } from "../content/traits.js";
 import { applyMeetingOutcome, getCredibility } from "./credibility.js";
 import { applyMacroDynamics, loadDynamicsParams } from "./dynamics.js";
 import { loadClockCadenceParams, scaleParamsForTick } from "./cadence.js";
+import { applyRateToOutputGap, loadLagParams } from "./lags.js";
+import { applyTermStructure, loadTermStructureParams } from "./term-structure.js";
 import { onTarget, loadMandateParams } from "./mandate.js";
 import type { GameState, GameStateSnapshot } from "./state.js";
 import type { FomcVote, MemberVotePreview } from "./fomc.js";
@@ -258,6 +261,10 @@ export class Session {
     // dovish guidance and sub-monthly cadence compose correctly.
     const guidanceP = loadGuidanceParams();
     const dynamicsParams = loadDynamicsParams();
+    // SPEC-LAG-1: lag params are a cached singleton; hoisted for the same reason.
+    const lagParams = loadLagParams();
+    // SPEC-TERM-1: term-structure params are a cached singleton; hoisted for the same reason.
+    const termStructureParams = loadTermStructureParams();
     const effectiveParams = {
       ...dynamicsParams,
       expectations_anchor_pull:
@@ -282,22 +289,52 @@ export class Session {
 
         this._state = tick(this._state, 1);
 
+        // SPEC-LAG-1: update output_gap from trajectory before applying macro dynamics.
+        // Ordering invariant: applyRateToOutputGap reads _trajectoryInternal BEFORE the new
+        // snapshot is pushed — this month's rate enters the lag kernel next month.
+        this._state = applyRateToOutputGap(
+          this._state,
+          this._trajectoryInternal,
+          lagParams,
+          dynamicsParams.real_neutral_rate,
+        );
+
         if (ticksPerMonth === 1) {
+          // Monthly path (fast): single applyMacroDynamics call with unscaled params.
           this._state = applyMacroDynamics(this._state, scaledParams);
         } else {
-          // Sub-monthly path: save the monthly counter and start-of-month credibility,
-          // run n sub-ticks, then restore the counter to monthly semantics.
+          // SPEC-SIM-6 sub-monthly path: run n scaled sub-ticks, then overwrite
+          // months_below_anchor with the calendar-month-correct value.
+          //
+          // tick() is var-pure (clock.ts copies vars verbatim, only advancing the date).
+          // Capturing credibility and months_below_anchor here is equivalent to
+          // reading them at pre-tick start-of-month credibility.
           const monthsBelowBefore = (this._state.vars.months_below_anchor ?? 0) as number;
-          const credAtMonthStart = this._state.vars.credibility as number;
+          const credRaw = this._state.vars.credibility;
+          if (typeof credRaw !== "number" || !Number.isFinite(credRaw)) {
+            throw new Error(
+              `Session.advance: credibility var is missing or non-finite at ${this._state.date} (got ${String(credRaw)}). Ensure the scenario sets all REQUIRED_VARS.`,
+            );
+          }
+          const credAtMonthStart = credRaw;
 
           for (let t = 0; t < ticksPerMonth; t++) {
-            this._state = applyMacroDynamics(this._state, scaledParams);
+            try {
+              this._state = applyMacroDynamics(this._state, scaledParams);
+            } catch (subErr) {
+              throw new Error(
+                `Session.advance: applyMacroDynamics failed at ${this._state.date} sub-tick ${t + 1}/${ticksPerMonth}`,
+                { cause: subErr },
+              );
+            }
           }
 
-          // months_below_anchor counts calendar months, not sub-ticks. Restore to the
-          // saved value plus 0 or 1 based on the start-of-month credibility level.
+          // months_below_anchor counts calendar months, not sub-ticks. Overwrite with the
+          // calendar-month-correct value (0 or 1 increment based on start-of-month credibility).
+          // Using effectiveParams.anchor_threshold makes explicit that anchor_threshold is not
+          // a per-tick quantity — scaleParamsForTick does not change it.
           const correctMonthsBelow =
-            credAtMonthStart < scaledParams.anchor_threshold
+            credAtMonthStart < effectiveParams.anchor_threshold
               ? monthsBelowBefore + 1
               : monthsBelowBefore;
           this._state = {
@@ -306,13 +343,20 @@ export class Session {
           };
         }
 
+        // SPEC-TERM-1: update long_rate via EWMA toward policy_rate, after macro dynamics.
+        this._state = applyTermStructure(this._state, termStructureParams);
+
         const snapshot = Session._snapshotOf(this._state);
         this._trajectoryInternal.push(snapshot);
       }
     } catch (err) {
       this._state = checkpointState;
       this._trajectoryInternal.length = checkpointTrajectoryLength;
-      this._rebuildCaches();
+      try {
+        this._rebuildCaches();
+      } catch {
+        // _rebuildCaches failure must not replace the original error.
+      }
       throw err;
     }
 
@@ -337,7 +381,8 @@ export class Session {
   } {
     const committee = loadCommittee(this._committeeId);
     const params = loadCommitteeParams();
-    const { previews, gapInflation, gapUnemployment } = previewVote(committee, proposedRate, this._state, params);
+    const traits = loadTraitCatalog();
+    const { previews, gapInflation, gapUnemployment } = previewVote(committee, proposedRate, this._state, params, traits);
     return {
       previews,
       gapInflation,
@@ -367,7 +412,8 @@ export class Session {
 
     const committee = loadCommittee(this._committeeId);
     const params = loadCommitteeParams();
-    const fomcVote = vote(committee, rate, this._state, params);
+    const traits = loadTraitCatalog();
+    const fomcVote = vote(committee, rate, this._state, params, traits);
 
     // Apply the decided rate and compute new credibility.
     // SPEC-CRED-1 (issue #33): dissents no longer affect credibility, so fomcVote.dissents is
