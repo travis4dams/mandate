@@ -20,7 +20,7 @@
     "min_noise_scale": {
       "type": "number",
       "exclusiveMinimum": 0,
-      "description": "Floor noise half-width reached at high investment (best achievable quality). Must be <= base_noise_scale."
+      "description": "Floor noise half-width reached at high investment (best achievable quality). The runtime loader (loadForecastQualityParams) enforces min_noise_scale <= base_noise_scale at startup."
     }
   }
 }

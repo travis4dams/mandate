@@ -30,12 +30,13 @@ export function _resetForecastQualityParamsCache(): void {
 
 export function loadForecastQualityParams(): ForecastQualityParams {
   if (!_cache) {
-    _cache = loadValidatedFile<ForecastQualityParams>(SCHEMA_PATH, PARAMS_PATH);
-    if (_cache.min_noise_scale > _cache.base_noise_scale) {
+    const candidate = loadValidatedFile<ForecastQualityParams>(SCHEMA_PATH, PARAMS_PATH);
+    if (candidate.min_noise_scale > candidate.base_noise_scale) {
       throw new Error(
-        `loadForecastQualityParams: min_noise_scale (${_cache.min_noise_scale}) must be <= base_noise_scale (${_cache.base_noise_scale})`,
+        `loadForecastQualityParams: min_noise_scale (${candidate.min_noise_scale}) must be <= base_noise_scale (${candidate.base_noise_scale})`,
       );
     }
+    _cache = candidate;
   }
   return _cache;
 }
@@ -61,6 +62,16 @@ export function computeForecastNoiseScale(
       `computeForecastNoiseScale: params fields must all be finite numbers (base_noise_scale=${params.base_noise_scale}, quality_slope=${params.quality_slope}, min_noise_scale=${params.min_noise_scale})`,
     );
   }
+  if (params.quality_slope < 0) {
+    throw new Error(
+      `computeForecastNoiseScale: quality_slope must be >= 0 (got ${params.quality_slope}); negative slope would invert the SPEC-BRIEF-2 monotonicity guarantee`,
+    );
+  }
+  if (params.min_noise_scale > params.base_noise_scale) {
+    throw new Error(
+      `computeForecastNoiseScale: min_noise_scale (${params.min_noise_scale}) must be <= base_noise_scale (${params.base_noise_scale}); otherwise investment has no effect`,
+    );
+  }
   return Math.max(
     params.min_noise_scale,
     params.base_noise_scale - params.quality_slope * investment,
@@ -69,7 +80,9 @@ export function computeForecastNoiseScale(
 
 // Returns a new Briefing with each scenario forecast perturbed by uniform
 // noise in the range [-noiseScale, +noiseScale]. unemployment_outlook is
-// clamped to [0, 1] after perturbation. Purity: never mutates inputs.
+// clamped to [0, 1] after perturbation; inflation_outlook and growth_outlook
+// are intentionally left unclamped and may go negative (valid model output).
+// Purity: never mutates inputs.
 // The rng argument must be the caller's seeded generator (SPEC-SIM-1).
 export function applyForecastQuality(
   briefing: Briefing,

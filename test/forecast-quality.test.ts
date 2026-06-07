@@ -7,6 +7,7 @@ import {
   _resetForecastQualityParamsCache,
   type ForecastQualityParams,
 } from "../src/engine/forecast-quality.js";
+import { registerContentFile, _resetRegistries } from "../src/content/loader.js";
 import type { Briefing } from "../src/content/briefings.js";
 
 // SPEC-BRIEF-2
@@ -151,7 +152,7 @@ describe("applyForecastQuality", () => {
     }
   });
 
-  it("passes through growth_outlook when present", () => {
+  it("perturbs growth_outlook when present (value changes, field is defined)", () => {
     // SPEC-BRIEF-2
     const briefingWithGrowth: Briefing = {
       ...BASE_BRIEFING,
@@ -205,5 +206,64 @@ describe("loadForecastQualityParams", () => {
     const a = loadForecastQualityParams();
     const b = loadForecastQualityParams();
     expect(a).toBe(b);
+  });
+
+  it("does not poison the cache on validation failure (re-entry still throws, never returns bad params)", () => {
+    // SPEC-BRIEF-2 — regression guard for the round-1 cache-poison bug:
+    // if min_noise_scale > base_noise_scale the loader throws; _cache must
+    // remain null so a subsequent call also throws rather than returning the
+    // invalid object.
+    const SCHEMA_KEY = "schemas/forecast-quality.schema.json";
+    const CONTENT_KEY = "content/engine/forecast-quality.json";
+    // Inject a content payload that passes JSON-Schema (all numbers, min>0)
+    // but fails the runtime cross-field check (min_noise_scale > base_noise_scale).
+    registerContentFile(SCHEMA_KEY, {
+      $schema: "https://json-schema.org/draft/2020-12/schema",
+      $id: "https://mandate.dev/schemas/forecast-quality-test-poison.json",
+      type: "object",
+      additionalProperties: false,
+      required: ["base_noise_scale", "quality_slope", "min_noise_scale"],
+      properties: {
+        base_noise_scale: { type: "number", exclusiveMinimum: 0 },
+        quality_slope: { type: "number", minimum: 0 },
+        min_noise_scale: { type: "number", exclusiveMinimum: 0 },
+      },
+    });
+    registerContentFile(CONTENT_KEY, {
+      base_noise_scale: 0.01,
+      quality_slope: 0.0001,
+      min_noise_scale: 0.99, // intentionally > base_noise_scale
+    });
+
+    // First call must throw.
+    expect(() => loadForecastQualityParams()).toThrow(/min_noise_scale.*must be <= base_noise_scale/);
+
+    // Second call must ALSO throw — not silently return the poisoned object.
+    expect(() => loadForecastQualityParams()).toThrow();
+
+    // Clean up injected registrations so other tests use real files.
+    _resetRegistries();
+  });
+});
+
+describe("computeForecastNoiseScale — param guards", () => {
+  it("throws when quality_slope is negative", () => {
+    // SPEC-BRIEF-2 — negative slope inverts monotonicity guarantee
+    const badParams: ForecastQualityParams = {
+      base_noise_scale: 0.02,
+      quality_slope: -0.001,
+      min_noise_scale: 0.002,
+    };
+    expect(() => computeForecastNoiseScale(10, badParams)).toThrow(/quality_slope.*must be >= 0/);
+  });
+
+  it("throws when min_noise_scale > base_noise_scale", () => {
+    // SPEC-BRIEF-2 — investment would have no effect
+    const badParams: ForecastQualityParams = {
+      base_noise_scale: 0.002,
+      quality_slope: 0.0002,
+      min_noise_scale: 0.02,
+    };
+    expect(() => computeForecastNoiseScale(0, badParams)).toThrow(/min_noise_scale.*must be <= base_noise_scale/);
   });
 });
