@@ -423,11 +423,21 @@ export class Session {
     this._notifyListeners();
   }
 
-  /** Adopt a doctrine by id. Applies standing effects to state immediately.
-   *  @throws {DoctrineAlreadyAdoptedError} if already adopted.
-   *  @throws {DoctrineNotFoundError} if id not in catalog. */
-  adoptDoctrine(doctrineId: string, catalog: DoctrineEntry[] = loadDoctrineCatalog()): void {
-    const doctrine = getDoctrine(doctrineId, catalog);
+  /**
+   * Adopt a doctrine by id. Applies standing effects to state immediately.
+   * @throws {DoctrineAlreadyAdoptedError} if already adopted.
+   * @throws {DoctrineNotFoundError} if id not in catalog.
+   * @throws {Error} if a standing_effect target var is absent from state.
+   * @throws {Error} if the doctrine catalog cannot be loaded (I/O or schema failure).
+   */
+  adoptDoctrine(doctrineId: string, catalog?: DoctrineEntry[]): void {
+    let resolvedCatalog: DoctrineEntry[];
+    try {
+      resolvedCatalog = catalog ?? loadDoctrineCatalog();
+    } catch (e) {
+      throw new Error(`Session.adoptDoctrine: failed to load doctrine catalog`, { cause: e });
+    }
+    const doctrine = getDoctrine(doctrineId, resolvedCatalog);
     const checkpointState = this._state;
     const checkpointCache = this._currentCache;
     const checkpointTrajectory = this._trajectoryCache;
@@ -441,7 +451,8 @@ export class Session {
       this._state = checkpointState;
       try {
         this._rebuildCaches();
-      } catch {
+      } catch (secondaryErr) {
+        console.error("Session.adoptDoctrine: _rebuildCaches threw during rollback", secondaryErr);
         this._currentCache = checkpointCache;
         this._trajectoryCache = checkpointTrajectory;
       }
@@ -450,11 +461,22 @@ export class Session {
     this._notifyListeners();
   }
 
-  /** Abandon a doctrine by id. Reverses standing effects and deducts flip-flop credibility cost.
-   *  @throws {DoctrineNotAdoptedError} if not currently adopted.
-   *  @throws {DoctrineNotFoundError} if id not in catalog. */
-  abandonDoctrine(doctrineId: string, catalog: DoctrineEntry[] = loadDoctrineCatalog()): void {
-    const doctrine = getDoctrine(doctrineId, catalog);
+  /**
+   * Abandon a doctrine by id. Reverses standing effects and deducts flip-flop credibility cost.
+   * @throws {DoctrineNotAdoptedError} if not currently adopted.
+   * @throws {DoctrineNotFoundError} if id not in catalog.
+   * @throws {Error} if a standing_effect target var is absent from state.
+   * @throws {Error} if credibility var is absent when flip_flop_cost > 0.
+   * @throws {Error} if the doctrine catalog cannot be loaded (I/O or schema failure).
+   */
+  abandonDoctrine(doctrineId: string, catalog?: DoctrineEntry[]): void {
+    let resolvedCatalog: DoctrineEntry[];
+    try {
+      resolvedCatalog = catalog ?? loadDoctrineCatalog();
+    } catch (e) {
+      throw new Error(`Session.abandonDoctrine: failed to load doctrine catalog`, { cause: e });
+    }
+    const doctrine = getDoctrine(doctrineId, resolvedCatalog);
     const checkpointState = this._state;
     const checkpointCache = this._currentCache;
     const checkpointTrajectory = this._trajectoryCache;
@@ -468,7 +490,8 @@ export class Session {
       this._state = checkpointState;
       try {
         this._rebuildCaches();
-      } catch {
+      } catch (secondaryErr) {
+        console.error("Session.abandonDoctrine: _rebuildCaches threw during rollback", secondaryErr);
         this._currentCache = checkpointCache;
         this._trajectoryCache = checkpointTrajectory;
       }

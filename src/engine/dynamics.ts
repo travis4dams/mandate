@@ -94,7 +94,7 @@ export function applyMacroDynamics(state: GameState, params: MacroDynamicsParams
   // Expectations: adaptive when credibility is low, target-anchored when high (SPEC-CRED-4).
   // Floored at 0 to match inflation/unemployment — expectations can't go negative, and the floor
   // makes the invariant explicit so a future param change can't produce a negative real rate.
-  const c = credibility / CRED_MAX;
+  const c = Math.min(credibility / CRED_MAX, 1);
   const newAnchor = Math.max(
     0,
     anchor +

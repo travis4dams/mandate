@@ -47,7 +47,9 @@ export function adoptDoctrine(state: GameState, doctrine: DoctrineEntry): GameSt
 }
 
 /** Abandon a doctrine: reverses its standing effects and deducts the flip-flop credibility cost.
- *  The resulting credibility is clamped to [0, 100]; other standing-effect targets are unclamped. */
+ *  The resulting credibility is clamped to [0, 100]; other standing-effect targets are unclamped.
+ *  flip_flop_cost deduction only runs when flip_flop_cost > 0, so credibility is not written
+ *  unless the doctrine actually has a cost. */
 export function abandonDoctrine(state: GameState, doctrine: DoctrineEntry): GameState {
   if (!isDoctrineAdopted(state, doctrine.id)) {
     throw new DoctrineNotAdoptedError(doctrine.id);
@@ -59,7 +61,6 @@ export function abandonDoctrine(state: GameState, doctrine: DoctrineEntry): Game
     }
     nextVars[effect.target] = nextVars[effect.target]! - effect.value;
   }
-  // Apply flip-flop credibility cost only when there is an actual cost
   if (doctrine.flip_flop_cost > 0) {
     if (nextVars.credibility === undefined) {
       throw new Error(`abandonDoctrine: "credibility" var is absent; cannot deduct flip_flop_cost`);

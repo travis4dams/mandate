@@ -255,6 +255,21 @@ describe("adoptDoctrine / abandonDoctrine — round-trip symmetry", () => {
   });
 });
 
+describe("abandonDoctrine — missing credibility var with flip_flop_cost > 0", () => {
+  // SPEC-DOCT-1: abandonDoctrine throws when credibility var absent and flip_flop_cost > 0
+  it("throws when credibility var is absent and flip_flop_cost > 0", () => {
+    // Build a state with the doctrine adopted but no credibility var in state.
+    // We manually set the flag so abandonDoctrine doesn't throw DoctrineNotAdoptedError first.
+    const stateWithFlag = makeState({
+      vars: {},
+      flags: { [doctrineFlagKey(NO_EFFECTS_DOCTRINE.id)]: true },
+    });
+    expect(() => abandonDoctrine(stateWithFlag, NO_EFFECTS_DOCTRINE)).toThrow(
+      'abandonDoctrine: "credibility" var is absent; cannot deduct flip_flop_cost'
+    );
+  });
+});
+
 describe("Session.adoptDoctrine / Session.abandonDoctrine", () => {
   const MOCK_CATALOG: DoctrineEntry[] = [MOCK_DOCTRINE, NO_EFFECTS_DOCTRINE];
 

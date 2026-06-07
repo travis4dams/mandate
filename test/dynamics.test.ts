@@ -128,6 +128,27 @@ describe("applyMacroDynamics — adaptive expectations (SPEC-CRED-4)", () => {
   });
 });
 
+describe("applyMacroDynamics — over-range credibility clamp (SPEC-DOCT-1)", () => {
+  it("credibility above CRED_MAX does not invert the adaptive-expectations term", () => {
+    // SPEC-DOCT-1: adoptDoctrine intentionally stores credibility > 100 so abandonDoctrine
+    // can reverse the exact delta. applyMacroDynamics must clamp c = credibility/CRED_MAX to 1
+    // so (1 - c) stays >= 0 and the adaptive term never inverts sign.
+    const stateOver = makeState({
+      vars: { ...baseVars, credibility: 103, inflation: 0.05, expectations_anchor: 0.05 },
+    });
+    const stateAt = makeState({
+      vars: { ...baseVars, credibility: 100, inflation: 0.05, expectations_anchor: 0.05 },
+    });
+    const resultOver = applyMacroDynamics(stateOver, BASE);
+    const resultAt = applyMacroDynamics(stateAt, BASE);
+    // Anchor should move in the same direction (toward target) for both — not inverted.
+    expect(Math.sign(resultOver.vars.expectations_anchor! - stateOver.vars.expectations_anchor!))
+      .toBe(Math.sign(resultAt.vars.expectations_anchor! - stateAt.vars.expectations_anchor!));
+    // Credibility is clamped back to CRED_MAX by dynamics on the first tick.
+    expect(resultOver.vars.credibility).toBeLessThanOrEqual(100);
+  });
+});
+
 describe("applyMacroDynamics — mission-tied credibility (SPEC-CRED-6)", () => {
   it("rises when the economy moves toward the dual-mandate target", () => {
     // SPEC-CRED-6: high inflation falling + elevated unemployment easing → distance shrinks.

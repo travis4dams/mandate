@@ -29,7 +29,7 @@
         "required": ["target", "value"],
         "properties": {
           "target": { "type": "string", "enum": ["credibility", "inflation", "unemployment", "expectations_anchor", "policy_rate", "months_below_anchor"] },
-          "value": { "type": "number" }
+          "value": { "type": "number", "minimum": -100, "maximum": 100 }
         }
       },
       "default": []
