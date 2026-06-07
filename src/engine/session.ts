@@ -8,7 +8,7 @@ import { previewVote, loadCommitteeParams } from "./fomc.js";
 import { applyMeetingOutcome, getCredibility } from "./credibility.js";
 import { applyMacroDynamics, loadDynamicsParams } from "./dynamics.js";
 import { onTarget, loadMandateParams } from "./mandate.js";
-import { adoptDoctrine as _adoptDoctrine, abandonDoctrine as _abandonDoctrine, isDoctrineAdopted } from "./doctrine.js";
+import { adoptDoctrine as _adoptDoctrine, abandonDoctrine as _abandonDoctrine, doctrineFlagKey } from "./doctrine.js";
 import { loadDoctrineCatalog, getDoctrine, type DoctrineEntry } from "../content/doctrines.js";
 import { applyDotPlotMeetingEffects, loadDotPlotParams } from "./dot-plot.js";
 import type { GameState, GameStateSnapshot } from "./state.js";
@@ -371,17 +371,28 @@ export class Session {
       },
     );
 
-    // SPEC-DOCT-2: apply dot-plot doctrine effects (anchoring bonus / spread-exposure cost).
-    const stateAfterMeeting: GameState = {
+    // SPEC-DOCT-2: apply meeting-hook effects generically over all adopted doctrines.
+    // No content IDs are hardcoded here — each doctrine declares its own `meeting_hook`
+    // and the engine dispatches to the matching handler. New doctrines with meeting-time
+    // effects only need a new hook string in content; no engine changes required.
+    let stateAfterMeeting: GameState = {
       ...this._state,
       vars: { ...this._state.vars, policy_rate: fomcVote.decided, credibility: newCredibility },
     };
-    this._state = applyDotPlotMeetingEffects(
-      stateAfterMeeting,
-      previews,
-      loadDotPlotParams(),
-      isDoctrineAdopted(this._state, "doctrine.dot_plot"),
-    );
+    const catalog = loadDoctrineCatalog();
+    for (const doctrine of catalog) {
+      if (doctrine.meeting_hook === undefined) continue;
+      if (stateAfterMeeting.flags[doctrineFlagKey(doctrine.id)] !== true) continue;
+      if (doctrine.meeting_hook === "dot_plot_meeting") {
+        stateAfterMeeting = applyDotPlotMeetingEffects(
+          stateAfterMeeting,
+          previews,
+          loadDotPlotParams(),
+          true,
+        );
+      }
+    }
+    this._state = stateAfterMeeting;
 
     this._rebuildCaches();
     this._notifyListeners();

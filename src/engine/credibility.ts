@@ -38,5 +38,11 @@ export function painMultiplier(credibility: number): number {
 }
 
 export function getCredibility(state: GameState): number {
-  return state.vars.credibility ?? 50;
+  if (state.vars.credibility === undefined) {
+    throw new Error(
+      "getCredibility: state.vars.credibility is missing. " +
+      "All scenarios must initialise 'credibility' (it is in REQUIRED_VARS).",
+    );
+  }
+  return state.vars.credibility;
 }

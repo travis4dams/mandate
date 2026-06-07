@@ -53,7 +53,13 @@ export function abandonDoctrine(state: GameState, doctrine: DoctrineEntry): Game
     nextVars[effect.target] = (nextVars[effect.target] ?? 0) - effect.value;
   }
   // Apply flip-flop credibility cost
-  nextVars.credibility = clampCredibility((nextVars.credibility ?? 0) - doctrine.flip_flop_cost);
+  if (nextVars.credibility === undefined) {
+    throw new Error(
+      "abandonDoctrine: state.vars.credibility is missing. " +
+      "All scenarios must initialise 'credibility' (it is in REQUIRED_VARS).",
+    );
+  }
+  nextVars.credibility = clampCredibility(nextVars.credibility - doctrine.flip_flop_cost);
   return {
     ...state,
     vars: nextVars,

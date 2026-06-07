@@ -78,7 +78,13 @@ export function applyDotPlotMeetingEffects(
     credDelta -= spread * 100 * params.exposure_per_pp * multiplier;
   }
 
-  const current = state.vars.credibility ?? 50;
+  if (state.vars.credibility === undefined) {
+    throw new Error(
+      "applyDotPlotMeetingEffects: state.vars.credibility is missing. " +
+      "All scenarios must initialise 'credibility' (it is in REQUIRED_VARS).",
+    );
+  }
+  const current = state.vars.credibility;
   return {
     ...state,
     vars: {
