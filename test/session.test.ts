@@ -700,3 +700,43 @@ describe("SPEC-WEB-4: Session.committeeBriefing", () => {
     expect(s.current.vars.credibility).toBe(credBefore);
   });
 });
+
+describe("SPEC-DOCT-2: dot-plot meeting effect wired into Session.proposeRate()", () => {
+  // SPEC-DOCT-2: when the dot-plot doctrine is adopted, proposeRate must route through
+  // applyDotPlotMeetingEffects generically (no hardcoded content ID). Adopted → credibility
+  // differs from not-adopted; specifically the anchoring bonus (+1.5) is applied.
+
+  it("proposeRate with dot-plot adopted yields higher credibility than without (anchoring bonus)", () => {
+    // SPEC-DOCT-2
+    // Baseline: no doctrine — credibility unchanged at 25 (neutral stance, off-target inflation).
+    const base = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    base.proposeRate(0.1075);
+    const credWithout = base.current.vars.credibility as number;
+
+    // With dot-plot adopted: anchoring bonus applies (+1.5), making credibility higher.
+    const withDotPlot = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    withDotPlot.adoptDoctrine("doctrine.dot_plot");
+    withDotPlot.proposeRate(0.1075);
+    const credWith = withDotPlot.current.vars.credibility as number;
+
+    expect(credWith).toBeGreaterThan(credWithout);
+  });
+
+  it("abandoning dot-plot before proposeRate removes the meeting effect", () => {
+    // SPEC-DOCT-2: after adoption then abandonment, the meeting hook no longer applies.
+    // The flip-flop cost is charged on abandonment (before proposeRate), so we verify
+    // that proposeRate does NOT apply the anchoring bonus on top — i.e. the credibility
+    // delta from proposeRate alone matches the no-doctrine baseline delta (zero here:
+    // neutral stance, off-target inflation → no surprise penalty, no onTarget bonus).
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    s.adoptDoctrine("doctrine.dot_plot");
+    s.abandonDoctrine("doctrine.dot_plot");
+    const credBeforePropose = s.current.vars.credibility as number;
+    s.proposeRate(0.1075);
+    const credAfterPropose = s.current.vars.credibility as number;
+
+    // Without the meeting hook, proposeRate should not change credibility here
+    // (neutral stance, inflation far off-target → no surprise, no onTarget bonus).
+    expect(credAfterPropose).toBe(credBeforePropose);
+  });
+});

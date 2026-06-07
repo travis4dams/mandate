@@ -6,11 +6,15 @@ export interface StandingEffect {
   value: number;
 }
 
+export type DoctrineHook = "dot_plot_meeting";
+
 export interface DoctrineEntry {
   id: string;
   name: string;
   description: string;
   standing_effects: StandingEffect[];
+  /** Optional hook name. When set, proposeRate invokes the matching meeting-effect handler generically. */
+  meeting_hook?: DoctrineHook;
   flip_flop_cost: number;
 }
 

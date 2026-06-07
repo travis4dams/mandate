@@ -5,5 +5,6 @@
   "standing_effects": [
     { "target": "credibility", "value": 3 }
   ],
+  "meeting_hook": "dot_plot_meeting",
   "flip_flop_cost": 5
 }
