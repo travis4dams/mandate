@@ -5,6 +5,7 @@ import { loadCommittee } from "../content/committees.js";
 import { loadValidatedFile } from "../content/loader.js";
 import { tick } from "./clock.js";
 import { vote, previewVote, loadCommitteeParams } from "./fomc.js";
+import { applyIntermeetingDrift } from "./stance.js";
 import { loadTraitCatalog } from "../content/traits.js";
 import { applyMeetingOutcome, getCredibility } from "./credibility.js";
 import { applyMacroDynamics, loadDynamicsParams } from "./dynamics.js";
@@ -154,7 +155,7 @@ export class Session {
   // Committee id used by proposeRate; passed as a required factory argument.
   private readonly _committeeId: string;
 
-  // SPEC-GUIDE-1: stored stance; wired to the spiral recovery path in advance() via stanceMultiplier().
+  // SPEC-GUIDE-1: stored stance; wired to expectations_anchor_pull in advance() via stanceMultiplier().
   private _stance: ForwardGuidanceStance = "neutral";
 
   // Subscriber set for the subscribe/unsubscribe protocol.
@@ -241,8 +242,8 @@ export class Session {
   // --- Mutators ---
 
   /**
-   * Advance the session by `months` months.
-   * For each month, applies any matching replay action then calls tick().
+   * Advance the session by `months` months, applying per-month: replay action (if any),
+   * tick(), applyRateToOutputGap(), applyMacroDynamics(), applyIntermeetingDrift(), applyTermStructure().
    * @throws {Error} if months is not a positive integer.
    */
   advance(months: number): void {
@@ -270,6 +271,12 @@ export class Session {
       expectations_anchor_pull:
         dynamicsParams.expectations_anchor_pull * stanceMultiplier(this._stance, guidanceP),
     };
+    // SPEC-COMM-6: hoist loop-invariant loads to avoid per-month disk reads.
+    // loadCommitteeParams() is memoized; loadCommittee() scans the content directory
+    // once per advance() call. Both are outside the try block intentionally — if either
+    // throws before the loop starts, this._state is unchanged and no rollback is needed.
+    const committee = loadCommittee(this._committeeId);
+    const committeeParams = loadCommitteeParams();
 
     // SPEC-SIM-6: scale monthly params down to per-tick params. Identity when ticks_per_month=1.
     const ticksPerMonth = loadClockCadenceParams().ticks_per_month;
@@ -343,6 +350,17 @@ export class Session {
           };
         }
 
+        // SPEC-COMM-6: evolve per-member stances toward Taylor target each month.
+        const prevStateRef = this._state;
+        this._state = applyIntermeetingDrift(this._state, committee, committeeParams);
+        // applyIntermeetingDrift returns the same reference when required vars are missing.
+        // This should never occur in a live session — throw so the rollback above surfaces it.
+        if (this._state === prevStateRef) {
+          throw new Error(
+            `Session.advance: applyIntermeetingDrift skipped at ${this._state.date} — ` +
+            `inflation/unemployment/policy_rate is missing or non-finite.`,
+          );
+        }
         // SPEC-TERM-1: update long_rate via EWMA toward policy_rate, after macro dynamics.
         this._state = applyTermStructure(this._state, termStructureParams);
 
@@ -472,7 +490,7 @@ export class Session {
     this._notifyListeners();
   }
 
-  // SPEC-GUIDE-1: Store the forward-guidance stance; wired to the spiral recovery path via stanceMultiplier().
+  // SPEC-GUIDE-1: Store the forward-guidance stance; wired to expectations_anchor_pull via stanceMultiplier().
   // The value is NOT written into state.vars; the stance is a Session-level concern, not a var.
   // Fires listeners (downstream UI may want to reflect the stored stance).
   setForwardGuidanceStance(stance: ForwardGuidanceStance): void {

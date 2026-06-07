@@ -3,9 +3,13 @@ import { loadValidatedFile } from "../content/loader.js";
 import type { Committee, CommitteeMember } from "../content/committees.js";
 import type { TraitEntry } from "../content/traits.js";
 import type { GameState } from "./state.js";
+import { stanceKey, resolveStoredStance } from "./stance.js";
+import type { CommitteeParams } from "./committee-types.js";
 
 // FOMC vote engine — SPEC-COMM-2 + SPEC-COMM-3.
 // Pure: returns a new FomcVote; never mutates state or committee.
+
+export type { CommitteeParams } from "./committee-types.js";
 
 export interface FomcVote {
   /** The enacted rate. Always equals proposedRate in slice 1 (the committee has no override power yet); a future slice may add majority-override. */
@@ -13,20 +17,6 @@ export interface FomcVote {
   /** Count of members whose `|preferred - proposedRate| > effectiveBand`, where
    *  `effectiveBand = Math.max(0, compromise_band * (1 - conviction * conviction_band_factor) * (1 + bandMod))`. */
   dissents: number;
-}
-
-export interface CommitteeParams {
-  /** Anchor for every member's preferred-rate computation — the rate the committee would set at target inflation and natural unemployment. */
-  neutral_rate: number;
-  /** Long-run inflation target used to compute the inflation gap. */
-  target_inflation: number;
-  /** Natural rate of unemployment used to compute the unemployment gap. */
-  target_unemployment: number;
-  /** Scales how much a member's conviction narrows their effective compromise band.
-   *  Full formula: `effectiveBand = Math.max(0, compromise_band * (1 - conviction * conviction_band_factor) * (1 + bandMod))`.
-   *  conviction_band_factor controls the conviction contribution; bandMod is the sum of band_modifier from the member's traits.
-   *  SPEC-COMM-5. */
-  conviction_band_factor: number;
 }
 
 // Thrown when vote() is called against a state whose required vars are missing or non-finite.
@@ -51,12 +41,7 @@ export class TraitNotFoundError extends Error {
   }
 }
 
-// SPEC-COMM-3: per-member preferred rate via a Taylor-rule reaction function with
-// member-specific coefficients (inflation_coef, output_coef) anchored at neutral_rate,
-// smoothed by per-member inertia against the lagged policy rate. Empirically, FOMC
-// participants' Taylor-rule prescriptions cluster within ~150bp at the 1-2y horizon
-// thanks to high inertia (~0.85-0.92); the old trichotomy produced 1500bp spreads
-// at the 1979 starting state, which is roughly an order of magnitude too wide.
+// SPEC-COMM-3: Taylor-rule preferred rate smoothed by per-member inertia. Empirical anchors: docs/research/2026-06-02-fomc-empirical-anchors.md.
 function memberPreferred(
   member: CommitteeMember,
   laggedRate: number,
@@ -145,7 +130,7 @@ export function previewVote(
   if (!Number.isFinite(params.conviction_band_factor) || params.conviction_band_factor < 0 || params.conviction_band_factor > 1) {
     throw new Error(`previewVote: invalid conviction_band_factor (${params.conviction_band_factor}); expected finite in [0,1].`);
   }
-  const { laggedRate, gapInflation, gapUnemployment } = readGuardedVars(state, params);
+  const { laggedRate: globalLaggedRate, gapInflation, gapUnemployment } = readGuardedVars(state, params);
   // Build the catalog map once per previewVote call rather than once per member. SPEC-COMM-5.
   const catalogMap: ReadonlyMap<string, TraitEntry> = new Map(traitCatalog.map((t) => [t.id, t]));
   const previews = committee.members.map((m) => {
@@ -168,6 +153,8 @@ export function previewVote(
       // conviction=1/factor=1 case where the band naturally reaches 0.
       throw new Error(`previewVote: member "${m.id}" trait band_modifier sum (${bandMod}) causes effectiveBand ≤ 0; reduce band_modifier magnitudes in the trait catalog.`);
     }
+    // SPEC-COMM-6: use the member's drifted intermeeting stance if present; fall back to globalLaggedRate (current policy_rate).
+    const laggedRate = resolveStoredStance(state.vars[stanceKey(m.id)], globalLaggedRate);
     const preferred = memberPreferred(m, laggedRate, gapInflation, gapUnemployment, params, leanShift);
     // conviction narrows the base band; trait band_modifier scales further; floor at 0
     // guards the conviction=1/factor=1 case where the product reaches exactly 0.
