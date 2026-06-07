@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { loadScenario, MissingVarsError } from "../src/content/scenarios";
 import { loadValidated } from "../src/content/loader";
+import { Session } from "../src/engine/session";
 
 // SPEC-SCEN-1
 
@@ -46,6 +47,79 @@ describe("loadScenario", () => {
 
   it("throws a clear error for an unknown scenario id", () => {
     expect(() => loadScenario("scen.unknown_id")).toThrow(/scen\.unknown_id/);
+  });
+});
+
+// SPEC-SCEN-2
+
+const ADDITIONAL_SCENARIOS = [
+  {
+    id: "scen.2008_gfc",
+    date: "2008-09",
+    inflation: 0.054,
+    unemployment: 0.065,
+    credibility: 65,
+    policy_rate: 0.02,
+    expectations_anchor: 0.025,
+  },
+  {
+    id: "scen.covid_2020",
+    date: "2020-03",
+    inflation: 0.023,
+    unemployment: 0.044,
+    credibility: 78,
+    policy_rate: 0.0025,
+    expectations_anchor: 0.02,
+  },
+];
+
+describe("SPEC-SCEN-2: additional authored starting scenarios", () => {
+  it.each(ADDITIONAL_SCENARIOS)(
+    "$id boots via Session.fromScenario with trajectory.length===1 and correct date",
+    ({ id, date }) => {
+      const session = Session.fromScenario(id, 42, "comm.fomc_1979");
+      expect(session.current.date).toBe(date);
+      expect(session.trajectory).toHaveLength(1);
+    }
+  );
+
+  it.each(ADDITIONAL_SCENARIOS)(
+    "$id initial state matches authored macro vars",
+    ({ id, inflation, unemployment, credibility, policy_rate, expectations_anchor }) => {
+      const state = loadScenario(id);
+      expect(state.vars.inflation).toBeCloseTo(inflation, 6);
+      expect(state.vars.unemployment).toBeCloseTo(unemployment, 6);
+      expect(state.vars.credibility).toBeCloseTo(credibility, 6);
+      expect(state.vars.policy_rate).toBeCloseTo(policy_rate, 6);
+      expect(state.vars.expectations_anchor).toBeCloseTo(expectations_anchor, 6);
+    }
+  );
+
+  it("each additional scenario differs from 1979 on all five macro vars", () => {
+    const base = loadScenario("scen.1979_stagflation");
+    for (const s of ADDITIONAL_SCENARIOS) {
+      const state = loadScenario(s.id);
+      expect(state.vars.inflation).not.toBeCloseTo(base.vars.inflation as number, 2);
+      expect(state.vars.unemployment).not.toBeCloseTo(base.vars.unemployment as number, 2);
+      expect(state.vars.credibility).not.toBeCloseTo(base.vars.credibility as number, 0);
+      expect(state.vars.policy_rate).not.toBeCloseTo(base.vars.policy_rate as number, 2);
+      expect(state.vars.expectations_anchor).not.toBeCloseTo(
+        base.vars.expectations_anchor as number, 2
+      );
+    }
+  });
+
+  it("all additional scenarios have empty history on direct load", () => {
+    for (const s of ADDITIONAL_SCENARIOS) {
+      const state = loadScenario(s.id);
+      expect(state.history).toEqual([]);
+    }
+  });
+
+  it("all additional scenarios are schema-valid (loadScenario does not throw)", () => {
+    for (const s of ADDITIONAL_SCENARIOS) {
+      expect(() => loadScenario(s.id)).not.toThrow();
+    }
   });
 });
 
