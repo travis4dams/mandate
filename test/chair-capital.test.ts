@@ -364,4 +364,32 @@ describe("Session: total capitalSpend budget guard (SPEC-COMM-7)", () => {
     const exactSpend = { [firstId]: budget };
     expect(() => s.committeeBriefing(0.1075, exactSpend)).not.toThrow();
   });
+
+  it("committeeBriefing throws on NaN capitalSpend entry (SPEC-COMM-7)", () => {
+    // SPEC-COMM-7: NaN > budget evaluates to false, so without per-entry validation
+    // a NaN spend would silently pass the budget guard and corrupt computeEffectiveBands.
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    const probe = s.committeeBriefing(0.1075);
+    const firstId = probe.previews[0].memberId;
+    expect(() => s.committeeBriefing(0.1075, { [firstId]: NaN })).toThrow(/non-negative finite/);
+  });
+
+  it("proposeRate throws on NaN capitalSpend entry (SPEC-COMM-7)", () => {
+    // SPEC-COMM-7: NaN > budget evaluates to false, so without per-entry validation
+    // a NaN spend would silently pass the budget guard and corrupt computeEffectiveBands.
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    const probe = s.committeeBriefing(0.1075);
+    const firstId = probe.previews[0].memberId;
+    expect(() => s.proposeRate(0.1075, { [firstId]: NaN })).toThrow(/non-negative finite/);
+  });
+
+  it("committeeBriefing throws on negative capitalSpend entry (SPEC-COMM-7)", () => {
+    // SPEC-COMM-7: a negative entry combined with a large positive could pass the total
+    // budget sum (e.g. { a: budget+2, b: -3 } totals budget-1) but is a caller bug.
+    // Per-entry validation must catch it before the sum is computed.
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    const probe = s.committeeBriefing(0.1075);
+    const firstId = probe.previews[0].memberId;
+    expect(() => s.committeeBriefing(0.1075, { [firstId]: -1 })).toThrow(/non-negative finite/);
+  });
 });

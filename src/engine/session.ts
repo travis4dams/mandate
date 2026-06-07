@@ -480,12 +480,22 @@ export class Session {
   /**
    * Throw a descriptive error if the total of all capitalSpend values exceeds the budget.
    * SPEC-COMM-7: Chair capital is a hard persuasion budget; overspending must fail loudly.
+   * Each entry is validated for finiteness and non-negativity before aggregating, so that
+   * NaN or negative values (which would silently corrupt the budget total) fail early with
+   * a clear message rather than propagating into computeEffectiveBands.
    */
   private static _assertWithinBudget(
     capitalSpend: Readonly<Record<string, number>>,
     budget: number,
     caller: string,
   ): void {
+    for (const [id, v] of Object.entries(capitalSpend)) {
+      if (!Number.isFinite(v) || v < 0) {
+        throw new Error(
+          `Session.${caller}: capitalSpend["${id}"] must be a non-negative finite number, got ${v}.`,
+        );
+      }
+    }
     const total = Object.values(capitalSpend).reduce((sum, v) => sum + v, 0);
     if (total > budget) {
       throw new Error(
