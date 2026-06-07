@@ -30,10 +30,11 @@ export function _resetForecastQualityParamsCache(): void {
 
 export function loadForecastQualityParams(): ForecastQualityParams {
   if (!_cache) {
-    try {
-      _cache = loadValidatedFile<ForecastQualityParams>(SCHEMA_PATH, PARAMS_PATH);
-    } catch (e) {
-      throw new Error("loadForecastQualityParams: failed to load params", { cause: e });
+    _cache = loadValidatedFile<ForecastQualityParams>(SCHEMA_PATH, PARAMS_PATH);
+    if (_cache.min_noise_scale > _cache.base_noise_scale) {
+      throw new Error(
+        `loadForecastQualityParams: min_noise_scale (${_cache.min_noise_scale}) must be <= base_noise_scale (${_cache.base_noise_scale})`,
+      );
     }
   }
   return _cache;
@@ -49,6 +50,15 @@ export function computeForecastNoiseScale(
   if (!Number.isFinite(investment) || investment < 0) {
     throw new Error(
       `computeForecastNoiseScale: investment must be a non-negative finite number, got ${investment}`,
+    );
+  }
+  if (
+    !Number.isFinite(params.base_noise_scale) ||
+    !Number.isFinite(params.quality_slope) ||
+    !Number.isFinite(params.min_noise_scale)
+  ) {
+    throw new Error(
+      `computeForecastNoiseScale: params fields must all be finite numbers (base_noise_scale=${params.base_noise_scale}, quality_slope=${params.quality_slope}, min_noise_scale=${params.min_noise_scale})`,
     );
   }
   return Math.max(
@@ -68,13 +78,13 @@ export function applyForecastQuality(
   rng: () => number,
 ): Briefing {
   const noiseScale = computeForecastNoiseScale(investment, params);
-  return {
-    ...briefing,
-    scenarios: briefing.scenarios.map((s) => ({
-      ...s,
-      forecast: perturbForecast(s.forecast, noiseScale, rng),
-    })) as unknown as Briefing["scenarios"],
-  };
+  const [s0, s1, s2] = briefing.scenarios;
+  const scenarios: Briefing["scenarios"] = [
+    { ...s0, forecast: perturbForecast(s0.forecast, noiseScale, rng) },
+    { ...s1, forecast: perturbForecast(s1.forecast, noiseScale, rng) },
+    { ...s2, forecast: perturbForecast(s2.forecast, noiseScale, rng) },
+  ];
+  return { ...briefing, scenarios };
 }
 
 function perturbForecast(
