@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mandate.dev/schemas/clock-cadence.schema.json",
+  "title": "ClockCadenceParams",
+  "description": "Simulation tick cadence. SPEC-SIM-6: ticks_per_month parameterises the sub-monthly clock. Dynamics params are scaled automatically so the macro trajectory is invariant to cadence choice.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ticks_per_month"],
+  "properties": {
+    "ticks_per_month": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 31,
+      "description": "Number of simulation ticks per calendar month. 1 = monthly (unchanged behavior), 4 = weekly, 30 ≈ daily. Session.advance(months) internally runs ticks_per_month dynamics steps per calendar month with params scaled by scaleParamsForTick."
+    }
+  }
+}
