@@ -93,4 +93,5 @@ registerDirEntities(scenarioFiles, "content/scenarios");
 registerDirEntities(committeeFiles, "content/committees");
 registerDirEntities(replayFiles, "content/replays");
 registerDirEntities(calibrationFiles, "content/calibration");
+registerEach(briefingFiles);
 registerDirEntities(briefingFiles, "content/briefings");

@@ -1,7 +1,7 @@
 // SPEC-WEB-6: in-meeting persuasion view — dot plot + scenario briefing + capital control.
 
 import type { MemberVotePreview } from "../../src/engine/fomc";
-import { loadBriefing, type Briefing } from "../../src/content/briefings";
+import { loadBriefing, BriefingNotFoundError, type Briefing } from "../../src/content/briefings";
 import { t } from "./loc";
 
 // ---- pure helper ---------------------------------------------------------
@@ -127,8 +127,11 @@ function ScenarioBriefingPanel(props: { briefingId: string }): JSX.Element | nul
   let briefing: Briefing | null = null;
   try {
     briefing = loadBriefing(props.briefingId);
-  } catch {
-    return null; // degrade gracefully when briefing is unavailable
+  } catch (err) {
+    // Degrade gracefully only for an unknown briefingId (SPEC-WEB-6).
+    // Re-throw schema/order/type errors so they surface to the developer.
+    if (err instanceof BriefingNotFoundError) return null;
+    throw err;
   }
 
   return (
@@ -185,7 +188,7 @@ function SpendCapitalControl(): JSX.Element {
   return (
     <div style={{ marginTop: 10, fontSize: 13, color: "#999" }}>
       {t("ui.persuasion.capital.label")}:{" "}
-      <span data-testid="chair-capital-display">—</span>
+      <span data-testid="chair-capital-display">{t("ui.persuasion.capital.placeholder")}</span>
       <span style={{ marginLeft: 6, fontSize: 11 }}>
         ({t("ui.persuasion.capital.pending")})
       </span>

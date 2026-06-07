@@ -87,6 +87,15 @@ describe("PersuasionView component", () => {
     expect(dots.length).toBe(THREE_MEMBERS.length);
   });
 
+  it("dots are colored by dissent status — red for dissenters, green for approvers", () => {
+    // SPEC-WEB-6: dissent status must be reflected in dot fill color
+    render(<PersuasionView previews={THREE_MEMBERS} proposed={0.10} />);
+    // m2 dissents, m1 and m3 approve (see THREE_MEMBERS above)
+    expect(document.querySelector("[data-testid='dot-m1']")?.getAttribute("fill")).toBe("#2f9e44");
+    expect(document.querySelector("[data-testid='dot-m2']")?.getAttribute("fill")).toBe("#c92a2a");
+    expect(document.querySelector("[data-testid='dot-m3']")?.getAttribute("fill")).toBe("#2f9e44");
+  });
+
   it("live dissent count matches wouldDissent from previews", () => {
     // SPEC-WEB-6
     render(<PersuasionView previews={THREE_MEMBERS} proposed={0.10} />);
@@ -100,7 +109,7 @@ describe("PersuasionView component", () => {
     ).not.toThrow();
   });
 
-  it("renders without error with a valid briefingId (degrades gracefully when loaded)", () => {
+  it("renders without error when a valid briefingId is provided", () => {
     // SPEC-WEB-6
     expect(() =>
       render(

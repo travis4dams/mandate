@@ -96,5 +96,6 @@
   "ui.persuasion.briefing.unemployment_label": "Unemployment",
   "ui.persuasion.briefing.growth_label": "Growth",
   "ui.persuasion.capital.label": "Chair capital",
-  "ui.persuasion.capital.pending": "available with SPEC-COMM-7"
+  "ui.persuasion.capital.pending": "available with SPEC-COMM-7",
+  "ui.persuasion.capital.placeholder": "—"
 }
