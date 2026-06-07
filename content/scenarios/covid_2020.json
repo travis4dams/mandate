@@ -1,0 +1,15 @@
+{
+  "id": "scen.covid_2020",
+  "date": "2020-03",
+  "name": "scen.covid_2020.name",
+  "desc": "scen.covid_2020.desc",
+  "vars": {
+    "inflation": 0.023,
+    "unemployment": 0.044,
+    "credibility": 78,
+    "expectations_anchor": 0.02,
+    "policy_rate": 0.0025,
+    "months_below_anchor": 0
+  },
+  "flags": {}
+}
