@@ -67,7 +67,7 @@ export function loadBriefing(id: string, dir: string = DEFAULT_BRIEFINGS_DIR): B
   if (!briefing) throw new BriefingNotFoundError(id, dir);
 
   const actual = briefing.scenarios.map((s) => s.scenario_type);
-  if (actual[0] !== "raise" || actual[1] !== "hold" || actual[2] !== "lower") {
+  if (actual[0] !== REQUIRED_ORDER[0] || actual[1] !== REQUIRED_ORDER[1] || actual[2] !== REQUIRED_ORDER[2]) {
     throw new BriefingScenarioOrderError(id, actual);
   }
 
