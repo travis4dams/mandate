@@ -7,9 +7,10 @@ import { useMemo, useState } from "react";
 import type { Session } from "../../src/engine/session";
 import { type FomcVote, type MemberVotePreview } from "../../src/engine/fomc";
 import { t } from "./loc";
+import { PersuasionView } from "./PersuasionView";
 
-export function MeetingPanel(props: { session: Session }): JSX.Element {
-  const { session } = props;
+export function MeetingPanel(props: { session: Session; briefingId?: string }): JSX.Element {
+  const { session, briefingId } = props;
   // Derive current date from session so it stays in sync with external advances.
   const currentDate = session.current.date;
   const isMeeting = session.isMeetingMonth();
@@ -99,14 +100,21 @@ export function MeetingPanel(props: { session: Session }): JSX.Element {
       )}
 
       {briefing !== null && (
-        <CommitteeBriefing
-          previews={briefing.previews}
-          gapInflation={briefing.gapInflation}
-          gapUnemployment={briefing.gapUnemployment}
-          inflationTarget={briefing.inflationTarget}
-          unemploymentTarget={briefing.unemploymentTarget}
-          proposed={parsedRate}
-        />
+        <>
+          <CommitteeBriefing
+            previews={briefing.previews}
+            gapInflation={briefing.gapInflation}
+            gapUnemployment={briefing.gapUnemployment}
+            inflationTarget={briefing.inflationTarget}
+            unemploymentTarget={briefing.unemploymentTarget}
+            proposed={parsedRate}
+          />
+          <PersuasionView
+            previews={briefing.previews}
+            proposed={parsedRate}
+            briefingId={briefingId}
+          />
+        </>
       )}
 
       {error !== null && (
