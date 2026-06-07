@@ -153,6 +153,40 @@ describe("loadShocksParams (SPEC-SHOCK-1)", () => {
     expect(params.supply_shock_sigma).toBeGreaterThanOrEqual(0);
     expect(Number.isFinite(params.supply_shock_sigma)).toBe(true);
   });
+
+  it("second call returns the same cached reference", () => {
+    // SPEC-SHOCK-1
+    _resetShocksParamsCache();
+    const first = loadShocksParams();
+    const second = loadShocksParams();
+    expect(second).toBe(first);
+  });
+});
+
+// SPEC-SHOCK-1: error paths — non-finite inflation and negative sigma throw.
+describe("applySupplyShock — error paths (SPEC-SHOCK-1)", () => {
+  it("throws when state.vars.inflation is NaN", () => {
+    // SPEC-SHOCK-1
+    const state = makeState({ vars: { ...BASE_VARS, inflation: NaN } });
+    const rng = mulberry32(1);
+    expect(() => applySupplyShock(state, rng, NONZERO_PARAMS)).toThrow(/not finite/);
+  });
+
+  it("throws when state.vars.inflation is missing (undefined)", () => {
+    // SPEC-SHOCK-1
+    const { inflation: _omit, ...varsWithout } = BASE_VARS;
+    const state = makeState({ vars: varsWithout });
+    const rng = mulberry32(1);
+    expect(() => applySupplyShock(state, rng, NONZERO_PARAMS)).toThrow(/not finite/);
+  });
+
+  it("throws when supply_shock_sigma is negative", () => {
+    // SPEC-SHOCK-1
+    const state = makeState({ vars: { ...BASE_VARS } });
+    const rng = mulberry32(1);
+    const badParams: ShocksParams = { supply_shock_sigma: -0.1 };
+    expect(() => applySupplyShock(state, rng, badParams)).toThrow(/supply_shock_sigma must be >= 0/);
+  });
 });
 
 // SPEC-SHOCK-1: reset() restores the RNG so advance(N) after reset() matches a fresh session.

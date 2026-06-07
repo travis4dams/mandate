@@ -12,7 +12,7 @@ import { applyRateToOutputGap, loadLagParams } from "./lags.js";
 import { applyTermStructure, loadTermStructureParams } from "./term-structure.js";
 import { onTarget, loadMandateParams } from "./mandate.js";
 import { applySupplyShock, loadShocksParams } from "./shocks.js";
-import { mulberry32 } from "./rng.js";
+import { mulberry32, type SeededRng } from "./rng.js";
 import type { GameState, GameStateSnapshot } from "./state.js";
 import type { FomcVote, MemberVotePreview } from "./fomc.js";
 import type { Replay } from "../content/replays.js";
@@ -168,7 +168,7 @@ export class Session {
   // All randomness flows through this instance (SPEC-SIM-1 — never Math.random()).
   // _seed is stored so reset() can reinitialise _rng to the same starting state (SPEC-SIM-1).
   private readonly _seed: number;
-  private _rng: () => number;
+  private _rng: SeededRng;
 
   // The `seed` parameter initialises `_rng` via mulberry32 (SPEC-SHOCK-1 / SPEC-SIM-1).
   private constructor(initialState: GameState, seed: number, replay: Replay | null, committeeId: string) {
@@ -257,11 +257,15 @@ export class Session {
       throw new Error(`Session.advance: months must be a positive integer, got ${months}.`);
     }
 
-    // Checkpoint for mid-loop rollback: capture the current state reference.
+    // Checkpoint for mid-loop rollback: capture the current state reference and RNG position.
     // Safe because all tick/spiral/dynamics functions are pure (CLAUDE.md) — they
     // return new GameState objects and never mutate in place, so this ref stays valid.
+    // The RNG checkpoint is required for SPEC-SIM-1: if the loop throws mid-way, draws
+    // already consumed by applySupplyShock must be rolled back so the next advance() call
+    // sees the same RNG stream as if the failed attempt never happened.
     const checkpointState = this._state;
     const checkpointTrajectoryLength = this._trajectoryInternal.length;
+    const checkpointRng = this._rng.snapshot();
 
     // SPEC-GUIDE-1 / SPEC-SIM-5: loaders + effectiveParams are loop-invariant — each is a
     // cached singleton and stance is fixed for the duration of advance(). Hoisting makes that
@@ -309,6 +313,7 @@ export class Session {
     } catch (err) {
       this._state = checkpointState;
       this._trajectoryInternal.length = checkpointTrajectoryLength;
+      this._rng.restore(checkpointRng);
       this._rebuildCaches();
       throw err;
     }
