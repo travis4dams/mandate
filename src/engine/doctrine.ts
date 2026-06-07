@@ -17,7 +17,7 @@ export class DoctrineNotAdoptedError extends Error {
 }
 
 export function doctrineFlagKey(id: string): string {
-  return `doctrine.${id}.adopted`;
+  return `${id}.adopted`;
 }
 
 export function isDoctrineAdopted(state: GameState, id: string): boolean {
@@ -25,14 +25,16 @@ export function isDoctrineAdopted(state: GameState, id: string): boolean {
 }
 
 /** Adopt a doctrine: records it in state.flags and applies its standing effects to state.vars.
- *  No flip-flop cost is charged on adoption — only on abandonment (SPEC-DOCT-1). */
+ *  No flip-flop cost is charged on adoption — only on abandonment (SPEC-DOCT-1).
+ *  When a standing effect targets "credibility" the result is clamped to [0,100]. */
 export function adoptDoctrine(state: GameState, doctrine: DoctrineEntry): GameState {
   if (isDoctrineAdopted(state, doctrine.id)) {
     throw new DoctrineAlreadyAdoptedError(doctrine.id);
   }
   const nextVars = { ...state.vars };
   for (const effect of doctrine.standing_effects ?? []) {
-    nextVars[effect.target] = (nextVars[effect.target] ?? 0) + effect.value;
+    const raw = (nextVars[effect.target] ?? 0) + effect.value;
+    nextVars[effect.target] = effect.target === "credibility" ? clampCredibility(raw) : raw;
   }
   return {
     ...state,
@@ -42,7 +44,7 @@ export function adoptDoctrine(state: GameState, doctrine: DoctrineEntry): GameSt
 }
 
 /** Abandon a doctrine: reverses its standing effects and deducts the flip-flop credibility cost
- *  (clamped to [0,100]). */
+ *  (only the credibility write is clamped to [0,100]). */
 export function abandonDoctrine(state: GameState, doctrine: DoctrineEntry): GameState {
   if (!isDoctrineAdopted(state, doctrine.id)) {
     throw new DoctrineNotAdoptedError(doctrine.id);
@@ -52,8 +54,13 @@ export function abandonDoctrine(state: GameState, doctrine: DoctrineEntry): Game
   for (const effect of doctrine.standing_effects ?? []) {
     nextVars[effect.target] = (nextVars[effect.target] ?? 0) - effect.value;
   }
-  // Apply flip-flop credibility cost
-  nextVars.credibility = clampCredibility((nextVars.credibility ?? 0) - doctrine.flip_flop_cost);
+  // Apply flip-flop credibility cost only when there is an actual cost
+  if (doctrine.flip_flop_cost > 0) {
+    if (nextVars.credibility === undefined) {
+      throw new Error(`abandonDoctrine: "credibility" var is absent; cannot deduct flip_flop_cost`);
+    }
+    nextVars.credibility = clampCredibility(nextVars.credibility - doctrine.flip_flop_cost);
+  }
   return {
     ...state,
     vars: nextVars,

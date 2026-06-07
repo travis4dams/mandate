@@ -414,8 +414,15 @@ export class Session {
    *  @throws {DoctrineNotFoundError} if id not in catalog. */
   adoptDoctrine(doctrineId: string, catalog: DoctrineEntry[] = loadDoctrineCatalog()): void {
     const doctrine = getDoctrine(doctrineId, catalog);
+    const checkpointState = this._state;
     this._state = _adoptDoctrine(this._state, doctrine);
-    this._rebuildCaches();
+    try {
+      this._rebuildCaches();
+    } catch (err) {
+      this._state = checkpointState;
+      this._rebuildCaches();
+      throw err;
+    }
     this._notifyListeners();
   }
 
@@ -424,8 +431,15 @@ export class Session {
    *  @throws {DoctrineNotFoundError} if id not in catalog. */
   abandonDoctrine(doctrineId: string, catalog: DoctrineEntry[] = loadDoctrineCatalog()): void {
     const doctrine = getDoctrine(doctrineId, catalog);
+    const checkpointState = this._state;
     this._state = _abandonDoctrine(this._state, doctrine);
-    this._rebuildCaches();
+    try {
+      this._rebuildCaches();
+    } catch (err) {
+      this._state = checkpointState;
+      this._rebuildCaches();
+      throw err;
+    }
     this._notifyListeners();
   }
 
