@@ -224,6 +224,39 @@ describe("resolveHearing — error cases", () => {
     ).toThrow(HearingNoScenariosError);
   });
 
+  it("throws HearingNoScenariosError when all answer weights are zero", () => {
+    // SPEC-HEAR-1
+    // Manually-constructed hearing where every answer supplies only zero weights —
+    // the schema (exclusiveMinimum:0) would reject this content at load time, but
+    // the engine must still guard against it at runtime.
+    const allZeroHearing: HearingEntry = {
+      id: "hearing.all_zero",
+      name: "hearing.all_zero.name",
+      desc: "hearing.all_zero.desc",
+      questions: [
+        {
+          id: "hearing.q.zero",
+          text: "hearing.q.zero.text",
+          answers: [
+            {
+              id: "hearing.a.zero_1",
+              text: "hearing.a.zero_1.text",
+              scenario_weights: { "scen.x": 0, "scen.y": 0 },
+            },
+            {
+              id: "hearing.a.zero_2",
+              text: "hearing.a.zero_2.text",
+              scenario_weights: { "scen.x": 0 },
+            },
+          ],
+        },
+      ],
+    };
+    expect(() =>
+      resolveHearing(["hearing.a.zero_1"], allZeroHearing),
+    ).toThrow(HearingNoScenariosError);
+  });
+
   it("throws a length error when answers.length < questions.length", () => {
     // SPEC-HEAR-1
     // sampleHearing has 2 questions; providing only 1 answer should throw

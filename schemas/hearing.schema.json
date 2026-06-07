@@ -62,7 +62,8 @@
                 },
                 "scenario_weights": {
                   "type": "object",
-                  "additionalProperties": { "type": "number" },
+                  "additionalProperties": { "type": "number", "exclusiveMinimum": 0 },
+                  "minProperties": 1,
                   "description": "Additive weights toward each scenario id. The scenario with the highest total weight across all chosen answers is selected as the starting state."
                 },
                 "state_modifiers": {

@@ -63,7 +63,7 @@ export class HearingAnswerNotFoundError extends Error {
   }
 }
 
-// Thrown when no scenario weights were accumulated (all answers lacked scenario_weights).
+// Thrown when no answer has positive scenario weights.
 export class HearingNoScenariosError extends Error {
   constructor() {
     super(
@@ -139,12 +139,14 @@ export function resolveHearing(
     }
   }
 
-  const candidates = Object.keys(scores).sort();
-  if (candidates.length === 0) throw new HearingNoScenariosError();
+  // Find the winning scenario
+  const winnerScore = Math.max(...Object.values(scores));
+  if (winnerScore <= 0) throw new HearingNoScenariosError();
+  const candidates = Object.keys(scores)
+    .filter((id) => scores[id] === winnerScore)
+    .sort();
 
-  const scenarioId = candidates.reduce((best, id) =>
-    scores[id] > scores[best] ? id : best,
-  );
+  const scenarioId = candidates[0];
 
   return { scenarioId, modifiers };
 }

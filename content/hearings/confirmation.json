@@ -12,8 +12,7 @@
           "text": "hearing.a.inflation_strict.text",
           "scenario_weights": {
             "scen.1979_stagflation": 3,
-            "scen.2008_gfc": 1,
-            "scen.covid_2020": 0
+            "scen.2008_gfc": 1
           },
           "state_modifiers": [
             { "target": "credibility", "delta": 5 }
@@ -32,7 +31,6 @@
           "id": "hearing.a.inflation_dovish",
           "text": "hearing.a.inflation_dovish.text",
           "scenario_weights": {
-            "scen.1979_stagflation": 0,
             "scen.2008_gfc": 2,
             "scen.covid_2020": 3
           },
@@ -62,7 +60,6 @@
           "id": "hearing.a.posture_cooperative",
           "text": "hearing.a.posture_cooperative.text",
           "scenario_weights": {
-            "scen.1979_stagflation": 0,
             "scen.2008_gfc": 2,
             "scen.covid_2020": 2
           }
@@ -77,9 +74,7 @@
           "id": "hearing.a.crisis_orthodox",
           "text": "hearing.a.crisis_orthodox.text",
           "scenario_weights": {
-            "scen.1979_stagflation": 2,
-            "scen.2008_gfc": 0,
-            "scen.covid_2020": 0
+            "scen.1979_stagflation": 2
           },
           "state_modifiers": [
             { "target": "policy_rate", "delta": 0.005 }
@@ -89,7 +84,6 @@
           "id": "hearing.a.crisis_activist",
           "text": "hearing.a.crisis_activist.text",
           "scenario_weights": {
-            "scen.1979_stagflation": 0,
             "scen.2008_gfc": 3,
             "scen.covid_2020": 3
           },
