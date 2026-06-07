@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { Session, NotMeetingMonthError, marketsSurprised } from "../src/engine/session.js";
 import type { ForwardGuidanceStance } from "../src/engine/session.js";
 import * as mandateModule from "../src/engine/mandate.js";
+import * as stanceModule from "../src/engine/stance.js";
 import { stanceKey } from "../src/engine/stance.js";
 
 // SPEC-SESSION-0
@@ -75,6 +76,10 @@ describe("Session.advance integration", () => {
 });
 
 describe("SPEC-COMM-6: stance drift wired into Session.advance()", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   // SPEC-COMM-6: after advance(1), at least one member's stance var must exist and differ from
   // the cold-start policy_rate — confirming applyIntermeetingDrift is called each month.
   // Removing the applyIntermeetingDrift call from session.ts would leave all stance.* vars absent.
@@ -90,6 +95,23 @@ describe("SPEC-COMM-6: stance drift wired into Session.advance()", () => {
     const firstStance = s.current.vars[stanceVars[0]] as number;
     expect(Number.isFinite(firstStance)).toBe(true);
     expect(firstStance).not.toBe(initialRate);
+  });
+
+  // SPEC-COMM-6: advance() throws when applyIntermeetingDrift returns the same reference (no-op),
+  // and rolls back session state so the caller sees no partial mutation.
+  it("advance() throws and rolls back when applyIntermeetingDrift returns the same reference", () => {
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    const stateBefore = s.current;
+    const trajectoryLengthBefore = s.trajectory.length;
+
+    // Force applyIntermeetingDrift to return its input unchanged (simulates the missing-vars no-op).
+    vi.spyOn(stanceModule, "applyIntermeetingDrift").mockImplementationOnce((state) => state);
+
+    expect(() => s.advance(1)).toThrow(/applyIntermeetingDrift skipped/);
+    // State and trajectory must be rolled back to the pre-advance checkpoint.
+    // current is a new snapshot object (rebuilt by _rebuildCaches), so use deep equality.
+    expect(s.current).toStrictEqual(stateBefore);
+    expect(s.trajectory.length).toBe(trajectoryLengthBefore);
   });
 });
 

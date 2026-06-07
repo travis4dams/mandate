@@ -242,7 +242,8 @@ export class Session {
   // --- Mutators ---
 
   /**
-   * Advance the session by `months` months, applying per-month: replay action (if any), tick(), applyMacroDynamics(), applyIntermeetingDrift().
+   * Advance the session by `months` months, applying per-month: replay action (if any),
+   * tick(), applyRateToOutputGap(), applyMacroDynamics(), applyIntermeetingDrift(), applyTermStructure().
    * @throws {Error} if months is not a positive integer.
    */
   advance(months: number): void {
@@ -270,10 +271,10 @@ export class Session {
       expectations_anchor_pull:
         dynamicsParams.expectations_anchor_pull * stanceMultiplier(this._stance, guidanceP),
     };
-    // SPEC-COMM-6: hoist loop-invariant loads. loadCommitteeParams() is memoized;
-    // loadCommittee() re-reads from disk but is loop-invariant. Both are outside the
-    // try block intentionally: if either throws before the loop starts, this._state is
-    // unchanged and no rollback is needed.
+    // SPEC-COMM-6: hoist loop-invariant loads to avoid per-month disk reads.
+    // loadCommitteeParams() is memoized; loadCommittee() scans the content directory
+    // once per advance() call. Both are outside the try block intentionally — if either
+    // throws before the loop starts, this._state is unchanged and no rollback is needed.
     const committee = loadCommittee(this._committeeId);
     const committeeParams = loadCommitteeParams();
 

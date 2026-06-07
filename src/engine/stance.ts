@@ -10,7 +10,8 @@ export function stanceKey(memberId: string): string {
 }
 
 /** Returns stored if it is a finite number; falls back to policyRate otherwise.
- *  Covers: absent key (undefined), NaN/Infinity/-Infinity, or any non-numeric value. */
+ *  Covers: absent key (undefined), NaN/Infinity/-Infinity, or any non-numeric value.
+ *  Precondition: `policyRate` must be finite — callers must validate before calling. */
 export function resolveStoredStance(stored: number | undefined, policyRate: number): number {
   return Number.isFinite(stored) ? (stored as number) : policyRate;
 }
@@ -33,6 +34,12 @@ export function applyIntermeetingDrift(
   ) {
     return state;
   }
+  if (!Number.isFinite(params.neutral_rate)) {
+    throw new Error(
+      `applyIntermeetingDrift: params.neutral_rate is non-finite (${params.neutral_rate}). ` +
+      `Check content/engine/committee.json.`,
+    );
+  }
   // Safe casts: guarded by Number.isFinite above (undefined and NaN both fail isFinite).
   const inflation = inflationRaw as number;
   const unemployment = unemploymentRaw as number;
@@ -43,10 +50,15 @@ export function applyIntermeetingDrift(
 
   const newVars = { ...state.vars };
   for (const m of committee.members) {
-    if (!Number.isFinite(m.inertia) || !Number.isFinite(m.inflation_coef) || !Number.isFinite(m.output_coef)) {
+    if (
+      !Number.isFinite(m.inertia) || m.inertia < 0 || m.inertia > 1 ||
+      !Number.isFinite(m.inflation_coef) ||
+      !Number.isFinite(m.output_coef)
+    ) {
       throw new Error(
-        `applyIntermeetingDrift: member "${m.id}" has non-finite coefficient(s) ` +
-        `(inertia=${m.inertia}, inflation_coef=${m.inflation_coef}, output_coef=${m.output_coef}).`,
+        `applyIntermeetingDrift: member "${m.id}" has non-finite or out-of-range coefficient(s) ` +
+        `(inertia=${m.inertia}, inflation_coef=${m.inflation_coef}, output_coef=${m.output_coef}). ` +
+        `inertia must be in [0, 1].`,
       );
     }
     const key = stanceKey(m.id);

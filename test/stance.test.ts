@@ -44,6 +44,14 @@ function macroState(opts: { inflation: number; unemployment: number; policy_rate
   });
 }
 
+/** Compute the expected post-drift stance via Taylor rule — eliminates copy-paste across tests. */
+function coldStartExpected(m: CommitteeMember, inflation: number, unemployment: number, policyRate: number): number {
+  const gapI = inflation - PARAMS.target_inflation;
+  const gapU = unemployment - PARAMS.target_unemployment;
+  const taylor = PARAMS.neutral_rate + m.inflation_coef * gapI - m.output_coef * gapU;
+  return m.inertia * policyRate + (1 - m.inertia) * taylor;
+}
+
 describe("applyIntermeetingDrift", () => {
   // SPEC-COMM-6: pure function, no mutation
   it("returns a new state object (pure — input not mutated)", () => {
@@ -74,12 +82,7 @@ describe("applyIntermeetingDrift", () => {
     const unemployment = 0.04;
     const state = macroState({ inflation, unemployment, policy_rate: policyRate });
     const result = applyIntermeetingDrift(state, c, PARAMS);
-
-    const gapI = inflation - PARAMS.target_inflation; // 0
-    const gapU = unemployment - PARAMS.target_unemployment; // 0
-    const taylor = PARAMS.neutral_rate + m.inflation_coef * gapI - m.output_coef * gapU; // 0.05
-    const expected = m.inertia * policyRate + (1 - m.inertia) * taylor;
-    expect(result.vars[stanceKey(m.id)]).toBeCloseTo(expected, 10);
+    expect(result.vars[stanceKey(m.id)]).toBeCloseTo(coldStartExpected(m, inflation, unemployment, policyRate), 10);
   });
 
   // SPEC-COMM-6: uses stored stance as lagged anchor on subsequent calls
@@ -94,12 +97,8 @@ describe("applyIntermeetingDrift", () => {
       stances: { [stanceKey(m.id)]: prevStance },
     });
     const result = applyIntermeetingDrift(state, c, PARAMS);
-
-    const gapI = 0.02 - PARAMS.target_inflation;
-    const gapU = 0.04 - PARAMS.target_unemployment;
-    const taylor = PARAMS.neutral_rate + m.inflation_coef * gapI - m.output_coef * gapU;
-    const expected = m.inertia * prevStance + (1 - m.inertia) * taylor;
-    expect(result.vars[stanceKey(m.id)]).toBeCloseTo(expected, 10);
+    // prevStance is the lagged anchor; use coldStartExpected with policyRate=prevStance
+    expect(result.vars[stanceKey(m.id)]).toBeCloseTo(coldStartExpected(m, 0.02, 0.04, prevStance), 10);
   });
 
   // SPEC-COMM-6: more inflation-sensitive member drifts more when inflation rises
@@ -182,59 +181,56 @@ describe("applyIntermeetingDrift", () => {
     expect(result).toBe(state);
   });
 
-  // SPEC-COMM-6: NaN stance falls back to policy_rate (guards corrupt state)
-  it("NaN stored stance falls back to policy_rate", () => {
-    const m = member("a", { inertia: 0.88 });
-    const c = committeeOf([m]);
+  // SPEC-COMM-6: NaN/±Infinity stored stance falls back to policy_rate (guards corrupt state)
+  it.each([NaN, Infinity, -Infinity])(
+    "corrupt stored stance %s falls back to policy_rate",
+    (corruptStance) => {
+      const m = member("a", { inertia: 0.88 });
+      const c = committeeOf([m]);
+      const state = macroState({
+        inflation: 0.02,
+        unemployment: 0.04,
+        policy_rate: 0.05,
+        stances: { [stanceKey(m.id)]: corruptStance },
+      });
+      const result = applyIntermeetingDrift(state, c, PARAMS);
+      // Should behave like cold start (uses policy_rate=0.05 as anchor)
+      expect(result.vars[stanceKey(m.id)]).toBeCloseTo(coldStartExpected(m, 0.02, 0.04, 0.05), 10);
+    },
+  );
+
+  // SPEC-COMM-6: minus sign on unemployment term — higher output_coef → more dovish pull
+  it("higher output_coef member's stance moves less (lower) with rising unemployment", () => {
+    // SPEC-COMM-6: taylor_target = neutral_rate + inflation_coef*gapInflation - output_coef*gapUnemployment
+    // Rising unemployment above natural rate lowers Taylor target; high output_coef member moves more.
+    const mHigh = member("high_oc", { inflation_coef: 1.7, output_coef: 1.2, inertia: 0.88 });
+    const mLow  = member("low_oc",  { inflation_coef: 1.7, output_coef: 0.2, inertia: 0.88 });
+    const prevStance = 0.05;
     const state = macroState({
-      inflation: 0.02,
-      unemployment: 0.04,
+      inflation: PARAMS.target_inflation,
+      unemployment: 0.08, // well above natural rate
       policy_rate: 0.05,
-      stances: { [stanceKey(m.id)]: NaN },
+      stances: { [stanceKey(mHigh.id)]: prevStance, [stanceKey(mLow.id)]: prevStance },
     });
-    const result = applyIntermeetingDrift(state, c, PARAMS);
-    // Should behave like cold start (uses policy_rate=0.05)
-    const gapI = 0.02 - PARAMS.target_inflation;
-    const gapU = 0.04 - PARAMS.target_unemployment;
-    const taylor = PARAMS.neutral_rate + m.inflation_coef * gapI - m.output_coef * gapU;
-    const expected = m.inertia * 0.05 + (1 - m.inertia) * taylor;
-    expect(result.vars[stanceKey(m.id)]).toBeCloseTo(expected, 10);
+    const result = applyIntermeetingDrift(state, committeeOf([mHigh, mLow]), PARAMS);
+    // Higher output_coef → bigger downward pull from unemployment gap → lower stance
+    expect(result.vars[stanceKey(mHigh.id)] as number).toBeLessThan(result.vars[stanceKey(mLow.id)] as number);
   });
 
-  // SPEC-COMM-6: +Infinity stored stance falls back to policy_rate (guards corrupt state)
-  it("+Infinity stored stance falls back to policy_rate", () => {
-    const m = member("a", { inertia: 0.88 });
+  // SPEC-COMM-6: non-finite member coefficient throws with member id in message
+  it("throws when member inertia is NaN (non-finite coefficient)", () => {
+    const m = member("bad", { inertia: NaN });
     const c = committeeOf([m]);
-    const state = macroState({
-      inflation: 0.02,
-      unemployment: 0.04,
-      policy_rate: 0.05,
-      stances: { [stanceKey(m.id)]: Infinity },
-    });
-    const result = applyIntermeetingDrift(state, c, PARAMS);
-    const gapI = 0.02 - PARAMS.target_inflation;
-    const gapU = 0.04 - PARAMS.target_unemployment;
-    const taylor = PARAMS.neutral_rate + m.inflation_coef * gapI - m.output_coef * gapU;
-    const expected = m.inertia * 0.05 + (1 - m.inertia) * taylor;
-    expect(result.vars[stanceKey(m.id)]).toBeCloseTo(expected, 10);
+    const state = macroState({ inflation: 0.02, unemployment: 0.04, policy_rate: 0.05 });
+    expect(() => applyIntermeetingDrift(state, c, PARAMS)).toThrow(m.id);
   });
 
-  // SPEC-COMM-6: -Infinity stored stance falls back to policy_rate (guards corrupt state)
-  it("-Infinity stored stance falls back to policy_rate", () => {
-    const m = member("a", { inertia: 0.88 });
+  // SPEC-COMM-6: out-of-range inertia (finite but > 1) throws
+  it("throws when member inertia is 1.5 (out of [0, 1] range)", () => {
+    const m = member("bad_inertia", { inertia: 1.5 });
     const c = committeeOf([m]);
-    const state = macroState({
-      inflation: 0.02,
-      unemployment: 0.04,
-      policy_rate: 0.05,
-      stances: { [stanceKey(m.id)]: -Infinity },
-    });
-    const result = applyIntermeetingDrift(state, c, PARAMS);
-    const gapI = 0.02 - PARAMS.target_inflation;
-    const gapU = 0.04 - PARAMS.target_unemployment;
-    const taylor = PARAMS.neutral_rate + m.inflation_coef * gapI - m.output_coef * gapU;
-    const expected = m.inertia * 0.05 + (1 - m.inertia) * taylor;
-    expect(result.vars[stanceKey(m.id)]).toBeCloseTo(expected, 10);
+    const state = macroState({ inflation: 0.02, unemployment: 0.04, policy_rate: 0.05 });
+    expect(() => applyIntermeetingDrift(state, c, PARAMS)).toThrow(m.id);
   });
 
   // SPEC-COMM-6: inertia boundary — inertia=0 means full Taylor snap each step
