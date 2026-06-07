@@ -32,12 +32,14 @@ describe("trait catalog loader (SPEC-COMM-5)", () => {
           name: "trait.duplicate_id.name",
           desc: "trait.duplicate_id.desc",
           effects: {},
+          signal_hooks: [],
         },
         {
           id: "trait.duplicate_id",  // same id repeated
           name: "trait.duplicate_id2.name",
           desc: "trait.duplicate_id2.desc",
           effects: { preferred_rate_shift: 0.001 },
+          signal_hooks: [],
         },
       ];
       writeFileSync(join(dir, "dup.json"), JSON.stringify(dup));

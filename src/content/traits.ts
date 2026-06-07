@@ -4,8 +4,10 @@ import { loadValidated } from "./loader.js";
 // SPEC-COMM-5: trait catalog content type — mirrors schemas/traits.schema.json.
 
 export interface TraitEffects {
-  preferred_rate_shift?: number;
-  band_modifier?: number;
+  /** Additive shift to the member's preferred rate, in decimal rate units (0.005 = 50 bp). Positive = hawkish lean. */
+  readonly preferred_rate_shift?: number;
+  /** Fractional multiplier adjustment to `compromise_band` via `(1 + band_modifier)`. -0.3 narrows the band by 30%; 0 = no effect. */
+  readonly band_modifier?: number;
 }
 
 export interface SignalHook {
@@ -18,8 +20,8 @@ export interface TraitEntry {
   readonly id: string;
   readonly name: string;
   readonly desc: string;
-  readonly effects: Readonly<TraitEffects>;
-  readonly signal_hooks?: readonly SignalHook[];
+  readonly effects: TraitEffects;
+  readonly signal_hooks: readonly SignalHook[];
 }
 
 // Thrown when the trait catalog contains duplicate ids — the schema can't express this.
@@ -50,7 +52,7 @@ export function loadTraitCatalog(dir: string = DEFAULT_TRAITS_DIR): TraitEntry[]
       try {
         entries = loadValidated<TraitEntry>(SCHEMA_PATH, dir);
       } catch (e) {
-        throw new Error("Failed to load trait catalog from content/traits/catalog.json", { cause: e });
+        throw new Error(`Failed to load trait catalog from ${DEFAULT_TRAITS_DIR}`, { cause: e });
       }
       checkDuplicateIds(entries);
       _cachedTraitCatalog = entries;

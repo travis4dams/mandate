@@ -23,7 +23,9 @@ export interface CommitteeParams {
   /** Natural rate of unemployment used to compute the unemployment gap. */
   target_unemployment: number;
   /** Scales how much a member's conviction narrows their effective compromise band.
-   *  effective_band = compromise_band * (1 - conviction * conviction_band_factor) * (1 + bandMod). SPEC-COMM-5. */
+   *  Full formula: `effectiveBand = Math.max(0, compromise_band * (1 - conviction * conviction_band_factor) * (1 + bandMod))`.
+   *  conviction_band_factor controls the conviction contribution; bandMod is the sum of band_modifier from the member's traits.
+   *  SPEC-COMM-5. */
   conviction_band_factor: number;
 }
 
@@ -67,6 +69,9 @@ function memberPreferred(
     params.neutral_rate +
     member.inflation_coef * gapInflation -
     member.output_coef * gapUnemployment;
+  // leanShift is applied post-inertia as a constant additive. For a member with inertia=0.88,
+  // the Taylor target only contributes 12% per period, but leanShift lands at full magnitude
+  // every meeting — consistent with the SPEC ("additive shift to the member's preferred rate").
   return member.inertia * laggedRate + (1 - member.inertia) * taylor + leanShift;
 }
 

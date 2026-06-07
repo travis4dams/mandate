@@ -5,7 +5,7 @@
   "description": "A named committee-member trait. SPEC-COMM-5: each trait declares always-on effects (preferred_rate_shift, band_modifier) and optional signal-reactive hooks that are dormant until the referenced world-state series exists.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["id", "name", "desc", "effects"],
+  "required": ["id", "name", "desc", "effects", "signal_hooks"],
   "properties": {
     "id": {
       "type": "string",

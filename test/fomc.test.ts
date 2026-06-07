@@ -347,6 +347,7 @@ describe("vote", () => {
       name: "trait.hawkish_lean.name",
       desc: "trait.hawkish_lean.desc",
       effects: { preferred_rate_shift: 0.005 },
+      signal_hooks: [],
     };
     const withTrait = member("tagged", { traits: ["trait.hawkish_lean"] });
     const plain    = member("plain");
@@ -365,6 +366,7 @@ describe("vote", () => {
       name: "trait.dovish_lean.name",
       desc: "trait.dovish_lean.desc",
       effects: { preferred_rate_shift: -0.005 },
+      signal_hooks: [],
     };
     const withTrait = member("tagged", { traits: ["trait.dovish_lean"] });
     const plain    = member("plain");
@@ -382,6 +384,7 @@ describe("vote", () => {
       name: "trait.principled_dissenter.name",
       desc: "trait.principled_dissenter.desc",
       effects: { band_modifier: -0.3 },
+      signal_hooks: [],
     };
     // compromise_band = 0.010, conviction = 0 (no conviction narrowing).
     // Without trait: effective = 0.010. With trait: effective = 0.010 * (1 + (-0.3)) = 0.007.
@@ -438,6 +441,7 @@ describe("vote", () => {
       name: "trait.hawkish_lean.name",
       desc: "trait.hawkish_lean.desc",
       effects: { preferred_rate_shift: 0.010 },
+      signal_hooks: [],
     };
     // conviction=0.9: effectiveBand = 0.010 * (1 - 0.9 * 0.8) = 0.010 * 0.28 = 0.0028.
     // preferred shifts up by 0.010 from lean.
@@ -464,12 +468,14 @@ describe("vote", () => {
       name: "trait.lean_a.name",
       desc: "trait.lean_a.desc",
       effects: { preferred_rate_shift: 0.005 },
+      signal_hooks: [],
     };
     const leanB: TraitEntry = {
       id: "trait.lean_b",
       name: "trait.lean_b.name",
       desc: "trait.lean_b.desc",
       effects: { preferred_rate_shift: 0.003 },
+      signal_hooks: [],
     };
     // Total lean shift = 0.005 + 0.003 = 0.008.
     const m = member("multi_lean", { traits: ["trait.lean_a", "trait.lean_b"] });
@@ -488,6 +494,7 @@ describe("vote", () => {
       name: "trait.dovish_lean.name",
       desc: "trait.dovish_lean.desc",
       effects: { preferred_rate_shift: -0.020 },
+      signal_hooks: [],
     };
     // At steady state base preferred = 0.05. With dovish lean, preferred ≈ 0.030.
     // Proposed = 0.05; |0.030 - 0.05| = 0.020 > compromise_band (0.005) → dissent.
@@ -528,12 +535,14 @@ describe("vote", () => {
       name: "trait.extreme_narrower_a.name",
       desc: "trait.extreme_narrower_a.desc",
       effects: { band_modifier: -0.6 },
+      signal_hooks: [],
     };
     const traitB: TraitEntry = {
       id: "trait.extreme_narrower_b",
       name: "trait.extreme_narrower_b.name",
       desc: "trait.extreme_narrower_b.desc",
       effects: { band_modifier: -0.6 },
+      signal_hooks: [],
     };
     const c = committeeOf([member("a", { traits: ["trait.extreme_narrower_a", "trait.extreme_narrower_b"] })]);
     const state = macroState({ inflation: 0.02, unemployment: 0.04, policy_rate: 0.05 });
@@ -549,6 +558,7 @@ describe("vote", () => {
       name: "trait.noop.name",
       desc: "trait.noop.desc",
       effects: {},
+      signal_hooks: [],
     };
     const tagged = member("tagged", { traits: ["trait.noop"] });
     const plain  = member("plain");
@@ -559,6 +569,22 @@ describe("vote", () => {
     expect(previews[0]!.preferred).toBeCloseTo(previews[1]!.preferred, 10);
     // dissent decision must be identical (zero band modification).
     expect(previews[0]!.wouldDissent).toBe(previews[1]!.wouldDissent);
+  });
+
+  // SPEC-COMM-5: TraitNotFoundError carries structured memberId and traitId for programmatic handling.
+  it("SPEC-COMM-5: TraitNotFoundError carries correct memberId and traitId fields", () => {
+    // SPEC-COMM-5
+    const c = committeeOf([member("my_member", { traits: ["trait.nonexistent"] })]);
+    const state = macroState({ inflation: 0.02, unemployment: 0.04, policy_rate: 0.05 });
+    try {
+      previewVote(c, 0.05, state, PARAMS, []);
+      expect.fail("should have thrown TraitNotFoundError");
+    } catch (e) {
+      expect(e).toBeInstanceOf(TraitNotFoundError);
+      const err = e as TraitNotFoundError;
+      expect(err.memberId).toBe("member.my_member");
+      expect(err.traitId).toBe("trait.nonexistent");
+    }
   });
 
   // SPEC-COMM-5 item 6b: conviction_band_factor = 0 disables conviction narrowing —
