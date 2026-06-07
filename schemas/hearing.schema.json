@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mandate.dev/schemas/hearing.schema.json",
+  "title": "Hearing",
+  "description": "A confirmation-hearing content type. Questions and answers deterministically select the starting scenario and accumulate state modifiers. All player-facing text is localization keys.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "name", "desc", "questions"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^hearing\\.[a-z0-9_]+$",
+      "description": "Stable unique id, e.g. hearing.confirmation."
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_.]+$",
+      "description": "Localization key for the hearing title."
+    },
+    "desc": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_.]+$",
+      "description": "Localization key for the hearing description."
+    },
+    "questions": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Ordered list of questions posed to the incoming Chair.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "text", "answers"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^hearing\\.q\\.[a-z0-9_]+$",
+            "description": "Stable question id, e.g. hearing.q.inflation_priority."
+          },
+          "text": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_.]+$",
+            "description": "Localization key for the question text."
+          },
+          "answers": {
+            "type": "array",
+            "minItems": 2,
+            "description": "Available answer choices; player picks exactly one per question.",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["id", "text"],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^hearing\\.a\\.[a-z0-9_]+$",
+                  "description": "Stable answer id, e.g. hearing.a.inflation_strict."
+                },
+                "text": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_.]+$",
+                  "description": "Localization key for the answer text."
+                },
+                "scenario_weights": {
+                  "type": "object",
+                  "additionalProperties": { "type": "number", "exclusiveMinimum": 0 },
+                  "minProperties": 1,
+                  "description": "Additive weights toward each scenario id. The scenario with the highest total weight across all chosen answers is selected as the starting state."
+                },
+                "state_modifiers": {
+                  "type": "array",
+                  "description": "Additive deltas applied to the starting state after scenario selection.",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["target", "delta"],
+                    "properties": {
+                      "target": {
+                        "type": "string",
+                        "enum": ["credibility", "policy_rate", "inflation", "unemployment", "expectations_anchor"],
+                        "description": "The state var to modify."
+                      },
+                      "delta": {
+                        "type": "number",
+                        "description": "Additive delta applied to the var. Clamping is the engine's responsibility."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

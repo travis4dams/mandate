@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mandate.dev/schemas/calibration-thresholds.schema.json",
+  "title": "CalibrationThresholds",
+  "description": "Maximum acceptable RMSE values per metric. SPEC-CAL-3: thresholds are content-governed, not hardcoded.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["inflation_rmse_max", "unemployment_rmse_max", "policy_rate_rmse_max"],
+  "properties": {
+    "inflation_rmse_max": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Maximum acceptable RMSE for inflation vs FRED."
+    },
+    "unemployment_rmse_max": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Maximum acceptable RMSE for unemployment vs FRED."
+    },
+    "policy_rate_rmse_max": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Maximum acceptable RMSE for policy rate vs FRED."
+    }
+  }
+}

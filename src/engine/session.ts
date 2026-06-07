@@ -9,6 +9,7 @@ import { loadTraitCatalog } from "../content/traits.js";
 import { applyMeetingOutcome, getCredibility } from "./credibility.js";
 import { applyMacroDynamics, loadDynamicsParams } from "./dynamics.js";
 import { applyRateToOutputGap, loadLagParams } from "./lags.js";
+import { applyTermStructure, loadTermStructureParams } from "./term-structure.js";
 import { onTarget, loadMandateParams } from "./mandate.js";
 import { applySupplyShock, loadShocksParams } from "./shocks.js";
 import { mulberry32 } from "./rng.js";
@@ -272,6 +273,8 @@ export class Session {
     const lagParams = loadLagParams();
     // SPEC-SHOCK-1: shocks params are a cached singleton; hoisted for the same reason.
     const shocksParams = loadShocksParams();
+    // SPEC-TERM-1: term-structure params are a cached singleton; hoisted for the same reason.
+    const termStructureParams = loadTermStructureParams();
     const effectiveParams = {
       ...dynamicsParams,
       expectations_anchor_pull:
@@ -297,6 +300,8 @@ export class Session {
         this._state = applyMacroDynamics(this._state, effectiveParams);
         // SPEC-SHOCK-1: apply seeded supply shock after macro dynamics each month.
         this._state = applySupplyShock(this._state, this._rng, shocksParams);
+        // SPEC-TERM-1: update long_rate via EWMA toward policy_rate, after macro dynamics.
+        this._state = applyTermStructure(this._state, termStructureParams);
 
         const snapshot = Session._snapshotOf(this._state);
         this._trajectoryInternal.push(snapshot);
