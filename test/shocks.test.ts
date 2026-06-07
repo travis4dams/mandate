@@ -154,3 +154,17 @@ describe("loadShocksParams (SPEC-SHOCK-1)", () => {
     expect(Number.isFinite(params.supply_shock_sigma)).toBe(true);
   });
 });
+
+// SPEC-SHOCK-1: reset() restores the RNG so advance(N) after reset() matches a fresh session.
+describe("Session.reset — RNG reset (SPEC-SHOCK-1)", () => {
+  it("reset(); advance(N) produces same trajectory as fresh session with same seed", () => {
+    // SPEC-SHOCK-1
+    const fresh = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    fresh.advance(12);
+    const reused = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    reused.advance(5);
+    reused.reset();
+    reused.advance(12);
+    expect(reused.trajectory).toEqual(fresh.trajectory);
+  });
+});

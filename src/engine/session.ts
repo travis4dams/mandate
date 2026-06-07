@@ -165,13 +165,16 @@ export class Session {
 
   // SPEC-SHOCK-1: seeded RNG for supply shocks; initialized from the seed parameter.
   // All randomness flows through this instance (SPEC-SIM-1 — never Math.random()).
-  private readonly _rng: () => number;
+  // _seed is stored so reset() can reinitialise _rng to the same starting state (SPEC-SIM-1).
+  private readonly _seed: number;
+  private _rng: () => number;
 
-  // The `_seed` parameter initialises `_rng` via mulberry32 (SPEC-SHOCK-1 / SPEC-SIM-1).
+  // The `seed` parameter initialises `_rng` via mulberry32 (SPEC-SHOCK-1 / SPEC-SIM-1).
   private constructor(initialState: GameState, seed: number, replay: Replay | null, committeeId: string) {
     this._replay = replay;
     this._committeeId = committeeId;
     this._initialState = initialState;
+    this._seed = seed;
     this._rng = mulberry32(seed);
     this._state = { ...initialState, vars: { ...initialState.vars }, flags: { ...initialState.flags }, history: [] };
 
@@ -183,7 +186,7 @@ export class Session {
 
   /**
    * Construct a Session from a scenario content file.
-   * seed is accepted for API stability (SPEC-SESSION-0 factory signature); stochastic mechanics are not yet wired.
+   * seed initialises the mulberry32 RNG that drives per-month supply shocks in advance() (SPEC-SHOCK-1 / SPEC-SIM-1).
    * committeeId identifies the FOMC committee used by proposeRate (e.g. "comm.fomc_1979").
    */
   static fromScenario(scenarioId: string, seed: number, committeeId: string): Session {
@@ -267,6 +270,8 @@ export class Session {
     const dynamicsParams = loadDynamicsParams();
     // SPEC-LAG-1: lag params are a cached singleton; hoisted for the same reason.
     const lagParams = loadLagParams();
+    // SPEC-SHOCK-1: shocks params are a cached singleton; hoisted for the same reason.
+    const shocksParams = loadShocksParams();
     const effectiveParams = {
       ...dynamicsParams,
       expectations_anchor_pull:
@@ -291,7 +296,7 @@ export class Session {
         this._state = applyRateToOutputGap(this._state, this._trajectoryInternal, lagParams, dynamicsParams.real_neutral_rate);
         this._state = applyMacroDynamics(this._state, effectiveParams);
         // SPEC-SHOCK-1: apply seeded supply shock after macro dynamics each month.
-        this._state = applySupplyShock(this._state, this._rng, loadShocksParams());
+        this._state = applySupplyShock(this._state, this._rng, shocksParams);
 
         const snapshot = Session._snapshotOf(this._state);
         this._trajectoryInternal.push(snapshot);
@@ -403,6 +408,7 @@ export class Session {
    */
   reset(): void {
     this._stance = "neutral";
+    this._rng = mulberry32(this._seed);
     this._state = {
       ...this._initialState,
       vars: { ...this._initialState.vars },
