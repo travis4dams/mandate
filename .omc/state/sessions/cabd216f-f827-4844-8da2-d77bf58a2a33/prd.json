@@ -159,8 +159,8 @@
       "id": "US-016",
       "spec": "SPEC-TERM-1",
       "title": "Term structure: long_rate EWMA toward policy_rate with half-life from content",
-      "passes": false,
-      "pr": null,
+      "passes": true,
+      "pr": 72,
       "dependencies": [
         "US-003"
       ]
@@ -187,8 +187,8 @@
       "id": "US-019",
       "spec": "SPEC-CAL-3",
       "title": "RMSE emit + soft gate: calibrate.ts extended with three RMSE comparisons",
-      "passes": false,
-      "pr": null,
+      "passes": true,
+      "pr": 74,
       "dependencies": [
         "US-018",
         "US-005"
