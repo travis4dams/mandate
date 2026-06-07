@@ -166,6 +166,7 @@ branch issue-47-spec-hear-1-confirmation-hearing:
   - test/hearing.test.ts (16 SPEC-HEAR-1 tests)
   All checks green: 213 engine tests, 12 web tests, spec:trace 32/32, validate 15 types, web build.
   PR #66 opened, issue #47 commented, agent-task label removed. Stopped per Phase 0 protocol.
+Stories still passing=false: US-012..US-019.
 
 == CYCLE 13 — 2026-06-07 ==
 Phase 0 (issue queue): empty — fell through to Phase 1.
@@ -188,3 +189,27 @@ Phase 1:
     #67 (chore cycle 12, awaiting re-review after rebase+fix).
   No new PRD story dispatched this cycle (PR backlog has 10 open PRs requiring review attention).
 Stories still passing=false: US-012..US-019.
+
+== CYCLE 14 — 2026-06-07 ==
+Phase 0 (issue queue): empty — fell through to Phase 1.
+Phase 1:
+  Merged PR #68 (chore: cycle 13 progress log, VERDICT: APPROVE, squash bcfdb04). Branch required
+    rebase to resolve progress.txt conflict (cycle-13 branch base had cycles 1-7; main had cycles
+    1-12 from PR #60; kept all cycles by appending).
+  Merged PR #52 (SPEC-LAG-1: distributed lag kernel + output_gap state var, VERDICT: APPROVE,
+    squash 301dd64). Branch required rebase to resolve tools/validate-content.ts conflict (both
+    SPEC-BRIEF-2 and SPEC-LAG-1 added fileChecks entries at same location — kept both). Also
+    ran web/npm install to fix Cannot-find-module-react typecheck error after rebase.
+  prd.json updated: US-014 marked passes=true, pr=52.
+  PR #64 (SPEC-SIM-6, issue-45-spec-sim-6-sub-monthly-tick) — round 2 REQUEST_CHANGES:
+    (1) scaleParamsForTick missing guard for n<1 or non-integer n;
+    (2) Session.advance() sub-monthly months_below_anchor logic entirely untested at Session level.
+    Dispatched executor agent (a9815233cac6f54c2) to add RangeError guard + 2 integration tests.
+  PR #55 (SPEC-COMM-7, issue-39-spec-comm-7-chair-capital) — round 2 REQUEST_CHANGES:
+    (1) computeEffectiveBands silently discards negative spend values (should throw);
+    (2) no total budget enforcement — caller can spend more than chairCapital() returns.
+    Dispatched executor agent (a9d26161a50b9481c) to add budget cap + negative-spend throw.
+  PR #62 (SPEC-DOCT-2) deferred: blocked on PR #61 (SPEC-DOCT-1) not yet merged, AND has
+    CLAUDE.md violation (content ID hardcoded in src/engine code) requiring non-trivial redesign.
+  PRs #50, #53, #61, #63, #66 all have newer commits since last review — awaiting re-review.
+Stories still passing=false: US-012..US-019 (US-014 now passes=true as of this cycle).

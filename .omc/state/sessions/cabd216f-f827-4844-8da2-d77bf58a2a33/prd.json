@@ -1,7 +1,7 @@
 {
   "session": "cabd216f-f827-4844-8da2-d77bf58a2a33",
   "slice": 2,
-  "title": "MANDATE Slice 2 — Rich engine + React inspector UI",
+  "title": "MANDATE Slice 2 \u2014 Rich engine + React inspector UI",
   "stories": [
     {
       "id": "US-001",
@@ -17,7 +17,9 @@
       "title": "Skeleton Session facade with identity-stable getters and subscribe protocol",
       "passes": true,
       "pr": 15,
-      "dependencies": ["US-001"]
+      "dependencies": [
+        "US-001"
+      ]
     },
     {
       "id": "US-003",
@@ -25,7 +27,9 @@
       "title": "Macro dynamics: Phillips curve + IS curve (applyMacroDynamics)",
       "passes": true,
       "pr": 20,
-      "dependencies": ["US-002"]
+      "dependencies": [
+        "US-002"
+      ]
     },
     {
       "id": "US-004",
@@ -33,7 +37,9 @@
       "title": "Forward-guidance stance wired to credibility-spiral recovery rate",
       "passes": true,
       "pr": 19,
-      "dependencies": ["US-002"]
+      "dependencies": [
+        "US-002"
+      ]
     },
     {
       "id": "US-005",
@@ -41,7 +47,10 @@
       "title": "Session.proposeRate gated to FOMC meeting schedule; isMeetingMonth helper",
       "passes": true,
       "pr": 17,
-      "dependencies": ["US-002", "US-004"]
+      "dependencies": [
+        "US-002",
+        "US-004"
+      ]
     },
     {
       "id": "US-006",
@@ -49,7 +58,9 @@
       "title": "Vite + React 18.3 + TypeScript scaffold in web/; root check extended",
       "passes": true,
       "pr": 21,
-      "dependencies": ["US-002"]
+      "dependencies": [
+        "US-002"
+      ]
     },
     {
       "id": "US-007",
@@ -57,7 +68,9 @@
       "title": "Dashboard + useSession hook backed by useSyncExternalStore",
       "passes": true,
       "pr": 24,
-      "dependencies": ["US-006"]
+      "dependencies": [
+        "US-006"
+      ]
     },
     {
       "id": "US-008",
@@ -65,7 +78,9 @@
       "title": "Mandate evaluator: onTarget checks dual/single mandate; wired to proposeRate",
       "passes": true,
       "pr": 22,
-      "dependencies": ["US-005"]
+      "dependencies": [
+        "US-005"
+      ]
     },
     {
       "id": "US-009",
@@ -73,7 +88,9 @@
       "title": "Empirical FOMC model: Taylor-rule per-member coefficients + 12-member committee",
       "passes": true,
       "pr": 27,
-      "dependencies": ["US-005"]
+      "dependencies": [
+        "US-005"
+      ]
     },
     {
       "id": "US-010",
@@ -81,7 +98,10 @@
       "title": "FOMC meeting panel: committee briefing table + propose-rate button",
       "passes": true,
       "pr": 28,
-      "dependencies": ["US-007", "US-009"]
+      "dependencies": [
+        "US-007",
+        "US-009"
+      ]
     },
     {
       "id": "US-011",
@@ -89,7 +109,9 @@
       "title": "Control bar: forward-guidance stance buttons + advance-to-next-meeting",
       "passes": true,
       "pr": 28,
-      "dependencies": ["US-007"]
+      "dependencies": [
+        "US-007"
+      ]
     },
     {
       "id": "US-012",
@@ -97,7 +119,9 @@
       "title": "Time-series charts: 4 series via Observable Plot with fog overlay",
       "passes": false,
       "pr": null,
-      "dependencies": ["US-007"]
+      "dependencies": [
+        "US-007"
+      ]
     },
     {
       "id": "US-013",
@@ -105,15 +129,21 @@
       "title": "Four-question tooltip (sparse): what/how/levers/trust on focus/hover",
       "passes": false,
       "pr": null,
-      "dependencies": ["US-007", "US-010", "US-012"]
+      "dependencies": [
+        "US-007",
+        "US-010",
+        "US-012"
+      ]
     },
     {
       "id": "US-014",
       "spec": "SPEC-LAG-1",
       "title": "Distributed lag kernel: policy-to-output-gap weights from content",
-      "passes": false,
-      "pr": null,
-      "dependencies": ["US-003"]
+      "passes": true,
+      "pr": 52,
+      "dependencies": [
+        "US-003"
+      ]
     },
     {
       "id": "US-015",
@@ -121,7 +151,9 @@
       "title": "Productivity drift: state.vars.productivity drifts at content-driven rate",
       "passes": false,
       "pr": null,
-      "dependencies": ["US-003"]
+      "dependencies": [
+        "US-003"
+      ]
     },
     {
       "id": "US-016",
@@ -129,7 +161,9 @@
       "title": "Term structure: long_rate EWMA toward policy_rate with half-life from content",
       "passes": false,
       "pr": null,
-      "dependencies": ["US-003"]
+      "dependencies": [
+        "US-003"
+      ]
     },
     {
       "id": "US-017",
@@ -137,7 +171,9 @@
       "title": "Stochastic shocks: seeded supply-shock term injected into Phillips curve",
       "passes": false,
       "pr": null,
-      "dependencies": ["US-003"]
+      "dependencies": [
+        "US-003"
+      ]
     },
     {
       "id": "US-018",
@@ -153,7 +189,10 @@
       "title": "RMSE emit + soft gate: calibrate.ts extended with three RMSE comparisons",
       "passes": false,
       "pr": null,
-      "dependencies": ["US-018", "US-005"]
+      "dependencies": [
+        "US-018",
+        "US-005"
+      ]
     }
   ]
 }
