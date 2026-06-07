@@ -8,12 +8,14 @@ import {
 } from "../src/engine/productivity";
 import { makeState } from "../src/engine/state";
 import { Session } from "../src/engine/session";
+import { registerContentFile, _resetValidateFileCache, _resetRegistries } from "../src/content/loader";
 
-const RATE = 0.002; // matches content/engine/productivity.json
-const BASE_PARAMS: ProductivityParams = { monthly_drift_rate: RATE };
+const BASE_PARAMS: ProductivityParams = { monthly_drift_rate: 0.002 };
 
 afterEach(() => {
   _resetProductivityParamsCache();
+  _resetValidateFileCache();
+  _resetRegistries();
 });
 
 describe("applyProductivityDrift — geometric drift (SPEC-PROD-1)", () => {
@@ -21,7 +23,7 @@ describe("applyProductivityDrift — geometric drift (SPEC-PROD-1)", () => {
     // SPEC-PROD-1
     const state = makeState({ vars: {} });
     const result = applyProductivityDrift(state, BASE_PARAMS);
-    expect(result.vars.productivity).toBe(1.0 * (1 + RATE));
+    expect(result.vars.productivity).toBe(1.0 * (1 + BASE_PARAMS.monthly_drift_rate));
   });
 
   it("defaults to productivity=1.0 when absent from state", () => {
@@ -29,7 +31,7 @@ describe("applyProductivityDrift — geometric drift (SPEC-PROD-1)", () => {
     const state = makeState({ vars: {} });
     expect(state.vars.productivity).toBeUndefined();
     const result = applyProductivityDrift(state, BASE_PARAMS);
-    expect(result.vars.productivity).toBe(1.0 * (1 + RATE));
+    expect(result.vars.productivity).toBe(1.0 * (1 + BASE_PARAMS.monthly_drift_rate));
   });
 
   it("after N months productivity equals 1.0 * (1 + rate)^N", () => {
@@ -41,7 +43,7 @@ describe("applyProductivityDrift — geometric drift (SPEC-PROD-1)", () => {
     for (let i = 0; i < N; i++) {
       state = applyProductivityDrift(state, BASE_PARAMS) as typeof state;
     }
-    expect(state.vars.productivity).toBeCloseTo(Math.pow(1 + RATE, N), 12);
+    expect(state.vars.productivity).toBeCloseTo(Math.pow(1 + BASE_PARAMS.monthly_drift_rate, N), 12);
   });
 
   it("continues from an explicit starting value other than 1.0", () => {
@@ -49,7 +51,7 @@ describe("applyProductivityDrift — geometric drift (SPEC-PROD-1)", () => {
     const start = 1.5;
     const state = makeState({ vars: { productivity: start } });
     const result = applyProductivityDrift(state, BASE_PARAMS);
-    expect(result.vars.productivity).toBe(start * (1 + RATE));
+    expect(result.vars.productivity).toBe(start * (1 + BASE_PARAMS.monthly_drift_rate));
   });
 
   it("is a pure function — input state unchanged after call", () => {
@@ -102,12 +104,20 @@ describe("loadProductivityParams (SPEC-PROD-1)", () => {
     // After reset a new object is returned (different reference).
     expect(first).not.toBe(second);
   });
+
+  it("schema rejects monthly_drift_rate = -1", () => {
+    // SPEC-PROD-1: rate <= -1 makes (1 + rate) <= 0, driving productivity to zero or negative.
+    // The schema enforces exclusiveMinimum: -1; the loader also asserts this post-load.
+    registerContentFile("content/engine/productivity.json", { monthly_drift_rate: -1 });
+    expect(() => loadProductivityParams()).toThrow();
+  });
 });
 
 describe("Session.advance integration (SPEC-PROD-1)", () => {
   it("advance(12) produces a finite productivity var in the resulting state", () => {
     // SPEC-PROD-1
     const session = Session.fromScenario("scen.1979_stagflation", 1, "comm.fomc_1979");
+    expect(session.current.vars.productivity).toBeUndefined();
     session.advance(12);
     const productivity = session.current.vars.productivity as number | undefined;
     expect(productivity).toBeDefined();
@@ -117,9 +127,11 @@ describe("Session.advance integration (SPEC-PROD-1)", () => {
 
   it("productivity after 12 months equals (1 + rate)^12 starting from 1.0", () => {
     // SPEC-PROD-1
+    const params = loadProductivityParams();
     const session = Session.fromScenario("scen.1979_stagflation", 1, "comm.fomc_1979");
+    expect(session.current.vars.productivity).toBeUndefined();
     session.advance(12);
     const productivity = session.current.vars.productivity as number;
-    expect(productivity).toBeCloseTo(Math.pow(1 + RATE, 12), 12);
+    expect(productivity).toBeCloseTo(Math.pow(1 + params.monthly_drift_rate, 12), 12);
   });
 });

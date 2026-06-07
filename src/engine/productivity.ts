@@ -20,10 +20,14 @@ export interface ProductivityParams {
  * `monthly_drift_rate` may be positive (growth) or negative (stagnation/decline).
  */
 export function applyProductivityDrift(state: GameState, params: ProductivityParams): GameState {
-  const prev = (state.vars.productivity as number | undefined) ?? 1.0;
+  const prev = state.vars.productivity;
+  if (prev !== undefined && !Number.isFinite(prev)) {
+    throw new Error("productivity: state.vars.productivity is not finite");
+  }
+  const current = prev ?? 1.0;
   return {
     ...state,
-    vars: { ...state.vars, productivity: prev * (1 + params.monthly_drift_rate) },
+    vars: { ...state.vars, productivity: current * (1 + params.monthly_drift_rate) },
   };
 }
 
@@ -44,7 +48,15 @@ let _cached: ProductivityParams | undefined;
  */
 export function loadProductivityParams(): ProductivityParams {
   if (_cached !== undefined) return _cached;
-  _cached = loadValidatedFile<ProductivityParams>(SCHEMA, FILE);
+  try {
+    _cached = loadValidatedFile<ProductivityParams>(SCHEMA, FILE);
+  } catch (e) {
+    throw new Error("Failed to load productivity params from content/engine/productivity.json", { cause: e });
+  }
+  // SPEC-PROD-1: JSON Schema enforces exclusiveMinimum: -1, but assert here for defence-in-depth.
+  if (_cached.monthly_drift_rate <= -1) {
+    throw new Error(`productivity: monthly_drift_rate must be > -1, got ${_cached.monthly_drift_rate}`);
+  }
   return _cached;
 }
 
