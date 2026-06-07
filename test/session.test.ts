@@ -2,6 +2,8 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { Session, NotMeetingMonthError, marketsSurprised } from "../src/engine/session.js";
 import type { ForwardGuidanceStance } from "../src/engine/session.js";
 import * as mandateModule from "../src/engine/mandate.js";
+import * as stanceModule from "../src/engine/stance.js";
+import { stanceKey } from "../src/engine/stance.js";
 
 // SPEC-SESSION-0
 
@@ -73,6 +75,46 @@ describe("Session.advance integration", () => {
   });
 });
 
+describe("SPEC-COMM-6: stance drift wired into Session.advance()", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  // SPEC-COMM-6: after advance(1), at least one member's stance var must exist and differ from
+  // the cold-start policy_rate — confirming applyIntermeetingDrift is called each month.
+  // Removing the applyIntermeetingDrift call from session.ts would leave all stance.* vars absent.
+  it("after advance(1) a stance.* var is present and has drifted from the initial policy_rate", () => {
+    // SPEC-COMM-6
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    const initialRate = s.current.vars.policy_rate as number;
+    s.advance(1);
+    // At least one member should have a stored stance after one advance
+    const stanceVars = Object.keys(s.current.vars).filter((k) => k.startsWith("stance."));
+    expect(stanceVars.length).toBeGreaterThan(0);
+    // The 1979 scenario starts far from steady state — stances drift from the policy_rate anchor
+    const firstStance = s.current.vars[stanceVars[0]] as number;
+    expect(Number.isFinite(firstStance)).toBe(true);
+    expect(firstStance).not.toBe(initialRate);
+  });
+
+  // SPEC-COMM-6: advance() throws when applyIntermeetingDrift returns the same reference (no-op),
+  // and rolls back session state so the caller sees no partial mutation.
+  it("advance() throws and rolls back when applyIntermeetingDrift returns the same reference", () => {
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    const stateBefore = s.current;
+    const trajectoryLengthBefore = s.trajectory.length;
+
+    // Force applyIntermeetingDrift to return its input unchanged (simulates the missing-vars no-op).
+    vi.spyOn(stanceModule, "applyIntermeetingDrift").mockImplementationOnce((state) => state);
+
+    expect(() => s.advance(1)).toThrow(/applyIntermeetingDrift skipped/);
+    // State and trajectory must be rolled back to the pre-advance checkpoint.
+    // current is a new snapshot object (rebuilt by _rebuildCaches), so use deep equality.
+    expect(s.current).toStrictEqual(stateBefore);
+    expect(s.trajectory.length).toBe(trajectoryLengthBefore);
+  });
+});
+
 describe("Session.reset correctness", () => {
   // SPEC-SESSION-0: reset() restores trajectory.length to 1 and current.date to scenario start.
   it("after advance(3); reset() → trajectory.length === 1, current.date === '1979-08'", () => {
@@ -93,6 +135,15 @@ describe("Session.reset correctness", () => {
     s.reset();
     expect(s.current.date).toBe("1979-08");
     expect(s.isMeetingMonth()).toBe(true);
+  });
+
+  // SPEC-COMM-6
+  it("stance.* vars are absent from state after reset()", () => {
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    s.advance(3);
+    expect(Object.keys(s.current.vars).some((k) => k.startsWith("stance."))).toBe(true);
+    s.reset();
+    expect(Object.keys(s.current.vars).some((k) => k.startsWith("stance."))).toBe(false);
   });
 });
 
@@ -146,6 +197,19 @@ describe("Session.proposeRate guards", () => {
     expect(s.isMeetingMonth()).toBe(true);
     const vote = s.proposeRate(0.12);
     expect(vote.decided).toBe(0.12);
+  });
+
+  // SPEC-COMM-6
+  it("proposeRate() preserves stance.* vars", () => {
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    s.advance(1);
+    const stanceKeysBefore = Object.keys(s.current.vars).filter((k) => k.startsWith("stance."));
+    expect(stanceKeysBefore.length).toBeGreaterThan(0);
+    const stanceBefore = Object.fromEntries(stanceKeysBefore.map((k) => [k, s.current.vars[k]]));
+    s.proposeRate(s.current.vars.policy_rate as number);
+    for (const k of stanceKeysBefore) {
+      expect(s.current.vars[k]).toBe(stanceBefore[k]);
+    }
   });
 });
 

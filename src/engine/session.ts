@@ -5,9 +5,11 @@ import { loadCommittee } from "../content/committees.js";
 import { loadValidatedFile } from "../content/loader.js";
 import { tick } from "./clock.js";
 import { vote, previewVote, loadCommitteeParams } from "./fomc.js";
+import { applyIntermeetingDrift } from "./stance.js";
 import { loadTraitCatalog } from "../content/traits.js";
 import { applyMeetingOutcome, getCredibility } from "./credibility.js";
 import { applyMacroDynamics, loadDynamicsParams } from "./dynamics.js";
+import { loadClockCadenceParams, scaleParamsForTick } from "./cadence.js";
 import { applyRateToOutputGap, loadLagParams } from "./lags.js";
 import { applyTermStructure, loadTermStructureParams } from "./term-structure.js";
 import { onTarget, loadMandateParams } from "./mandate.js";
@@ -155,7 +157,7 @@ export class Session {
   // Committee id used by proposeRate; passed as a required factory argument.
   private readonly _committeeId: string;
 
-  // SPEC-GUIDE-1: stored stance; wired to the spiral recovery path in advance() via stanceMultiplier().
+  // SPEC-GUIDE-1: stored stance; wired to expectations_anchor_pull in advance() via stanceMultiplier().
   private _stance: ForwardGuidanceStance = "neutral";
 
   // Subscriber set for the subscribe/unsubscribe protocol.
@@ -248,8 +250,8 @@ export class Session {
   // --- Mutators ---
 
   /**
-   * Advance the session by `months` months.
-   * For each month, applies any matching replay action then calls tick().
+   * Advance the session by `months` months, applying per-month: replay action (if any),
+   * tick(), applyRateToOutputGap(), applyMacroDynamics(), applyIntermeetingDrift(), applyTermStructure().
    * @throws {Error} if months is not a positive integer.
    */
   advance(months: number): void {
@@ -267,10 +269,9 @@ export class Session {
     const checkpointTrajectoryLength = this._trajectoryInternal.length;
     const checkpointRng = this._rng.snapshot();
 
-    // SPEC-GUIDE-1 / SPEC-SIM-5: loaders + effectiveParams are loop-invariant — each is a
-    // cached singleton and stance is fixed for the duration of advance(). Hoisting makes that
-    // obvious to readers and removes any hint of per-month re-resolution. The forward-guidance
-    // stance scales the expectations re-anchoring pull (hawkish = faster, dovish = slower).
+    // SPEC-GUIDE-1 / SPEC-SIM-5 / SPEC-SIM-6: loaders + effectiveParams are loop-invariant.
+    // The stance multiplier scales expectations_anchor_pull before tick scaling, so hawkish/
+    // dovish guidance and sub-monthly cadence compose correctly.
     const guidanceP = loadGuidanceParams();
     const dynamicsParams = loadDynamicsParams();
     // SPEC-LAG-1: lag params are a cached singleton; hoisted for the same reason.
@@ -284,6 +285,16 @@ export class Session {
       expectations_anchor_pull:
         dynamicsParams.expectations_anchor_pull * stanceMultiplier(this._stance, guidanceP),
     };
+    // SPEC-COMM-6: hoist loop-invariant loads to avoid per-month disk reads.
+    // loadCommitteeParams() is memoized; loadCommittee() scans the content directory
+    // once per advance() call. Both are outside the try block intentionally — if either
+    // throws before the loop starts, this._state is unchanged and no rollback is needed.
+    const committee = loadCommittee(this._committeeId);
+    const committeeParams = loadCommitteeParams();
+
+    // SPEC-SIM-6: scale monthly params down to per-tick params. Identity when ticks_per_month=1.
+    const ticksPerMonth = loadClockCadenceParams().ticks_per_month;
+    const scaledParams = scaleParamsForTick(effectiveParams, ticksPerMonth);
 
     try {
       for (let i = 0; i < months; i++) {
@@ -298,12 +309,76 @@ export class Session {
         }
 
         this._state = tick(this._state, 1);
+
         // SPEC-LAG-1: update output_gap from trajectory before applying macro dynamics.
-        // Ordering invariant: applyRateToOutputGap reads _trajectoryInternal BEFORE the new snapshot is pushed — this month's rate enters the lag kernel next month.
-        this._state = applyRateToOutputGap(this._state, this._trajectoryInternal, lagParams, dynamicsParams.real_neutral_rate);
-        this._state = applyMacroDynamics(this._state, effectiveParams);
+        // Ordering invariant: applyRateToOutputGap reads _trajectoryInternal BEFORE the new
+        // snapshot is pushed — this month's rate enters the lag kernel next month.
+        this._state = applyRateToOutputGap(
+          this._state,
+          this._trajectoryInternal,
+          lagParams,
+          dynamicsParams.real_neutral_rate,
+        );
+
+        if (ticksPerMonth === 1) {
+          // Monthly path (fast): single applyMacroDynamics call with unscaled params.
+          this._state = applyMacroDynamics(this._state, scaledParams);
+        } else {
+          // SPEC-SIM-6 sub-monthly path: run n scaled sub-ticks, then overwrite
+          // months_below_anchor with the calendar-month-correct value.
+          //
+          // tick() is var-pure (clock.ts copies vars verbatim, only advancing the date).
+          // Capturing credibility and months_below_anchor here is equivalent to
+          // reading them at pre-tick start-of-month credibility.
+          const monthsBelowBefore = (this._state.vars.months_below_anchor ?? 0) as number;
+          const credRaw = this._state.vars.credibility;
+          if (typeof credRaw !== "number" || !Number.isFinite(credRaw)) {
+            throw new Error(
+              `Session.advance: credibility var is missing or non-finite at ${this._state.date} (got ${String(credRaw)}). Ensure the scenario sets all REQUIRED_VARS.`,
+            );
+          }
+          const credAtMonthStart = credRaw;
+
+          for (let t = 0; t < ticksPerMonth; t++) {
+            try {
+              this._state = applyMacroDynamics(this._state, scaledParams);
+            } catch (subErr) {
+              throw new Error(
+                `Session.advance: applyMacroDynamics failed at ${this._state.date} sub-tick ${t + 1}/${ticksPerMonth}`,
+                { cause: subErr },
+              );
+            }
+          }
+
+          // months_below_anchor counts calendar months, not sub-ticks. Overwrite with the
+          // calendar-month-correct value (0 or 1 increment based on start-of-month credibility).
+          // Using effectiveParams.anchor_threshold makes explicit that anchor_threshold is not
+          // a per-tick quantity — scaleParamsForTick does not change it.
+          const correctMonthsBelow =
+            credAtMonthStart < effectiveParams.anchor_threshold
+              ? monthsBelowBefore + 1
+              : monthsBelowBefore;
+          this._state = {
+            ...this._state,
+            vars: { ...this._state.vars, months_below_anchor: correctMonthsBelow },
+          };
+        }
+
         // SPEC-SHOCK-1: apply seeded supply shock after macro dynamics each month.
         this._state = applySupplyShock(this._state, this._rng, shocksParams);
+
+        // SPEC-COMM-6: evolve per-member stances toward Taylor target each month.
+        const prevStateRef = this._state;
+        this._state = applyIntermeetingDrift(this._state, committee, committeeParams);
+        // applyIntermeetingDrift returns the same reference when required vars are missing.
+        // This should never occur in a live session — throw so the rollback above surfaces it.
+        if (this._state === prevStateRef) {
+          throw new Error(
+            `Session.advance: applyIntermeetingDrift skipped at ${this._state.date} — ` +
+            `inflation/unemployment/policy_rate is missing or non-finite.`,
+          );
+        }
+
         // SPEC-TERM-1: update long_rate via EWMA toward policy_rate, after macro dynamics.
         this._state = applyTermStructure(this._state, termStructureParams);
 
@@ -314,7 +389,11 @@ export class Session {
       this._state = checkpointState;
       this._trajectoryInternal.length = checkpointTrajectoryLength;
       this._rng.restore(checkpointRng);
-      this._rebuildCaches();
+      try {
+        this._rebuildCaches();
+      } catch {
+        // _rebuildCaches failure must not replace the original error.
+      }
       throw err;
     }
 
@@ -431,7 +510,7 @@ export class Session {
     this._notifyListeners();
   }
 
-  // SPEC-GUIDE-1: Store the forward-guidance stance; wired to the spiral recovery path via stanceMultiplier().
+  // SPEC-GUIDE-1: Store the forward-guidance stance; wired to expectations_anchor_pull via stanceMultiplier().
   // The value is NOT written into state.vars; the stance is a Session-level concern, not a var.
   // Fires listeners (downstream UI may want to reflect the stored stance).
   setForwardGuidanceStance(stance: ForwardGuidanceStance): void {
