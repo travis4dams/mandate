@@ -103,13 +103,17 @@ describe("computeEffectiveBands", () => {
     expect(bands["member.a"]).toBeCloseTo(0.005 + 0.002, 6);
   });
 
-  // SPEC-COMM-7: max_spend_per_member is enforced
-  it("spend capped at max_spend_per_member", () => {
+  // SPEC-COMM-7: spending more than max_spend_per_member on a single member throws loudly
+  it("throws when single-member spend exceeds max_spend_per_member", () => {
+    // SPEC-COMM-7: over-allocation on a single member must fail loudly (hard budget contract).
+    // Session._assertWithinBudget enforces this at the Session layer; computeEffectiveBands
+    // enforces it as well so direct callers that bypass Session also get a clear error.
     const m = member("a", { compromise_band: 0.005 });
     const committee = committeeOf([m]);
     // try spending 10 but max is 3
-    const bands = computeEffectiveBands({ "member.a": 10 }, committee, PARAMS);
-    expect(bands["member.a"]).toBeCloseTo(0.005 + 3 * 0.002, 6);
+    expect(() =>
+      computeEffectiveBands({ "member.a": 10 }, committee, PARAMS),
+    ).toThrow(/max_spend_per_member/);
   });
 
   // SPEC-COMM-7: members not in spend map are not affected
@@ -257,6 +261,28 @@ describe("previewVote: effectiveBands entry validation (SPEC-COMM-7)", () => {
     expect(() =>
       previewVote(committee, 0.05, state, COMMITTEE_PARAMS, [], { "member.a": 0.6 }),
     ).toThrow(/invalid/);
+  });
+
+  it("previewVote throws on negative effectiveBands entry", () => {
+    // SPEC-COMM-7: negative effectiveBands values are invalid; fomc.ts:184 checks capitalBand < 0.
+    // This path is only reachable by callers who construct effectiveBands manually.
+    const m = member("a");
+    const committee = committeeOf([m]);
+    const state = stateWithCredibility(50);
+    expect(() =>
+      previewVote(committee, 0.05, state, COMMITTEE_PARAMS, [], { "member.a": -0.001 }),
+    ).toThrow(/invalid/);
+  });
+
+  it("previewVote throws on unknown effectiveBands key", () => {
+    // SPEC-COMM-7: a key that doesn't match any committee member must throw, not be silently ignored.
+    // previewVote validates this directly so callers who bypass computeEffectiveBands are caught.
+    const m = member("a");
+    const committee = committeeOf([m]);
+    const state = stateWithCredibility(50);
+    expect(() =>
+      previewVote(committee, 0.05, state, COMMITTEE_PARAMS, [], { "member.typo": 0.003 }),
+    ).toThrow(/member\.typo/);
   });
 });
 
@@ -463,6 +489,17 @@ describe("Session: total capitalSpend budget guard (SPEC-COMM-7)", () => {
     const firstId = probe.previews[0].memberId;
     // max_spend_per_member = 3; spend 4 on one member.
     expect(() => s.committeeBriefing(0.1075, { [firstId]: 4 })).toThrow(/max_spend_per_member/);
+  });
+
+  it("proposeRate throws when a single member's spend exceeds max_spend_per_member", () => {
+    // SPEC-COMM-7: symmetric enforcement — proposeRate uses the same _assertWithinBudget path.
+    // A refactor that accidentally drops the per-member check from proposeRate would go
+    // undetected without this test.
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    const probe = s.committeeBriefing(0.1075);
+    const firstId = probe.previews[0].memberId;
+    // max_spend_per_member = 3; spend 4 on one member.
+    expect(() => s.proposeRate(0.1075, { [firstId]: 4 })).toThrow(/max_spend_per_member/);
   });
 
   it("committeeBriefing throws on NaN capitalSpend entry (SPEC-COMM-7)", () => {

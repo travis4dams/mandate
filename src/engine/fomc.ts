@@ -3,6 +3,7 @@ import { loadValidatedFile } from "../content/loader.js";
 import type { Committee, CommitteeMember } from "../content/committees.js";
 import type { TraitEntry } from "../content/traits.js";
 import type { GameState } from "./state.js";
+import type { EffectiveBands } from "./chair-capital.js";
 
 // FOMC vote engine — SPEC-COMM-2 + SPEC-COMM-3 + SPEC-COMM-5 + SPEC-COMM-7.
 // SPEC-COMM-7 adds optional Chair capital effectiveBands that override the trait-computed band.
@@ -145,10 +146,20 @@ export function previewVote(
    *  Keys are member ids; when present for a member, the override replaces the
    *  trait-computed effectiveBand for that member (leanShift still applies).
    *  Absent entries fall through to the trait-computed band. */
-  effectiveBands?: Readonly<Record<string, number>>,
+  effectiveBands?: EffectiveBands,
 ): { previews: MemberVotePreview[]; gapInflation: number; gapUnemployment: number } {
   if (!Number.isFinite(proposedRate)) {
     throw new Error(`previewVote: proposedRate ${proposedRate} is not finite.`);
+  }
+  if (effectiveBands) {
+    const memberIds = new Set(committee.members.map((m) => m.id));
+    for (const key of Object.keys(effectiveBands)) {
+      if (!memberIds.has(key)) {
+        throw new Error(
+          `previewVote: effectiveBands key "${key}" does not match any member id in committee "${committee.id}".`,
+        );
+      }
+    }
   }
   if (!Number.isFinite(params.conviction_band_factor) || params.conviction_band_factor < 0 || params.conviction_band_factor > 1) {
     throw new Error(`previewVote: invalid conviction_band_factor (${params.conviction_band_factor}); expected finite in [0,1].`);
@@ -212,7 +223,7 @@ export function vote(
   params: CommitteeParams,
   traitCatalog: readonly TraitEntry[],
   /** SPEC-COMM-7: optional per-member effective band overrides from Chair capital spend. */
-  effectiveBands?: Readonly<Record<string, number>>,
+  effectiveBands?: EffectiveBands,
 ): FomcVote {
   const { previews } = previewVote(committee, proposedRate, state, params, traitCatalog, effectiveBands);
   return { decided: proposedRate, dissents: previews.filter((p) => p.wouldDissent).length };

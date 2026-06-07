@@ -6,6 +6,7 @@ import { loadValidatedFile } from "../content/loader.js";
 import { tick } from "./clock.js";
 import { vote, previewVote, loadCommitteeParams } from "./fomc.js";
 import { computeChairCapital, computeEffectiveBands, loadChairCapitalParams } from "./chair-capital.js";
+import type { CapitalSpend } from "./chair-capital.js";
 import { loadTraitCatalog } from "../content/traits.js";
 import { applyMeetingOutcome, getCredibility } from "./credibility.js";
 import { applyMacroDynamics, loadDynamicsParams } from "./dynamics.js";
@@ -384,14 +385,14 @@ export class Session {
    * SPEC-COMM-7: optional capitalSpend widens targeted members' bands for this preview.
    * @throws {Error} if proposedRate is not finite.
    * @throws {Error} if any capitalSpend entry is not a non-negative finite number (SPEC-COMM-7).
+   * @throws {Error} if any capitalSpend entry exceeds max_spend_per_member (SPEC-COMM-7).
    * @throws {Error} if total capitalSpend exceeds chairCapital() budget (SPEC-COMM-7).
    * @throws {Error} if a capitalSpend key does not match any member id in the loaded committee,
-   *   if any spend value is negative, or if the resulting widened band would exceed 0.5
-   *   (propagated from computeEffectiveBands).
+   *   or if the resulting widened band would exceed 0.5 (propagated from computeEffectiveBands).
    * @throws {VoteMissingVarError} if state vars (inflation, unemployment, policy_rate) are missing or non-finite
    *   (propagated from previewVote()).
    */
-  committeeBriefing(proposedRate: number, capitalSpend?: Readonly<Record<string, number>>): {
+  committeeBriefing(proposedRate: number, capitalSpend?: CapitalSpend): {
     previews: readonly MemberVotePreview[];
     gapInflation: number;
     gapUnemployment: number;
@@ -401,13 +402,7 @@ export class Session {
     const committee = loadCommittee(this._committeeId);
     const params = loadCommitteeParams();
     const traits = loadTraitCatalog();
-    const chairCapitalParams = loadChairCapitalParams();
-    if (capitalSpend) {
-      Session._assertWithinBudget(capitalSpend, this.chairCapital(), chairCapitalParams.max_spend_per_member, "committeeBriefing");
-    }
-    const effectiveBands = capitalSpend
-      ? computeEffectiveBands(capitalSpend, committee, chairCapitalParams)
-      : undefined;
+    const effectiveBands = this._resolveEffectiveBands(committee, capitalSpend, "committeeBriefing");
     const { previews, gapInflation, gapUnemployment } = previewVote(committee, proposedRate, this._state, params, traits, effectiveBands);
     return {
       previews,
@@ -420,7 +415,7 @@ export class Session {
 
   /**
    * Propose a rate for the current month's FOMC meeting.
-   * SESSION-1 gates this on `isMeetingMonth()` — calling `proposeRate` in a month
+   * SPEC-SESSION-1 gates this on `isMeetingMonth()` — calling `proposeRate` in a month
    * that is not on the loaded FOMC schedule throws `NotMeetingMonthError` before
    * any rate-validity check runs.
    * Returns the FomcVote for the meeting.
@@ -435,7 +430,7 @@ export class Session {
    *   band would exceed 0.5 (propagated from computeEffectiveBands).
    * @throws {VoteMissingVarError} if state vars (inflation, unemployment, policy_rate) are missing or non-finite (propagated from vote()).
    */
-  proposeRate(rate: number, capitalSpend?: Readonly<Record<string, number>>): FomcVote {
+  proposeRate(rate: number, capitalSpend?: CapitalSpend): FomcVote {
     if (!this.isMeetingMonth()) {
       throw new NotMeetingMonthError(this._state.date);
     }
@@ -445,13 +440,7 @@ export class Session {
     const committee = loadCommittee(this._committeeId);
     const params = loadCommitteeParams();
     const traits = loadTraitCatalog();
-    const chairCapitalParams = loadChairCapitalParams();
-    if (capitalSpend) {
-      Session._assertWithinBudget(capitalSpend, this.chairCapital(), chairCapitalParams.max_spend_per_member, "proposeRate");
-    }
-    const effectiveBands = capitalSpend
-      ? computeEffectiveBands(capitalSpend, committee, chairCapitalParams)
-      : undefined;
+    const effectiveBands = this._resolveEffectiveBands(committee, capitalSpend, "proposeRate");
     const fomcVote = vote(committee, rate, this._state, params, traits, effectiveBands);
 
     // Apply the decided rate and compute new credibility.
@@ -561,22 +550,49 @@ export class Session {
   }
 
   /**
+   * Resolve the per-member effectiveBands from an optional capitalSpend map.
+   * Runs `_assertWithinBudget` then `computeEffectiveBands`; returns `undefined` when
+   * no spend is provided. Extracting this eliminates the identical 4-line block that
+   * previously appeared in both `committeeBriefing` and `proposeRate`. (SPEC-COMM-7)
+   */
+  private _resolveEffectiveBands(
+    committee: import("../content/committees.js").Committee,
+    capitalSpend: CapitalSpend | undefined,
+    caller: string,
+  ): Readonly<Record<string, number>> | undefined {
+    if (!capitalSpend) return undefined;
+    const chairCapitalParams = loadChairCapitalParams();
+    Session._assertWithinBudget(capitalSpend, this.chairCapital(), chairCapitalParams.max_spend_per_member, caller);
+    return computeEffectiveBands(capitalSpend, committee, chairCapitalParams);
+  }
+
+  /**
    * Throw a descriptive error if any capitalSpend entry is invalid or if the total exceeds
    * the budget. Also throws if any single member's spend exceeds max_spend_per_member —
    * over-allocating one member wastes budget silently, which contradicts the "hard persuasion
    * budget" contract (SPEC-COMM-7).
    *
+   * Intentional two-layer split: this method validates spend values and the total budget;
+   * unknown-key and post-widen band overflow checks are delegated to `computeEffectiveBands`
+   * (called by `_resolveEffectiveBands` immediately after this returns).
+   *
    * Validation order:
-   *  1. Per-entry: must be a non-negative finite number.
-   *  2. Per-entry: must not exceed max_spend_per_member (over-allocation fails loudly).
-   *  3. Total: sum must not exceed budget.
+   *  1. Budget: must be a non-negative finite number (guards against corrupt credibility / NaN).
+   *  2. Per-entry: must be a non-negative finite number.
+   *  3. Per-entry: must not exceed max_spend_per_member (over-allocation fails loudly).
+   *  4. Total: sum must not exceed budget.
    */
   private static _assertWithinBudget(
-    capitalSpend: Readonly<Record<string, number>>,
+    capitalSpend: CapitalSpend,
     budget: number,
     maxPerMember: number,
     caller: string,
   ): void {
+    if (!Number.isFinite(budget) || budget < 0) {
+      throw new Error(
+        `Session.${caller}: chairCapital() returned a non-finite budget (${budget}); this indicates a corrupt credibility value in state.`,
+      );
+    }
     for (const [id, v] of Object.entries(capitalSpend)) {
       if (!Number.isFinite(v) || v < 0) {
         throw new Error(

@@ -7,6 +7,12 @@ import type { Committee } from "../content/committees.js";
 // Spending capital on a member widens their compromise band for that meeting only —
 // it is never stored in state (use-it-or-lose-it, refreshed each meeting).
 
+/** Spend units to allocate per member: keys are member ids, values are capital units (non-negative). */
+export type CapitalSpend = Readonly<Record<string, number>>;
+
+/** Per-member widened compromise bands after applying Chair capital: keys are member ids, values are absolute band widths in [0, 0.5]. */
+export type EffectiveBands = Readonly<Record<string, number>>;
+
 export interface ChairCapitalParams {
   /** Minimum budget even at zero credibility (integer units). */
   readonly base_capital: number;
@@ -31,15 +37,19 @@ export function computeChairCapital(credibility: number, params: ChairCapitalPar
  * Compute per-member effective compromise bands after applying capital spend.
  * Returns only the members who received positive spend (callers merge with the member's
  * original compromise_band via `effectiveBands?.[m.id] ?? m.compromise_band`).
- * Zero spend is a no-op (member absent from result); negative spend throws.
- * Spend is capped at params.max_spend_per_member per member.
+ * Zero spend is a no-op (member absent from result); negative or over-limit spend throws.
+ * Each member's result: `compromise_band + spend * band_widen_per_unit` (spend must be ≤ max_spend_per_member; over-limit throws).
  * Pure: does not mutate committee or params.
+ * @throws {Error} if any capitalSpend key does not match a member id in the committee.
+ * @throws {Error} if any spend value is negative.
+ * @throws {Error} if any spend value exceeds max_spend_per_member (SPEC-COMM-7 hard budget).
+ * @throws {Error} if the resulting widened band would exceed 0.5.
  */
 export function computeEffectiveBands(
-  capitalSpend: Readonly<Record<string, number>>,
+  capitalSpend: CapitalSpend,
   committee: Committee,
   params: ChairCapitalParams,
-): Readonly<Record<string, number>> {
+): EffectiveBands {
   const membersById = new Map(committee.members.map((m) => [m.id, m]));
   const result: Record<string, number> = {};
   for (const [id, raw] of Object.entries(capitalSpend)) {
@@ -55,8 +65,12 @@ export function computeEffectiveBands(
       );
     }
     if (raw === 0) continue;
-    const capped = Math.min(raw, params.max_spend_per_member);
-    const widened = m.compromise_band + capped * params.band_widen_per_unit;
+    if (raw > params.max_spend_per_member) {
+      throw new Error(
+        `computeEffectiveBands: capitalSpend for member "${id}" (${raw}) exceeds max_spend_per_member (${params.max_spend_per_member}). Reduce spend for this member.`,
+      );
+    }
+    const widened = m.compromise_band + raw * params.band_widen_per_unit;
     if (widened > 0.5) {
       throw new Error(
         `computeEffectiveBands: effective compromise_band for member "${id}" would be ${widened.toFixed(4)}, which exceeds the maximum allowed value of 0.5. Reduce the spend or lower the content's compromise_band.`,
