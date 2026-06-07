@@ -38,7 +38,15 @@ export function computeEffectiveBands(
   capitalSpend: Readonly<Record<string, number>>,
   committee: Committee,
   params: ChairCapitalParams,
-): Record<string, number> {
+): Readonly<Record<string, number>> {
+  const knownIds = new Set(committee.members.map((m) => m.id));
+  for (const key of Object.keys(capitalSpend)) {
+    if (!knownIds.has(key)) {
+      throw new Error(
+        `computeEffectiveBands: capitalSpend key "${key}" does not match any member id in committee "${committee.id}".`,
+      );
+    }
+  }
   const result: Record<string, number> = {};
   for (const m of committee.members) {
     const raw = capitalSpend[m.id] ?? 0;

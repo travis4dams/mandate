@@ -9,6 +9,7 @@ import {
 import { vote, previewVote, type CommitteeParams } from "../src/engine/fomc";
 import { makeState } from "../src/engine/state";
 import type { Committee, CommitteeMember } from "../src/content/committees";
+import { Session } from "../src/engine/session";
 
 // SPEC-COMM-7
 
@@ -182,5 +183,149 @@ describe("loadChairCapitalParams", () => {
     expect(p.credibility_weight).toBeGreaterThanOrEqual(0);
     expect(p.band_widen_per_unit).toBeGreaterThanOrEqual(0);
     expect(p.max_spend_per_member).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe("computeEffectiveBands: unknown capitalSpend key throws", () => {
+  // SPEC-COMM-7: a capitalSpend key that matches no committee member must throw, not silently discard.
+  it("throws a descriptive error when a capitalSpend key is not a known member id", () => {
+    // SPEC-COMM-7
+    const committee = committeeOf([member("a")]);
+    expect(() =>
+      computeEffectiveBands({ "member.a": 1, "member.ghost": 2 }, committee, PARAMS),
+    ).toThrow(/member\.ghost/);
+  });
+
+  it("does not throw when all capitalSpend keys are valid member ids", () => {
+    // SPEC-COMM-7
+    const committee = committeeOf([member("a"), member("b")]);
+    expect(() =>
+      computeEffectiveBands({ "member.a": 1, "member.b": 2 }, committee, PARAMS),
+    ).not.toThrow();
+  });
+});
+
+describe("Session.chairCapital()", () => {
+  // SPEC-COMM-7: chairCapital() wires getCredibility → computeChairCapital correctly.
+  it("returns a non-negative integer for the 1979 scenario (credibility=25)", () => {
+    // SPEC-COMM-7
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    const capital = s.chairCapital();
+    expect(Number.isInteger(capital)).toBe(true);
+    expect(capital).toBeGreaterThanOrEqual(0);
+  });
+
+  it("matches computeChairCapital(credibility, loadChairCapitalParams()) directly", () => {
+    // SPEC-COMM-7: Session.chairCapital() is just the composed pipeline; verify the output
+    // matches the manual composition so a refactor cannot silently swap the formula.
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    const credibility = s.current.vars.credibility as number; // 25 from scenario
+    const expected = computeChairCapital(credibility, loadChairCapitalParams());
+    expect(s.chairCapital()).toBe(expected);
+  });
+});
+
+describe("Session.committeeBriefing with capitalSpend", () => {
+  // SPEC-COMM-7: committeeBriefing forwards capitalSpend to previewVote via computeEffectiveBands.
+  // Use a self-calibrating rate: pick the first member's preferred rate from a no-spend briefing,
+  // then propose at preferred + band + tiny epsilon so the member just barely dissents, and
+  // confirm spending 1 unit of capital (which widens the band by band_widen_per_unit) is enough
+  // to flip them to assent.
+  it("spending capital on a member can convert their dissent to assent in the briefing", () => {
+    // SPEC-COMM-7
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    const capitalP = loadChairCapitalParams(); // band_widen_per_unit = 0.002, max = 3
+
+    // Probe with a neutral rate to get preferred values.
+    const probe = s.committeeBriefing(0.1075);
+    const target = probe.previews[0]; // pick the first member
+
+    // Craft a rate just outside their compromise_band (0.005): preferred + 0.006
+    // This gap (0.006) exceeds the base band (0.005) but fits within the widened band
+    // (0.005 + 1 * 0.002 = 0.007).
+    const baseBand = 0.005; // all real members use this
+    const epsilon = 0.001;  // gap = baseBand + epsilon (just outside)
+    const rate = target.preferred + baseBand + epsilon;
+
+    // Confirm dissent without spend.
+    const without = s.committeeBriefing(rate);
+    const memberWithout = without.previews.find((p) => p.memberId === target.memberId)!;
+    expect(memberWithout.wouldDissent).toBe(true);
+
+    // Spend 1 unit → new band = 0.005 + 0.002 = 0.007 > gap 0.006 → should assent.
+    const with1 = s.committeeBriefing(rate, { [target.memberId]: 1 });
+    const memberWith = with1.previews.find((p) => p.memberId === target.memberId)!;
+    expect(memberWith.wouldDissent).toBe(false);
+    void capitalP; // referenced to avoid unused-import lint
+  });
+
+  it("is pure: committeeBriefing with capitalSpend does not mutate session state", () => {
+    // SPEC-COMM-7
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    const credBefore = s.current.vars.credibility;
+    const dateBefore = s.current.date;
+    // Spend on the first member (arbitrary; just verifying no state mutation).
+    const probe = s.committeeBriefing(0.1075);
+    const firstId = probe.previews[0].memberId;
+    s.committeeBriefing(0.1075, { [firstId]: 1 });
+    expect(s.current.vars.credibility).toBe(credBefore);
+    expect(s.current.date).toBe(dateBefore);
+  });
+});
+
+describe("Session.proposeRate with capitalSpend (SPEC-COMM-7 AC)", () => {
+  // SPEC-COMM-7 AC: given capital spent on member M, M assents when they would otherwise dissent.
+  // This is the state-mutating path — proposeRate commits the meeting outcome.
+  // Use the same self-calibrating rate approach: probe preferred from briefing, craft a rate
+  // that just barely causes dissent, then spend 1 unit to flip it.
+  it("SPEC-COMM-7 AC: capital spend converts a dissenting member to assent in proposeRate", () => {
+    // SPEC-COMM-7
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+
+    // Probe preferred rates via a pure briefing.
+    const probe = s.committeeBriefing(0.1075);
+    const target = probe.previews[0];
+
+    // Craft a rate just outside the member's base band: gap = baseBand + 0.001
+    const baseBand = 0.005;
+    const rate = target.preferred + baseBand + 0.001; // gap = 0.006
+
+    // Without spend: member dissents, contributing 1+ to the dissent count.
+    const voteWithout = s.proposeRate(rate);
+    const dissentsWithout = voteWithout.dissents;
+    expect(dissentsWithout).toBeGreaterThan(0);
+
+    // Reset to restore state, then propose same rate WITH 1 unit spend on the target.
+    s.reset();
+    const voteWith = s.proposeRate(rate, { [target.memberId]: 1 });
+    // That member assents → fewer dissents than without spend.
+    expect(voteWith.dissents).toBeLessThan(dissentsWithout);
+  });
+
+  // SPEC-COMM-7: the capital spend is ephemeral — it must not persist to member state.
+  // After proposeRate with capitalSpend, a fresh committeeBriefing (without spend) at the
+  // same rate should show the member dissenting again.
+  it("capital spend is ephemeral: does not persist to member state after proposeRate", () => {
+    // SPEC-COMM-7
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+
+    // Probe to find the first member's preferred rate.
+    const probe = s.committeeBriefing(0.1075);
+    const target = probe.previews[0];
+
+    // Craft rate just outside base band.
+    const baseBand = 0.005;
+    const rate = target.preferred + baseBand + 0.001; // gap = 0.006
+
+    // Propose with spend — target member assents this time.
+    s.proposeRate(rate, { [target.memberId]: 1 });
+
+    // Advance to the next meeting month (1979-08 + 3 = 1979-11, a scheduled meeting month).
+    s.advance(3);
+
+    // Re-check: same rate, NO spend — member should dissent again (band reverted).
+    const briefingAfter = s.committeeBriefing(rate);
+    const memberAfter = briefingAfter.previews.find((p) => p.memberId === target.memberId)!;
+    expect(memberAfter.wouldDissent).toBe(true);
   });
 });

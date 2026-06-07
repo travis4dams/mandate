@@ -108,7 +108,15 @@ export function previewVote(
       );
     }
     const preferred = memberPreferred(m, laggedRate, gapInflation, gapUnemployment, params);
-    const band = effectiveBands?.[m.id] ?? m.compromise_band;
+    const rawBand = effectiveBands?.[m.id];
+    if (rawBand !== undefined) {
+      if (!Number.isFinite(rawBand) || rawBand < 0 || rawBand > 0.5) {
+        throw new Error(
+          `previewVote: effectiveBands override for member "${m.id}" is invalid (${rawBand}); expected a finite number in [0, 0.5].`,
+        );
+      }
+    }
+    const band = rawBand ?? m.compromise_band;
     return {
       memberId: m.id,
       nameKey: m.name,
