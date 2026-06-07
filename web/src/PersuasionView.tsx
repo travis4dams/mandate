@@ -169,8 +169,7 @@ function ScenarioBriefingPanel(props: { briefingId: string }): JSX.Element | nul
   );
 }
 
-// Placeholder for SPEC-COMM-7 Chair capital spend control.
-// Rendered as disabled until SPEC-COMM-7 is merged.
+// Placeholder stub for SPEC-COMM-7 (Chair capital spend control not yet implemented).
 function SpendCapitalControl(): JSX.Element {
   return (
     <div style={{ marginTop: 10, fontSize: 13, color: "#999" }}>

@@ -7,9 +7,7 @@ import { render, screen, cleanup } from "@testing-library/react";
 import { PersuasionView, buildDotPlotData } from "./PersuasionView";
 import type { MemberVotePreview } from "../../src/engine/fomc";
 
-afterEach(() => {
-  cleanup();
-});
+afterEach(cleanup);
 
 // ---- pure helper tests (no DOM needed) -----------------------------------
 

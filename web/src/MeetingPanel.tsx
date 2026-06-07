@@ -100,22 +100,21 @@ export function MeetingPanel(props: { session: Session; briefingId?: string }): 
       )}
 
       {briefing !== null && (
-        <CommitteeBriefing
-          previews={briefing.previews}
-          gapInflation={briefing.gapInflation}
-          gapUnemployment={briefing.gapUnemployment}
-          inflationTarget={briefing.inflationTarget}
-          unemploymentTarget={briefing.unemploymentTarget}
-          proposed={parsedRate}
-        />
-      )}
-
-      {briefing !== null && (
-        <PersuasionView
-          previews={briefing.previews}
-          proposed={parsedRate}
-          briefingId={briefingId}
-        />
+        <>
+          <CommitteeBriefing
+            previews={briefing.previews}
+            gapInflation={briefing.gapInflation}
+            gapUnemployment={briefing.gapUnemployment}
+            inflationTarget={briefing.inflationTarget}
+            unemploymentTarget={briefing.unemploymentTarget}
+            proposed={parsedRate}
+          />
+          <PersuasionView
+            previews={briefing.previews}
+            proposed={parsedRate}
+            briefingId={briefingId}
+          />
+        </>
       )}
 
       {error !== null && (

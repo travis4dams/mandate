@@ -67,8 +67,15 @@ export function applyMacroDynamics(state: GameState, params: MacroDynamicsParams
   const realRate = policyRate - anchor;
   const realGap = realRate - params.real_neutral_rate;
 
+  // Use lagged output_gap if available (SPEC-LAG-1), else fall back to the immediate realGap.
+  const rawLaggedGap = state.vars.output_gap;
+  if (rawLaggedGap !== undefined && !Number.isFinite(rawLaggedGap)) {
+    throw new Error(`applyMacroDynamics: output_gap is not finite (${rawLaggedGap})`);
+  }
+  const laggedGap = rawLaggedGap ?? realGap;
+
   // Unemployment mean-reverts toward a policy-implied equilibrium.
-  const uEquilibrium = params.unemployment_natural_rate + params.okun_coefficient * realGap;
+  const uEquilibrium = params.unemployment_natural_rate + params.okun_coefficient * laggedGap;
   const newUnemployment = clamp(
     unemployment + params.unemployment_adjustment_speed * (uEquilibrium - unemployment),
     0,
