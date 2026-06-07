@@ -91,3 +91,79 @@ STUCK NOTE — PR #30 (SPEC-WEB-3): three rounds of REQUEST_CHANGES is the stop 
   (c) Raise the retry cap for this SPEC in docs/ralph-runbook.md and let the agent retry.
   US-012 remains passes=false until resolved.
 Stories still passing=false: US-012..US-019.
+
+== CYCLE 8 — 2026-06-05 ==
+Phase 0 (issue queue): issue #38 (SPEC-COMM-6, between-meeting stance drift). Implemented on
+branch issue-38-spec-comm-6-stance-drift from main (SPEC-COMM-5 not yet merged; used
+member.inertia from SPEC-COMM-3 as drift responsiveness; conviction integration deferred to
+when PR #50 merges):
+  - spec/requirements.md: SPEC-COMM-6 [testable] added
+  - src/engine/stance.ts: applyIntermeetingDrift + stanceKey; pure, no Math.random/Date.now
+  - src/engine/fomc.ts: previewVote reads stored stance per member; fallback to policy_rate
+  - src/engine/session.ts: advance() calls applyIntermeetingDrift each month
+  - test/stance.test.ts: 11 tests (// SPEC-COMM-6)
+  All checks green: 208 engine + 12 web tests, spec:trace 32/32, validate, web build.
+  PR #53 opened, issue #38 commented, agent-task label removed. Stopped per Phase 0 protocol.
+  Open PRs: #30 (STUCK), #50 (round 2 REQUEST_CHANGES), #52 (round 1 REQUEST_CHANGES), #53 (new).
+Stories still passing=false: US-012..US-019.
+
+== CYCLE 9 — 2026-06-05 ==
+Phase 0 (issue queue): issue #39 (SPEC-COMM-7, Chair capital persuasion) was oldest agent-task.
+Implemented on branch issue-39-spec-comm-7-chair-capital:
+  - schemas/chair-capital.schema.json + content/engine/chair-capital.json (base_capital=3,
+    credibility_weight=0.05, band_widen_per_unit=0.002, max_spend_per_member=3)
+  - src/engine/chair-capital.ts (computeChairCapital, computeEffectiveBands, loadChairCapitalParams)
+  - src/engine/fomc.ts (previewVote + vote gain optional effectiveBands parameter)
+  - src/engine/session.ts (Session.chairCapital(), committeeBriefing/proposeRate gain optional capitalSpend)
+  - tools/validate-content.ts (chair-capital registered), spec/requirements.md (SPEC-COMM-7 [testable])
+  - test/chair-capital.test.ts (14 tests: formula, monotonicity, cap, integration, no-persist, loader)
+  All checks green: 211 engine tests, 12 web tests, spec:trace 32/32, validate 15 content types.
+PR #55 opened, issue #39 commented, agent-task label removed. Stopped per Phase 0 protocol.
+Stories still passing=false: US-012..US-019.
+
+== CYCLE 10 — 2026-06-05 ==
+Phase 0 (issue queue): issue #40 (SPEC-BRIEF-1, briefing content type) was oldest agent-task.
+Implemented on branch issue-40-spec-brief-1-briefing-content:
+  - schemas/briefing.schema.json + content/briefings/1979_q3_stagflation.json
+  - src/content/briefings.ts (loadBriefing, BriefingNotFoundError, BriefingScenarioOrderError)
+  - tools/validate-content.ts (briefings dir registered), spec/requirements.md (SPEC-BRIEF-1 [testable])
+  - content/localization/en.json (5 loc-keys), test/briefings.test.ts (13 tests)
+  All checks green: 210 engine tests, 12 web tests, spec:trace 32/32, validate 16 content types.
+PR #57 opened, issue #40 commented, agent-task label removed. Stopped per Phase 0 protocol.
+Stories still passing=false: US-012..US-019.
+
+== CYCLE 11 — 2026-06-05 ==
+Phase 0 (issue queue): issue #41 (SPEC-BRIEF-2, forecast quality scales with org investment).
+  Dependency: SPEC-BRIEF-1 (PR #57) had VERDICT: APPROVE — merged first along with PRs #54 and
+  #56 (cycle 8 and 9 chore logs, both VERDICT: APPROVE). PR #56 required conflict resolution
+  (branch rebased on new main to cleanly append cycle 9 after cycle 8).
+  Implemented SPEC-BRIEF-2 on branch issue-41-spec-brief-2-forecast-quality:
+  - schemas/forecast-quality.schema.json + content/engine/forecast-quality.json
+    (base_noise=0.02, quality_slope=0.0002, min_noise=0.002)
+  - src/engine/forecast-quality.ts (computeForecastNoiseScale, applyForecastQuality, loader;
+    pure functions, seeded-RNG only, purity-safe)
+  - tools/validate-content.ts (forecast-quality registered), spec/requirements.md (SPEC-BRIEF-2 [testable])
+  - test/forecast-quality.test.ts (16 tests: noise monotonicity, floor, NaN-guard, determinism,
+    higher-investment tighter spread, tuple preservation, unemployment clamp, growth_outlook passthrough)
+  All checks green: 226 engine tests, 12 web tests, spec:trace 33/33, validate 16 content types.
+  CI fix pushed: as unknown as cast for tuple return type (strict tsc stricter than local).
+  PR #59 opened (https://github.com/travis4dams/mandate/pull/59), issue #41 commented,
+  agent-task label removed. Stopped per Phase 0 protocol.
+  Pending REQUEST_CHANGES: PR #50 (SPEC-COMM-5, round 2), PR #52 (SPEC-LAG-1), PR #53 (SPEC-COMM-6),
+  PR #55 (SPEC-COMM-7), PR #58 (cycle-10 chore). These await Phase 1 next cycle.
+Stories still passing=false: US-012..US-019.
+
+== CYCLE 12 — 2026-06-07 ==
+Phase 0 (issue queue): issue #47 (SPEC-HEAR-1: confirmation-hearing game start). Implemented on
+branch issue-47-spec-hear-1-confirmation-hearing:
+  - schemas/hearing.schema.json (new schema; questions/answers/scenario_weights/state_modifiers)
+  - content/hearings/confirmation.json (3-question initial hearing set)
+  - src/content/hearings.ts (HearingEntry types + loadHearing + resolveHearing pure resolver;
+    HearingNotFoundError / HearingAnswerNotFoundError / HearingNoScenariosError)
+  - tools/validate-content.ts (hearings dir registered)
+  - spec/requirements.md (SPEC-HEAR-1 [testable] added)
+  - content/localization/en.json (13 new hearing.* keys)
+  - test/hearing.test.ts (16 SPEC-HEAR-1 tests)
+  All checks green: 213 engine tests, 12 web tests, spec:trace 32/32, validate 15 types, web build.
+  PR #66 opened, issue #47 commented, agent-task label removed. Stopped per Phase 0 protocol.
+Stories still passing=false: US-012..US-019.
