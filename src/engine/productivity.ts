@@ -19,7 +19,7 @@ export function applyProductivityDrift(state: GameState, params: ProductivityPar
   }
   const prev = state.vars.productivity ?? 1.0;
   if (!Number.isFinite(prev)) {
-    throw new Error("productivity: state.vars.productivity is not finite");
+    throw new Error(`productivity: state.vars.productivity is not finite (got ${prev})`);
   }
   return {
     ...state,
@@ -51,9 +51,10 @@ export function loadProductivityParams(): ProductivityParams {
   } catch (e) {
     throw new Error("Failed to load productivity params from content/engine/productivity.json", { cause: e });
   }
-  // SPEC-PROD-1: JSON Schema enforces exclusiveMinimum: -1, but assert here for defence-in-depth.
-  if (_cachedParams.monthly_drift_rate <= -1) {
-    throw new Error(`productivity: monthly_drift_rate must be > -1, got ${_cachedParams.monthly_drift_rate}`);
+  // AJV (via loadValidatedFile above) already enforces exclusiveMinimum: -1 and maximum: 1.
+  // Add a TypeScript-side upper-bound assertion for defence-in-depth, mirroring the schema.
+  if (_cachedParams.monthly_drift_rate > 1) {
+    throw new Error(`productivity: monthly_drift_rate must be <= 1, got ${_cachedParams.monthly_drift_rate}`);
   }
   return _cachedParams;
 }

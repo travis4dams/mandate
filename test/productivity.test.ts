@@ -1,5 +1,5 @@
 // SPEC-PROD-1: productivity drift state variable
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import {
   applyProductivityDrift,
   loadProductivityParams,
@@ -12,7 +12,7 @@ import { registerContentFile, _resetValidateFileCache, _resetRegistries } from "
 
 const BASE_PARAMS: ProductivityParams = { monthly_drift_rate: 0.002 };
 
-afterEach(() => {
+beforeEach(() => {
   _resetProductivityParamsCache();
   _resetValidateFileCache();
   _resetRegistries();
@@ -36,8 +36,10 @@ describe("applyProductivityDrift — geometric drift (SPEC-PROD-1)", () => {
 
   it("after N months productivity equals 1.0 * (1 + rate)^N", () => {
     // SPEC-PROD-1: iterative multiplication matches the closed-form power to 12 decimal places.
-    // Strict Object.is equality is not used here because IEEE-754 iterative multiplication can
-    // diverge from Math.pow by ±1 ULP — toBeCloseTo(x, 12) pins this to < 5e-13 tolerance.
+    // Note: SPEC-PROD-1 says "exactly" but IEEE-754 makes bit-exact equality unreliable between
+    // iterative multiplication and Math.pow (±1 ULP divergence). toBeCloseTo(x, 12) satisfies
+    // the spec's intent (|iterative − closed| < 5e-13, orders of magnitude tighter than any
+    // physically meaningful tolerance). The spec wording should be updated to reflect this.
     const N = 12;
     let state = makeState({ vars: {} });
     for (let i = 0; i < N; i++) {
