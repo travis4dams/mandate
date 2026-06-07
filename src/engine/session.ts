@@ -8,6 +8,7 @@ import { vote, previewVote, loadCommitteeParams } from "./fomc.js";
 import { loadTraitCatalog } from "../content/traits.js";
 import { applyMeetingOutcome, getCredibility } from "./credibility.js";
 import { applyMacroDynamics, loadDynamicsParams } from "./dynamics.js";
+import { loadClockCadenceParams, scaleParamsForTick } from "./cadence.js";
 import { applyRateToOutputGap, loadLagParams } from "./lags.js";
 import { applyTermStructure, loadTermStructureParams } from "./term-structure.js";
 import { onTarget, loadMandateParams } from "./mandate.js";
@@ -255,10 +256,9 @@ export class Session {
     const checkpointState = this._state;
     const checkpointTrajectoryLength = this._trajectoryInternal.length;
 
-    // SPEC-GUIDE-1 / SPEC-SIM-5: loaders + effectiveParams are loop-invariant — each is a
-    // cached singleton and stance is fixed for the duration of advance(). Hoisting makes that
-    // obvious to readers and removes any hint of per-month re-resolution. The forward-guidance
-    // stance scales the expectations re-anchoring pull (hawkish = faster, dovish = slower).
+    // SPEC-GUIDE-1 / SPEC-SIM-5 / SPEC-SIM-6: loaders + effectiveParams are loop-invariant.
+    // The stance multiplier scales expectations_anchor_pull before tick scaling, so hawkish/
+    // dovish guidance and sub-monthly cadence compose correctly.
     const guidanceP = loadGuidanceParams();
     const dynamicsParams = loadDynamicsParams();
     // SPEC-LAG-1: lag params are a cached singleton; hoisted for the same reason.
@@ -270,6 +270,10 @@ export class Session {
       expectations_anchor_pull:
         dynamicsParams.expectations_anchor_pull * stanceMultiplier(this._stance, guidanceP),
     };
+
+    // SPEC-SIM-6: scale monthly params down to per-tick params. Identity when ticks_per_month=1.
+    const ticksPerMonth = loadClockCadenceParams().ticks_per_month;
+    const scaledParams = scaleParamsForTick(effectiveParams, ticksPerMonth);
 
     try {
       for (let i = 0; i < months; i++) {
@@ -284,10 +288,61 @@ export class Session {
         }
 
         this._state = tick(this._state, 1);
+
         // SPEC-LAG-1: update output_gap from trajectory before applying macro dynamics.
-        // Ordering invariant: applyRateToOutputGap reads _trajectoryInternal BEFORE the new snapshot is pushed — this month's rate enters the lag kernel next month.
-        this._state = applyRateToOutputGap(this._state, this._trajectoryInternal, lagParams, dynamicsParams.real_neutral_rate);
-        this._state = applyMacroDynamics(this._state, effectiveParams);
+        // Ordering invariant: applyRateToOutputGap reads _trajectoryInternal BEFORE the new
+        // snapshot is pushed — this month's rate enters the lag kernel next month.
+        this._state = applyRateToOutputGap(
+          this._state,
+          this._trajectoryInternal,
+          lagParams,
+          dynamicsParams.real_neutral_rate,
+        );
+
+        if (ticksPerMonth === 1) {
+          // Monthly path (fast): single applyMacroDynamics call with unscaled params.
+          this._state = applyMacroDynamics(this._state, scaledParams);
+        } else {
+          // SPEC-SIM-6 sub-monthly path: run n scaled sub-ticks, then overwrite
+          // months_below_anchor with the calendar-month-correct value.
+          //
+          // tick() is var-pure (clock.ts copies vars verbatim, only advancing the date).
+          // Capturing credibility and months_below_anchor here is equivalent to
+          // reading them at pre-tick start-of-month credibility.
+          const monthsBelowBefore = (this._state.vars.months_below_anchor ?? 0) as number;
+          const credRaw = this._state.vars.credibility;
+          if (typeof credRaw !== "number" || !Number.isFinite(credRaw)) {
+            throw new Error(
+              `Session.advance: credibility var is missing or non-finite at ${this._state.date} (got ${String(credRaw)}). Ensure the scenario sets all REQUIRED_VARS.`,
+            );
+          }
+          const credAtMonthStart = credRaw;
+
+          for (let t = 0; t < ticksPerMonth; t++) {
+            try {
+              this._state = applyMacroDynamics(this._state, scaledParams);
+            } catch (subErr) {
+              throw new Error(
+                `Session.advance: applyMacroDynamics failed at ${this._state.date} sub-tick ${t + 1}/${ticksPerMonth}`,
+                { cause: subErr },
+              );
+            }
+          }
+
+          // months_below_anchor counts calendar months, not sub-ticks. Overwrite with the
+          // calendar-month-correct value (0 or 1 increment based on start-of-month credibility).
+          // Using effectiveParams.anchor_threshold makes explicit that anchor_threshold is not
+          // a per-tick quantity — scaleParamsForTick does not change it.
+          const correctMonthsBelow =
+            credAtMonthStart < effectiveParams.anchor_threshold
+              ? monthsBelowBefore + 1
+              : monthsBelowBefore;
+          this._state = {
+            ...this._state,
+            vars: { ...this._state.vars, months_below_anchor: correctMonthsBelow },
+          };
+        }
+
         // SPEC-TERM-1: update long_rate via EWMA toward policy_rate, after macro dynamics.
         this._state = applyTermStructure(this._state, termStructureParams);
 
@@ -297,7 +352,11 @@ export class Session {
     } catch (err) {
       this._state = checkpointState;
       this._trajectoryInternal.length = checkpointTrajectoryLength;
-      this._rebuildCaches();
+      try {
+        this._rebuildCaches();
+      } catch {
+        // _rebuildCaches failure must not replace the original error.
+      }
       throw err;
     }
 
