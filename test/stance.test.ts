@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { applyIntermeetingDrift, stanceKey } from "../src/engine/stance";
+import { previewVote } from "../src/engine/fomc";
 import { makeState } from "../src/engine/state";
 import type { Committee, CommitteeMember } from "../src/content/committees";
 import type { CommitteeParams } from "../src/engine/fomc";
@@ -195,5 +196,41 @@ describe("applyIntermeetingDrift", () => {
     const taylor = PARAMS.neutral_rate + m.inflation_coef * gapI - m.output_coef * gapU;
     const expected = m.inertia * 0.05 + (1 - m.inertia) * taylor;
     expect(result.vars[stanceKey(m.id)]).toBeCloseTo(expected, 10);
+  });
+});
+
+describe("previewVote — SPEC-COMM-6 stored-stance integration", () => {
+  // SPEC-COMM-6: previewVote uses stored per-member stance as the lagged-rate anchor.
+  it("member preferred rate shifts when stored stance differs from policy_rate", () => {
+    // Stored stance 0.10 (hawkish drift) vs policy_rate 0.05 (cold anchor).
+    // At target macro (gaps = 0), Taylor = neutral_rate = 0.05.
+    // With stored stance: preferred = inertia*0.10 + (1-inertia)*0.05 > 0.05.
+    // Without stored stance (cold): preferred = inertia*0.05 + (1-inertia)*0.05 = 0.05.
+    const m = member("x", { inertia: 0.88, compromise_band: 0.005 });
+    const c = committeeOf([m]);
+
+    const stateWithStance = macroState({
+      inflation: PARAMS.target_inflation,
+      unemployment: PARAMS.target_unemployment,
+      policy_rate: 0.05,
+      stances: { [stanceKey(m.id)]: 0.10 },
+    });
+    const stateWithoutStance = macroState({
+      inflation: PARAMS.target_inflation,
+      unemployment: PARAMS.target_unemployment,
+      policy_rate: 0.05,
+    });
+
+    const { previews: withStance } = previewVote(c, 0.05, stateWithStance, PARAMS);
+    const { previews: withoutStance } = previewVote(c, 0.05, stateWithoutStance, PARAMS);
+
+    // Cold-start: preferred should equal neutral_rate (0.05) since gaps are 0.
+    expect(withoutStance[0].preferred).toBeCloseTo(0.05, 10);
+    // Stored stance 0.10 pulls preferred above 0.05.
+    expect(withStance[0].preferred).toBeGreaterThan(0.05);
+    // With preferred > 0.05 and proposed = 0.05, member dissents.
+    expect(withStance[0].wouldDissent).toBe(true);
+    // Without stored stance, preferred == 0.05 == proposed, no dissent.
+    expect(withoutStance[0].wouldDissent).toBe(false);
   });
 });
