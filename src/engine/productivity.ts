@@ -10,7 +10,7 @@ export interface ProductivityParams {
  * SPEC-PROD-1: pure productivity drift — never mutates the input state.
  *
  * Reads `state.vars.productivity` (defaults to 1.0 if absent) and returns a new
- * state with `productivity *= (1 + params.monthly_drift_rate)`.
+ * state with `productivity = prev * (1 + params.monthly_drift_rate)`.
  * `monthly_drift_rate` may be positive (growth) or negative (stagnation/decline).
  */
 export function applyProductivityDrift(state: GameState, params: ProductivityParams): GameState {
