@@ -1,0 +1,6 @@
+{
+  "base_capital": 3,
+  "credibility_weight": 0.05,
+  "band_widen_per_unit": 0.002,
+  "max_spend_per_member": 3
+}

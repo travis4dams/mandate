@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mandate.dev/schemas/shocks.schema.json",
+  "title": "ShocksParams",
+  "description": "Parameters governing the seeded supply-shock term added to Phillips curve inflation each month. SPEC-SHOCK-1.",
+  "type": "object",
+  "required": ["supply_shock_sigma"],
+  "additionalProperties": false,
+  "properties": {
+    "supply_shock_sigma": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Standard deviation of the normal supply shock added to inflation each month."
+    }
+  }
+}

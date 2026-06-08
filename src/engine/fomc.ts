@@ -3,10 +3,12 @@ import { loadValidatedFile } from "../content/loader.js";
 import type { Committee, CommitteeMember } from "../content/committees.js";
 import type { TraitEntry } from "../content/traits.js";
 import type { GameState } from "./state.js";
+import type { EffectiveBands } from "./chair-capital.js";
 import { stanceKey, resolveStoredStance } from "./stance.js";
 import type { CommitteeParams } from "./committee-types.js";
 
-// FOMC vote engine — SPEC-COMM-2 + SPEC-COMM-3.
+// FOMC vote engine — SPEC-COMM-2 + SPEC-COMM-3 + SPEC-COMM-5 + SPEC-COMM-7.
+// SPEC-COMM-7 adds optional Chair capital effectiveBands that override the trait-computed band.
 // Pure: returns a new FomcVote; never mutates state or committee.
 
 export type { CommitteeParams } from "./committee-types.js";
@@ -15,7 +17,8 @@ export interface FomcVote {
   /** The enacted rate. Always equals proposedRate in slice 1 (the committee has no override power yet); a future slice may add majority-override. */
   decided: number;
   /** Count of members whose `|preferred - proposedRate| > effectiveBand`, where
-   *  `effectiveBand = Math.max(0, compromise_band * (1 - conviction * conviction_band_factor) * (1 + bandMod))`. */
+   *  `effectiveBand = Math.max(0, compromise_band * (1 - conviction * conviction_band_factor) * (1 + bandMod))`
+   *  unless overridden by an `effectiveBands` entry from Chair capital spend (SPEC-COMM-7). */
   dissents: number;
 }
 
@@ -66,7 +69,8 @@ export interface MemberVotePreview {
   readonly preferred: number;
   /** True iff `|preferred - proposedRate| > effectiveBand` for the `proposedRate`
    *  passed to the previewVote() call that produced this preview, where
-   *  `effectiveBand = Math.max(0, compromise_band * (1 - conviction * conviction_band_factor) * (1 + bandMod))`.
+   *  `effectiveBand = Math.max(0, compromise_band * (1 - conviction * conviction_band_factor) * (1 + bandMod))`
+   *  unless overridden by an `effectiveBands` entry from Chair capital spend (SPEC-COMM-7).
    *  Re-evaluating with a different proposed rate requires a fresh previewVote(). */
   readonly wouldDissent: boolean;
 }
@@ -123,9 +127,27 @@ export function previewVote(
   state: GameState,
   params: CommitteeParams,
   traitCatalog: readonly TraitEntry[],
+  /** SPEC-COMM-7: optional per-member effective band overrides from Chair capital spend.
+   *  Keys are member ids; when present for a member, the override replaces the
+   *  trait-computed effectiveBand for that member (leanShift still applies).
+   *  Absent entries fall through to the trait-computed band.
+   *  Note: an entry of `0` is a valid override (zero-tolerance band) — it is not a no-op.
+   *  Use `computeEffectiveBands` (which skips zero-spend entries) rather than constructing
+   *  this map manually if no-op behaviour for zero is desired. */
+  effectiveBands?: EffectiveBands,
 ): { previews: MemberVotePreview[]; gapInflation: number; gapUnemployment: number } {
   if (!Number.isFinite(proposedRate)) {
     throw new Error(`previewVote: proposedRate ${proposedRate} is not finite.`);
+  }
+  if (effectiveBands) {
+    const memberIds = new Set(committee.members.map((m) => m.id));
+    for (const key of Object.keys(effectiveBands)) {
+      if (!memberIds.has(key)) {
+        throw new Error(
+          `previewVote: effectiveBands key "${key}" does not match any member id in committee "${committee.id}".`,
+        );
+      }
+    }
   }
   if (!Number.isFinite(params.conviction_band_factor) || params.conviction_band_factor < 0 || params.conviction_band_factor > 1) {
     throw new Error(`previewVote: invalid conviction_band_factor (${params.conviction_band_factor}); expected finite in [0,1].`);
@@ -156,9 +178,20 @@ export function previewVote(
     // SPEC-COMM-6: use the member's drifted intermeeting stance if present; fall back to globalLaggedRate (current policy_rate).
     const laggedRate = resolveStoredStance(state.vars[stanceKey(m.id)], globalLaggedRate);
     const preferred = memberPreferred(m, laggedRate, gapInflation, gapUnemployment, params, leanShift);
+    // SPEC-COMM-7: when Chair capital has been spent on this member, the override band
+    // (computed by computeEffectiveBands) replaces the trait-computed band. Validate it.
+    const capitalBand = effectiveBands?.[m.id];
+    if (capitalBand !== undefined) {
+      if (!Number.isFinite(capitalBand) || capitalBand < 0 || capitalBand > 0.5) {
+        throw new Error(
+          `previewVote: effectiveBands override for member "${m.id}" is invalid (${capitalBand}); expected a finite number in [0, 0.5].`,
+        );
+      }
+    }
     // conviction narrows the base band; trait band_modifier scales further; floor at 0
     // guards the conviction=1/factor=1 case where the product reaches exactly 0.
-    const effectiveBand = Math.max(
+    // Chair capital override supersedes the trait-computed band when present.
+    const effectiveBand = capitalBand ?? Math.max(
       0,
       m.compromise_band * (1 - m.conviction * params.conviction_band_factor) * (1 + bandMod),
     );
@@ -179,8 +212,10 @@ export function vote(
   state: GameState,
   params: CommitteeParams,
   traitCatalog: readonly TraitEntry[],
+  /** SPEC-COMM-7: optional per-member effective band overrides from Chair capital spend. */
+  effectiveBands?: EffectiveBands,
 ): FomcVote {
-  const { previews } = previewVote(committee, proposedRate, state, params, traitCatalog);
+  const { previews } = previewVote(committee, proposedRate, state, params, traitCatalog, effectiveBands);
   return { decided: proposedRate, dissents: previews.filter((p) => p.wouldDissent).length };
 }
 

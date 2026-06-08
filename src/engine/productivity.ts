@@ -1,0 +1,67 @@
+import { join } from "node:path";
+import { loadValidatedFile } from "../content/loader.js";
+import type { GameState } from "./state.js";
+
+export interface ProductivityParams {
+  monthly_drift_rate: number;
+}
+
+/**
+ * SPEC-PROD-1: pure productivity drift — never mutates the input state.
+ *
+ * Reads `state.vars.productivity` (defaults to 1.0 if absent) and returns a new
+ * state with `productivity = prev * (1 + params.monthly_drift_rate)`.
+ * `monthly_drift_rate` may be positive (growth) or negative (stagnation/decline).
+ */
+export function applyProductivityDrift(state: GameState, params: ProductivityParams): GameState {
+  if (!Number.isFinite(params.monthly_drift_rate)) {
+    throw new Error(`productivity: params.monthly_drift_rate is not finite (got ${params.monthly_drift_rate})`);
+  }
+  const prev = state.vars.productivity ?? 1.0;
+  if (!Number.isFinite(prev)) {
+    throw new Error(`productivity: state.vars.productivity is not finite (got ${prev})`);
+  }
+  return {
+    ...state,
+    vars: { ...state.vars, productivity: prev * (1 + params.monthly_drift_rate) },
+  };
+}
+
+const SCHEMA_PATH = join(
+  new URL(".", import.meta.url).pathname,
+  "../../schemas/productivity.schema.json",
+);
+const FILE_PATH = join(
+  new URL(".", import.meta.url).pathname,
+  "../../content/engine/productivity.json",
+);
+
+let _cachedParams: ProductivityParams | undefined;
+
+/**
+ * Load and validate `content/engine/productivity.json`.
+ * The validated result is cached in `_cachedParams` (this module). The AJV compile
+ * cache is a separate concern in `loader.ts` — `_resetProductivityParamsCache`
+ * does not clear it.
+ */
+export function loadProductivityParams(): ProductivityParams {
+  if (_cachedParams !== undefined) return _cachedParams;
+  let loaded: ProductivityParams;
+  try {
+    loaded = loadValidatedFile<ProductivityParams>(SCHEMA_PATH, FILE_PATH);
+  } catch (e) {
+    throw new Error("Failed to load productivity params from content/engine/productivity.json", { cause: e });
+  }
+  // AJV enforces exclusiveMinimum: -1 and maximum: 1. Defence-in-depth: assert upper bound
+  // in TypeScript before caching so a corrupt params object is never stored in _cachedParams.
+  if (loaded.monthly_drift_rate > 1) {
+    throw new Error(`productivity: monthly_drift_rate must be <= 1, got ${loaded.monthly_drift_rate}`);
+  }
+  _cachedParams = loaded;
+  return _cachedParams;
+}
+
+/** Test-only: clear the cache so the next `loadProductivityParams()` re-reads. */
+export function _resetProductivityParamsCache(): void {
+  _cachedParams = undefined;
+}
