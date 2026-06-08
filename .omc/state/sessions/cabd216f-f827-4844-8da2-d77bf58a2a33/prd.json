@@ -1,0 +1,198 @@
+{
+  "session": "cabd216f-f827-4844-8da2-d77bf58a2a33",
+  "slice": 2,
+  "title": "MANDATE Slice 2 — Rich engine + React inspector UI",
+  "stories": [
+    {
+      "id": "US-001",
+      "spec": "SPEC-PARAMS-1",
+      "title": "Split engine params into per-section content files",
+      "passes": true,
+      "pr": 13,
+      "dependencies": []
+    },
+    {
+      "id": "US-002",
+      "spec": "SPEC-SESSION-0",
+      "title": "Skeleton Session facade with identity-stable getters and subscribe protocol",
+      "passes": true,
+      "pr": 15,
+      "dependencies": [
+        "US-001"
+      ]
+    },
+    {
+      "id": "US-003",
+      "spec": "SPEC-SIM-5",
+      "title": "Macro dynamics: Phillips curve + IS curve (applyMacroDynamics)",
+      "passes": true,
+      "pr": 20,
+      "dependencies": [
+        "US-002"
+      ]
+    },
+    {
+      "id": "US-004",
+      "spec": "SPEC-GUIDE-1",
+      "title": "Forward-guidance stance wired to credibility-spiral recovery rate",
+      "passes": true,
+      "pr": 19,
+      "dependencies": [
+        "US-002"
+      ]
+    },
+    {
+      "id": "US-005",
+      "spec": "SPEC-SESSION-1",
+      "title": "Session.proposeRate gated to FOMC meeting schedule; isMeetingMonth helper",
+      "passes": true,
+      "pr": 17,
+      "dependencies": [
+        "US-002",
+        "US-004"
+      ]
+    },
+    {
+      "id": "US-006",
+      "spec": "SPEC-WEB-1",
+      "title": "Vite + React 18.3 + TypeScript scaffold in web/; root check extended",
+      "passes": true,
+      "pr": 21,
+      "dependencies": [
+        "US-002"
+      ]
+    },
+    {
+      "id": "US-007",
+      "spec": "SPEC-WEB-2",
+      "title": "Dashboard + useSession hook backed by useSyncExternalStore",
+      "passes": true,
+      "pr": 24,
+      "dependencies": [
+        "US-006"
+      ]
+    },
+    {
+      "id": "US-008",
+      "spec": "SPEC-MANDATE-1",
+      "title": "Mandate evaluator: onTarget checks dual/single mandate; wired to proposeRate",
+      "passes": true,
+      "pr": 22,
+      "dependencies": [
+        "US-005"
+      ]
+    },
+    {
+      "id": "US-009",
+      "spec": "SPEC-COMM-3",
+      "title": "Empirical FOMC model: Taylor-rule per-member coefficients + 12-member committee",
+      "passes": true,
+      "pr": 27,
+      "dependencies": [
+        "US-005"
+      ]
+    },
+    {
+      "id": "US-010",
+      "spec": "SPEC-WEB-4",
+      "title": "FOMC meeting panel: committee briefing table + propose-rate button",
+      "passes": true,
+      "pr": 28,
+      "dependencies": [
+        "US-007",
+        "US-009"
+      ]
+    },
+    {
+      "id": "US-011",
+      "spec": "SPEC-WEB-5",
+      "title": "Control bar: forward-guidance stance buttons + advance-to-next-meeting",
+      "passes": true,
+      "pr": 28,
+      "dependencies": [
+        "US-007"
+      ]
+    },
+    {
+      "id": "US-012",
+      "spec": "SPEC-WEB-3",
+      "title": "Time-series charts: 4 series via Observable Plot with fog overlay",
+      "passes": true,
+      "pr": 30,
+      "dependencies": [
+        "US-007"
+      ]
+    },
+    {
+      "id": "US-013",
+      "spec": "SPEC-WEB-6",
+      "title": "Four-question tooltip (sparse): what/how/levers/trust on focus/hover",
+      "passes": true,
+      "pr": 63,
+      "dependencies": [
+        "US-007",
+        "US-010",
+        "US-012"
+      ]
+    },
+    {
+      "id": "US-014",
+      "spec": "SPEC-LAG-1",
+      "title": "Distributed lag kernel: policy-to-output-gap weights from content",
+      "passes": true,
+      "pr": 52,
+      "dependencies": [
+        "US-003"
+      ]
+    },
+    {
+      "id": "US-015",
+      "spec": "SPEC-PROD-1",
+      "title": "Productivity drift: state.vars.productivity drifts at content-driven rate",
+      "passes": false,
+      "pr": 73,
+      "dependencies": [
+        "US-003"
+      ]
+    },
+    {
+      "id": "US-016",
+      "spec": "SPEC-TERM-1",
+      "title": "Term structure: long_rate EWMA toward policy_rate with half-life from content",
+      "passes": true,
+      "pr": 72,
+      "dependencies": [
+        "US-003"
+      ]
+    },
+    {
+      "id": "US-017",
+      "spec": "SPEC-SHOCK-1",
+      "title": "Stochastic shocks: seeded supply-shock term injected into Phillips curve",
+      "passes": false,
+      "pr": 75,
+      "dependencies": [
+        "US-003"
+      ]
+    },
+    {
+      "id": "US-018",
+      "spec": "SPEC-CAL-2",
+      "title": "Calibration thresholds content type + schema + validate registration",
+      "passes": true,
+      "pr": null,
+      "dependencies": []
+    },
+    {
+      "id": "US-019",
+      "spec": "SPEC-CAL-3",
+      "title": "RMSE emit + soft gate: calibrate.ts extended with three RMSE comparisons",
+      "passes": true,
+      "pr": 74,
+      "dependencies": [
+        "US-018",
+        "US-005"
+      ]
+    }
+  ]
+}
