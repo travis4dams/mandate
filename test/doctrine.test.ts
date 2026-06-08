@@ -398,4 +398,50 @@ describe("Session.adoptDoctrine / Session.abandonDoctrine", () => {
     expect(session.current.flags[doctrineFlagKey(MOCK_DOCTRINE.id)]).toBeFalsy();
     expect(session.current.vars.credibility).toBe(stateBefore.vars.credibility);
   });
+
+  // SPEC-DOCT-1: checkpoint/rollback on abandonDoctrine — mirror of the adoptDoctrine test
+  it("abandonDoctrine — rolls back _state if _rebuildCaches throws, keeping cache in sync", () => {
+    const session = makeSession();
+    // First adopt successfully so we have something to abandon
+    session.adoptDoctrine(MOCK_DOCTRINE.id, MOCK_CATALOG);
+    const stateAfterAdopt = session.current;
+    // Force _rebuildCaches to throw on the first call during abandonDoctrine
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const proto = Object.getPrototypeOf(session) as any;
+    const original = proto._rebuildCaches;
+    let callCount = 0;
+    proto._rebuildCaches = function (this: unknown) {
+      callCount++;
+      if (callCount === 1) throw new Error("simulated abandonDoctrine _rebuildCaches failure");
+      return original.call(this);
+    };
+    try {
+      expect(() => session.abandonDoctrine(MOCK_DOCTRINE.id, MOCK_CATALOG)).toThrow("simulated abandonDoctrine _rebuildCaches failure");
+    } finally {
+      proto._rebuildCaches = original;
+    }
+    // After rollback, doctrine must still be adopted and state unchanged
+    expect(session.current.flags[doctrineFlagKey(MOCK_DOCTRINE.id)]).toBe(true);
+    expect(session.current.vars.credibility).toBe(stateAfterAdopt.vars.credibility);
+  });
+
+  // SPEC-DOCT-1: non-credibility standing-effect targets are applied and reversed correctly
+  it("adoptDoctrine / abandonDoctrine work for non-credibility standing effects", () => {
+    const inflationDoctrine: DoctrineEntry = {
+      id: "doctrine.inflation_shift",
+      name: "doctrine.inflation_shift.name",
+      description: "doctrine.inflation_shift.desc",
+      standing_effects: [{ target: "inflation", value: 0.01 }],
+      flip_flop_cost: 0,
+    };
+    const inflationCatalog = [inflationDoctrine];
+    const session = makeSession();
+    const inflationBefore = session.current.vars.inflation as number;
+    session.adoptDoctrine(inflationDoctrine.id, inflationCatalog);
+    // Standing effect applied: inflation += 0.01
+    expect(session.current.vars.inflation as number).toBeCloseTo(inflationBefore + 0.01, 10);
+    session.abandonDoctrine(inflationDoctrine.id, inflationCatalog);
+    // Standing effect reversed: inflation restored
+    expect(session.current.vars.inflation as number).toBeCloseTo(inflationBefore, 10);
+  });
 });

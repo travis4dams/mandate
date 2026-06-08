@@ -523,15 +523,18 @@ export class Session {
       this._rebuildCaches();
     } catch (err) {
       // Restore checkpoint: reset state first, then rebuild caches from it.
-      // If the cache rebuild also throws, state is already at checkpoint so
-      // state+caches stay consistent; suppress the secondary error.
       this._state = checkpointState;
       try {
         this._rebuildCaches();
       } catch (secondaryErr) {
-        console.error("Session.adoptDoctrine: _rebuildCaches threw during rollback", secondaryErr);
+        // Both forward and rollback _rebuildCaches failed; force-restore caches from checkpoint
+        // and propagate secondaryErr so callers have full diagnostic context.
         this._currentCache = checkpointCache;
         this._trajectoryCache = checkpointTrajectory;
+        throw new Error(
+          `Session.adoptDoctrine: cache rebuild failed during rollback (force-restored from checkpoint); original error: ${String(err)}`,
+          { cause: secondaryErr },
+        );
       }
       throw err;
     }
@@ -562,15 +565,18 @@ export class Session {
       this._rebuildCaches();
     } catch (err) {
       // Restore checkpoint: reset state first, then rebuild caches from it.
-      // If the cache rebuild also throws, state is already at checkpoint so
-      // state+caches stay consistent; suppress the secondary error.
       this._state = checkpointState;
       try {
         this._rebuildCaches();
       } catch (secondaryErr) {
-        console.error("Session.abandonDoctrine: _rebuildCaches threw during rollback", secondaryErr);
+        // Both forward and rollback _rebuildCaches failed; force-restore caches from checkpoint
+        // and propagate secondaryErr so callers have full diagnostic context.
         this._currentCache = checkpointCache;
         this._trajectoryCache = checkpointTrajectory;
+        throw new Error(
+          `Session.abandonDoctrine: cache rebuild failed during rollback (force-restored from checkpoint); original error: ${String(err)}`,
+          { cause: secondaryErr },
+        );
       }
       throw err;
     }

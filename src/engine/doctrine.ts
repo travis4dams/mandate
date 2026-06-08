@@ -27,7 +27,9 @@ export function isDoctrineAdopted(state: GameState, id: string): boolean {
 /** Adopt a doctrine: records it in state.flags and applies its standing effects to state.vars.
  *  No flip-flop cost is charged on adoption — only on abandonment (SPEC-DOCT-1).
  *  Standing effects are applied as exact numeric deltas; credibility is NOT clamped here so
- *  that abandonDoctrine can reverse the exact same delta and restore the original value. */
+ *  that abandonDoctrine can reverse the exact same delta (symmetric delta guarantee). The caller
+ *  is responsible for downstream clamping — applyMacroDynamics clamps credibility to [0,100] on
+ *  each tick, so the over-range value is short-lived in a live session. */
 export function adoptDoctrine(state: GameState, doctrine: DoctrineEntry): GameState {
   if (isDoctrineAdopted(state, doctrine.id)) {
     throw new DoctrineAlreadyAdoptedError(doctrine.id);
