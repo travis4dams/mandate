@@ -149,7 +149,7 @@
       "id": "US-015",
       "spec": "SPEC-PROD-1",
       "title": "Productivity drift: state.vars.productivity drifts at content-driven rate",
-      "passes": false,
+      "passes": true,
       "pr": 73,
       "dependencies": [
         "US-003"
