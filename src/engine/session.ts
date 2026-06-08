@@ -16,6 +16,8 @@ import { applyRateToOutputGap, loadLagParams } from "./lags.js";
 import { applyTermStructure, loadTermStructureParams } from "./term-structure.js";
 import { applyProductivityDrift, loadProductivityParams } from "./productivity.js";
 import { onTarget, loadMandateParams } from "./mandate.js";
+import { adoptDoctrine as _adoptDoctrine, abandonDoctrine as _abandonDoctrine } from "./doctrine.js";
+import { loadDoctrineCatalog, getDoctrine, type DoctrineEntry } from "../content/doctrines.js";
 import { applySupplyShock, loadShocksParams } from "./shocks.js";
 import { mulberry32, type SeededRng } from "./rng.js";
 import type { GameState, GameStateSnapshot } from "./state.js";
@@ -550,6 +552,89 @@ export class Session {
   // Fires listeners (downstream UI may want to reflect the stored stance).
   setForwardGuidanceStance(stance: ForwardGuidanceStance): void {
     this._stance = stance;
+    this._notifyListeners();
+  }
+
+  /**
+   * Adopt a doctrine by id. Applies standing effects to state immediately.
+   * @throws {DoctrineAlreadyAdoptedError} if already adopted.
+   * @throws {DoctrineNotFoundError} if id not in catalog.
+   * @throws {Error} if a standing_effect target var is absent from state.
+   * @throws {Error} if the doctrine catalog cannot be loaded (I/O or schema failure).
+   */
+  adoptDoctrine(doctrineId: string, catalog?: DoctrineEntry[]): void {
+    let resolvedCatalog: DoctrineEntry[];
+    try {
+      resolvedCatalog = catalog ?? loadDoctrineCatalog();
+    } catch (e) {
+      throw new Error(`Session.adoptDoctrine: failed to load doctrine catalog`, { cause: e });
+    }
+    const doctrine = getDoctrine(doctrineId, resolvedCatalog);
+    const checkpointState = this._state;
+    const checkpointCache = this._currentCache;
+    const checkpointTrajectory = this._trajectoryCache;
+    this._state = _adoptDoctrine(this._state, doctrine);
+    try {
+      this._rebuildCaches();
+    } catch (err) {
+      // Restore checkpoint: reset state first, then rebuild caches from it.
+      this._state = checkpointState;
+      try {
+        this._rebuildCaches();
+      } catch (secondaryErr) {
+        // Both forward and rollback _rebuildCaches failed; force-restore caches from checkpoint
+        // and propagate secondaryErr so callers have full diagnostic context.
+        this._currentCache = checkpointCache;
+        this._trajectoryCache = checkpointTrajectory;
+        throw new Error(
+          `Session.adoptDoctrine: cache rebuild failed during rollback (force-restored from checkpoint); original error: ${String(err)}`,
+          { cause: secondaryErr },
+        );
+      }
+      throw err;
+    }
+    this._notifyListeners();
+  }
+
+  /**
+   * Abandon a doctrine by id. Reverses standing effects and deducts flip-flop credibility cost.
+   * @throws {DoctrineNotAdoptedError} if not currently adopted.
+   * @throws {DoctrineNotFoundError} if id not in catalog.
+   * @throws {Error} if a standing_effect target var is absent from state.
+   * @throws {Error} if credibility var is absent when flip_flop_cost > 0.
+   * @throws {Error} if the doctrine catalog cannot be loaded (I/O or schema failure).
+   */
+  abandonDoctrine(doctrineId: string, catalog?: DoctrineEntry[]): void {
+    let resolvedCatalog: DoctrineEntry[];
+    try {
+      resolvedCatalog = catalog ?? loadDoctrineCatalog();
+    } catch (e) {
+      throw new Error(`Session.abandonDoctrine: failed to load doctrine catalog`, { cause: e });
+    }
+    const doctrine = getDoctrine(doctrineId, resolvedCatalog);
+    const checkpointState = this._state;
+    const checkpointCache = this._currentCache;
+    const checkpointTrajectory = this._trajectoryCache;
+    this._state = _abandonDoctrine(this._state, doctrine);
+    try {
+      this._rebuildCaches();
+    } catch (err) {
+      // Restore checkpoint: reset state first, then rebuild caches from it.
+      this._state = checkpointState;
+      try {
+        this._rebuildCaches();
+      } catch (secondaryErr) {
+        // Both forward and rollback _rebuildCaches failed; force-restore caches from checkpoint
+        // and propagate secondaryErr so callers have full diagnostic context.
+        this._currentCache = checkpointCache;
+        this._trajectoryCache = checkpointTrajectory;
+        throw new Error(
+          `Session.abandonDoctrine: cache rebuild failed during rollback (force-restored from checkpoint); original error: ${String(err)}`,
+          { cause: secondaryErr },
+        );
+      }
+      throw err;
+    }
     this._notifyListeners();
   }
 

@@ -1,0 +1,9 @@
+{
+  "id": "doctrine.inflation_targeting",
+  "name": "doctrine.inflation_targeting.name",
+  "description": "doctrine.inflation_targeting.desc",
+  "standing_effects": [
+    { "target": "credibility", "value": 5 }
+  ],
+  "flip_flop_cost": 10
+}

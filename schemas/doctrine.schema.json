@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mandate.dev/schemas/doctrine.schema.json",
+  "title": "Doctrine",
+  "description": "An adoptable framework. Standing effects apply while adopted; abandoning incurs a credibility flip-flop cost.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "name", "description", "flip_flop_cost"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^doctrine\\.[a-z0-9_]+$"
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_.]+$",
+      "description": "Localization key."
+    },
+    "description": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_.]+$",
+      "description": "Localization key."
+    },
+    "standing_effects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["target", "value"],
+        "properties": {
+          "target": { "type": "string", "enum": ["credibility", "inflation", "unemployment", "expectations_anchor", "policy_rate", "months_below_anchor"] },
+          "value": { "type": "number", "minimum": -100, "maximum": 100 }
+        }
+      },
+      "default": []
+    },
+    "flip_flop_cost": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Credibility deducted when switching away or abandoning."
+    }
+  }
+}
