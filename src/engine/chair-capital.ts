@@ -28,6 +28,7 @@ export interface ChairCapitalParams {
  * Compute the Chair's persuasion budget for the current meeting.
  * Pure: no side effects, no randomness.
  * @param credibility — current credibility score in [0, 100].
+ * @param params — content-loaded ChairCapitalParams (base_capital, credibility_weight, …).
  */
 export function computeChairCapital(credibility: number, params: ChairCapitalParams): number {
   return params.base_capital + Math.floor(params.credibility_weight * credibility);

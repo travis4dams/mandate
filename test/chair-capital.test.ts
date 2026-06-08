@@ -307,6 +307,27 @@ describe("previewVote: effectiveBands entry validation (SPEC-COMM-7)", () => {
       previewVote(committee, 0.05, state, COMMITTEE_PARAMS, [], { "member.typo": 0.003 }),
     ).toThrow(/member\.typo/);
   });
+
+  it("effectiveBands entry of 0 is a zero-tolerance override, not a no-op", () => {
+    // SPEC-COMM-7: effectiveBands[id] = 0 sets the member's band to exactly 0 (zero-tolerance),
+    // forcing dissent on any proposal that differs from their preferred rate — even by 1 bp.
+    // This is distinct from undefined/absent (which falls back to the member's trait band).
+    // The implementation uses `??` (nullish coalescing), so 0 is not treated as no-op.
+    const baseBand = 0.002; // member normally assents within ±0.2%
+    const m = member("a", { compromise_band: baseBand });
+    const committee = committeeOf([m]);
+    const state = stateWithCredibility(50);
+    // Use previewVote to find the computed preferred rate, then pick a proposal within the normal band.
+    const trial = previewVote(committee, 0.05, state, COMMITTEE_PARAMS, []);
+    const computedPreferred = trial.previews[0].preferred;
+    const proposed = computedPreferred + 0.001; // 1 bp inside baseBand → normal assent
+    // Without override: should assent
+    const withoutOverride = previewVote(committee, proposed, state, COMMITTEE_PARAMS, []);
+    expect(withoutOverride.previews[0].wouldDissent).toBe(false);
+    // With zero-tolerance override: must dissent even though proposal is within normal band
+    const withZeroTolerance = previewVote(committee, proposed, state, COMMITTEE_PARAMS, [], { "member.a": 0 });
+    expect(withZeroTolerance.previews[0].wouldDissent).toBe(true);
+  });
 });
 
 describe("Session.chairCapital()", () => {
