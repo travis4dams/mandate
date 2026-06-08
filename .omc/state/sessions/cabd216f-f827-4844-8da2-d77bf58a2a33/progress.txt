@@ -421,3 +421,31 @@ Phase 1:
     US-017 SPEC-SHOCK-1   passes=true pr=75
     US-018 SPEC-CAL-2     passes=true pr=null
     US-019 SPEC-CAL-3     passes=true pr=74
+
+== CYCLE 21 — 2026-06-08 ==
+Phase 0 (issue queue): empty — fell through to Phase 1.
+Phase 1:
+  Merged PR #83 (chore: cycle 20 progress log, VERDICT: APPROVE, squash 2167794).
+  STOP CONDITION active: all 19 PRD stories passes=true. No new PRD story dispatched.
+
+  Non-PRD SPEC-DOCT-2 (PR #82, branch issue-43-spec-doct-2-dot-plot-rebased):
+    Round-2 VERDICT: REQUEST_CHANGES — 3 blockers + 5 non-blocking items.
+    Blocking fixes applied (commit 15a7899), all checks green (491 engine + 34 web tests):
+      1. session.ts: commit vote outcome (policy_rate + credibility) to this._state BEFORE
+         taking the hook checkpoint — hook errors now only roll back hook effects, not the
+         player's rate decision (checkpoint scope bug).
+      2. session.ts: add _rebuildCaches() in the hook catch block after checkpoint restore,
+         keeping caches consistent with state (mirrors advance/adoptDoctrine pattern).
+      3. session.ts: remove dead `if (handler !== undefined)` guard — HOOK_HANDLERS is
+         Record<DoctrineHook, MeetingHookFn> (non-Partial); TypeScript guarantees presence;
+         call handler directly.
+    Non-blocking cleanup also applied:
+      4. doctrines.ts: remove `adopted: boolean` from MeetingHookFn (always true at call
+         site; session already guards adoption before dispatching); pass true in HOOK_HANDLERS.
+      5. doctrines.ts: add step 0 to add-hook guide (schema + content file + validate-content.ts).
+      6. dot-plot.ts: replace duplicate inline credibility guard with getCredibility() call.
+      7. session.ts: fix stale @throws JSDoc (vote() → previewVote()).
+      8. test/session.test.ts: replace conditional if/else integration test with a deterministic
+         formula-based assertion using two parallel sessions (with vs without doctrine).
+    PR #82 awaiting claude-review re-run (round 3).
+  Closed PR #62 (stale old SPEC-DOCT-2 branch, superseded by #82).
