@@ -34,6 +34,11 @@
       },
       "default": []
     },
+    "meeting_hook": {
+      "type": "string",
+      "enum": ["dot_plot_meeting"],
+      "description": "Optional hook name. When present, proposeRate will invoke the corresponding meeting-effect handler. The engine maps each hook name to its implementation generically — no content IDs in engine code."
+    },
     "flip_flop_cost": {
       "type": "number",
       "minimum": 0,

@@ -16,6 +16,9 @@ export class DoctrineNotAdoptedError extends Error {
   }
 }
 
+/** Returns the flag key for a doctrine's adopted state.
+ *  Doctrine IDs follow the schema pattern `^doctrine\.[a-z0-9_]+$`,
+ *  so this produces e.g. `"doctrine.dot_plot.adopted"`. */
 export function doctrineFlagKey(id: string): string {
   return `${id}.adopted`;
 }
@@ -36,10 +39,13 @@ export function adoptDoctrine(state: GameState, doctrine: DoctrineEntry): GameSt
   }
   const nextVars = { ...state.vars };
   for (const effect of doctrine.standing_effects) {
-    if (nextVars[effect.target] === undefined) {
-      throw new Error(`adoptDoctrine: var "${effect.target}" is absent in state`);
+    if (!(effect.target in nextVars)) {
+      throw new Error(
+        `adoptDoctrine "${doctrine.id}": standing effect target "${effect.target}" ` +
+        `is absent from state.vars. All targeted vars must be initialised by the scenario.`,
+      );
     }
-    nextVars[effect.target] = nextVars[effect.target]! + effect.value;
+    nextVars[effect.target] = (nextVars[effect.target] as number) + effect.value;
   }
   return {
     ...state,
@@ -58,10 +64,13 @@ export function abandonDoctrine(state: GameState, doctrine: DoctrineEntry): Game
   }
   const nextVars = { ...state.vars };
   for (const effect of doctrine.standing_effects) {
-    if (nextVars[effect.target] === undefined) {
-      throw new Error(`abandonDoctrine: var "${effect.target}" is absent in state`);
+    if (!(effect.target in nextVars)) {
+      throw new Error(
+        `abandonDoctrine "${doctrine.id}": standing effect target "${effect.target}" ` +
+        `is absent from state.vars. All targeted vars must be initialised by the scenario.`,
+      );
     }
-    nextVars[effect.target] = nextVars[effect.target]! - effect.value;
+    nextVars[effect.target] = (nextVars[effect.target] as number) - effect.value;
   }
   if (doctrine.flip_flop_cost > 0) {
     if (nextVars.credibility === undefined) {

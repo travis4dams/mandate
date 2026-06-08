@@ -1,0 +1,6 @@
+{
+  "anchoring_bonus": 1.5,
+  "exposure_per_pp": 0.4,
+  "dissent_multiplier": 1.5,
+  "spread_threshold": 0.005
+}

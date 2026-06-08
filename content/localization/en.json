@@ -128,5 +128,7 @@
   "trait.ag_hawk.name": "Agricultural Hawk",
   "trait.ag_hawk.desc": "Sensitive to agricultural commodity prices; will press for tighter policy if food prices surge (dormant until sectoral series available).",
   "trait.manufacturing_dove.name": "Manufacturing Dove",
-  "trait.manufacturing_dove.desc": "Sensitive to manufacturing employment; advocates easier policy when factory hiring weakens (dormant until sectoral series available)."
+  "trait.manufacturing_dove.desc": "Sensitive to manufacturing employment; advocates easier policy when factory hiring weakens (dormant until sectoral series available).",
+  "doctrine.dot_plot.name": "Dot Plot",
+  "doctrine.dot_plot.desc": "Publish each member's preferred rate after every meeting. Transparency strengthens anchoring while the committee agrees; a visibly divided committee pays a credibility cost proportional to the spread."
 }

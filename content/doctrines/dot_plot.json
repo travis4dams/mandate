@@ -1,0 +1,10 @@
+{
+  "id": "doctrine.dot_plot",
+  "name": "doctrine.dot_plot.name",
+  "description": "doctrine.dot_plot.desc",
+  "standing_effects": [
+    { "target": "credibility", "value": 3 }
+  ],
+  "meeting_hook": "dot_plot_meeting",
+  "flip_flop_cost": 5
+}

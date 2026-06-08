@@ -1,16 +1,56 @@
 import { join } from "node:path";
 import { loadValidated } from "./loader.js";
+import { applyDotPlotMeetingEffects, loadDotPlotParams } from "../engine/dot-plot.js";
+import type { GameState } from "../engine/state.js";
+import type { MemberVotePreview } from "../engine/fomc.js";
+
+/** The exhaustive set of game var names that standing effects may target.
+ *  Mirrors the enum in schemas/doctrine.schema.json. */
+export type GameVarName =
+  | "credibility"
+  | "expectations_anchor"
+  | "inflation"
+  | "unemployment"
+  | "policy_rate"
+  | "months_below_anchor";
 
 export interface StandingEffect {
-  target: string;
+  target: GameVarName;
   value: number;
 }
+
+export type DoctrineHook = "dot_plot_meeting";
+
+/** Function signature for meeting-hook handlers.
+ *  Receives the post-vote state and member previews.
+ *  Returns updated state (pure — no mutations). */
+export type MeetingHookFn = (
+  state: GameState,
+  previews: readonly MemberVotePreview[],
+) => GameState;
+
+/**
+ * Registry of meeting-hook handlers, keyed by DoctrineHook name.
+ * Lives outside src/engine/ so no content ID is ever hardcoded in engine code.
+ * To add a new meeting hook:
+ * (0) add a params schema in schemas/ and a content file in content/engine/;
+ *     register both in tools/validate-content.ts.
+ * (1) add the string to DoctrineHook + schema enum,
+ * (2) implement a handler in src/engine/,
+ * (3) register it here — no changes to src/engine/session.ts needed.
+ */
+export const HOOK_HANDLERS: Record<DoctrineHook, MeetingHookFn> = {
+  dot_plot_meeting: (state, previews) =>
+    applyDotPlotMeetingEffects(state, previews, loadDotPlotParams(), true),
+};
 
 export interface DoctrineEntry {
   id: string;
   name: string;
   description: string;
   standing_effects: StandingEffect[];
+  /** Optional hook name. When set, proposeRate invokes the matching meeting-effect handler generically. */
+  meeting_hook?: DoctrineHook;
   flip_flop_cost: number;
 }
 
@@ -35,7 +75,15 @@ let _cache: DoctrineEntry[] | null = null;
 export function loadDoctrineCatalog(): DoctrineEntry[] {
   if (_cache !== null) return _cache;
   type RawDoctrine = Omit<DoctrineEntry, "standing_effects"> & { standing_effects?: StandingEffect[] };
-  const raw = loadValidated<RawDoctrine>(SCHEMA_PATH, DOCTRINES_DIR);
+  let raw: RawDoctrine[];
+  try {
+    raw = loadValidated<RawDoctrine>(SCHEMA_PATH, DOCTRINES_DIR);
+  } catch (e) {
+    throw new Error(
+      "Failed to load doctrine catalog from content/doctrines/. Check that all .json files conform to schemas/doctrine.schema.json.",
+      { cause: e },
+    );
+  }
   _cache = raw.map((d) => ({ ...d, standing_effects: d.standing_effects ?? [] }));
   return _cache;
 }

@@ -4,7 +4,7 @@ import { loadReplay } from "../content/replays.js";
 import { loadCommittee } from "../content/committees.js";
 import { loadValidatedFile } from "../content/loader.js";
 import { tick } from "./clock.js";
-import { vote, previewVote, loadCommitteeParams } from "./fomc.js";
+import { previewVote, loadCommitteeParams } from "./fomc.js";
 import { computeChairCapital, computeEffectiveBands, loadChairCapitalParams } from "./chair-capital.js";
 import type { CapitalSpend } from "./chair-capital.js";
 import { applyIntermeetingDrift } from "./stance.js";
@@ -16,8 +16,8 @@ import { applyRateToOutputGap, loadLagParams } from "./lags.js";
 import { applyTermStructure, loadTermStructureParams } from "./term-structure.js";
 import { applyProductivityDrift, loadProductivityParams } from "./productivity.js";
 import { onTarget, loadMandateParams } from "./mandate.js";
-import { adoptDoctrine as _adoptDoctrine, abandonDoctrine as _abandonDoctrine } from "./doctrine.js";
-import { loadDoctrineCatalog, getDoctrine, type DoctrineEntry } from "../content/doctrines.js";
+import { adoptDoctrine as _adoptDoctrine, abandonDoctrine as _abandonDoctrine, doctrineFlagKey } from "./doctrine.js";
+import { loadDoctrineCatalog, getDoctrine, HOOK_HANDLERS, type DoctrineEntry } from "../content/doctrines.js";
 import { applySupplyShock, loadShocksParams } from "./shocks.js";
 import { mulberry32, type SeededRng } from "./rng.js";
 import type { GameState, GameStateSnapshot } from "./state.js";
@@ -474,7 +474,7 @@ export class Session {
    * @throws {Error} if total capitalSpend exceeds chairCapital() budget (SPEC-COMM-7).
    * @throws {Error} if a capitalSpend key does not match any member id, or the resulting widened
    *   band would exceed 0.5 (propagated from computeEffectiveBands).
-   * @throws {VoteMissingVarError} if state vars (inflation, unemployment, policy_rate) are missing or non-finite (propagated from vote()).
+   * @throws {VoteMissingVarError} if state vars (inflation, unemployment, policy_rate) are missing or non-finite (propagated from previewVote()).
    */
   proposeRate(rate: number, capitalSpend?: CapitalSpend): FomcVote {
     if (!this.isMeetingMonth()) {
@@ -487,14 +487,16 @@ export class Session {
     const params = loadCommitteeParams();
     const traits = loadTraitCatalog();
     const effectiveBands = this._resolveEffectiveBands(committee, capitalSpend, "proposeRate");
-    const fomcVote = vote(committee, rate, this._state, params, traits, effectiveBands);
+    // SPEC-DOCT-2: use previewVote directly so member previews are available for dot-plot spread.
+    const { previews } = previewVote(committee, rate, this._state, params, traits, effectiveBands);
+    const fomcVote: FomcVote = { decided: rate, dissents: previews.filter((p) => p.wouldDissent).length };
 
     // Apply the decided rate and compute new credibility.
     // SPEC-CRED-1 (issue #33): dissents no longer affect credibility, so fomcVote.dissents is
     // reported back to the caller but not fed here.
     // SPEC-GUIDE-2: markets are surprised when the decided rate contradicts the guidance stance,
     // measured against the pre-meeting policy rate.
-    // vote() above already guaranteed policy_rate is present and finite (VoteMissingVarError),
+    // previewVote() above already guaranteed policy_rate is present and finite (VoteMissingVarError),
     // so the cast mirrors the codebase's required-var convention rather than masking a real gap.
     // Capturing it here (immediately after vote) keeps that guarantee visible.
     const guidanceP = loadGuidanceParams();
@@ -513,14 +515,32 @@ export class Session {
       },
     );
 
-    this._state = {
+    // SPEC-DOCT-2: apply meeting-hook effects generically over all adopted doctrines.
+    // No content IDs are hardcoded in engine code — the HOOK_HANDLERS registry in
+    // src/content/doctrines.ts maps each hook name to its handler. To add a new
+    // meeting hook: add the string to DoctrineHook + schema enum, implement a handler,
+    // and register it in HOOK_HANDLERS — no changes to this file needed.
+    // Vote outcome committed before the hook loop so a hook error never rolls back
+    // the player's rate decision — only hook effects are restored on failure.
+    let stateAfterMeeting: GameState = {
       ...this._state,
-      vars: {
-        ...this._state.vars,
-        policy_rate: fomcVote.decided,
-        credibility: newCredibility,
-      },
+      vars: { ...this._state.vars, policy_rate: fomcVote.decided, credibility: newCredibility },
     };
+    this._state = stateAfterMeeting;
+    const hookCheckpoint = this._state;
+    try {
+      const catalog = loadDoctrineCatalog();
+      for (const doctrine of catalog) {
+        if (doctrine.meeting_hook === undefined) continue;
+        if (stateAfterMeeting.flags[doctrineFlagKey(doctrine.id)] !== true) continue;
+        stateAfterMeeting = HOOK_HANDLERS[doctrine.meeting_hook](stateAfterMeeting, previews);
+      }
+      this._state = stateAfterMeeting;
+    } catch (err) {
+      this._state = hookCheckpoint;
+      this._rebuildCaches();
+      throw err;
+    }
 
     this._rebuildCaches();
     this._notifyListeners();

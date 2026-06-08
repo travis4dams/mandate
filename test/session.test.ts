@@ -4,6 +4,7 @@ import type { ForwardGuidanceStance } from "../src/engine/session.js";
 import * as mandateModule from "../src/engine/mandate.js";
 import * as stanceModule from "../src/engine/stance.js";
 import { stanceKey } from "../src/engine/stance.js";
+import { computeVoteSpread, loadDotPlotParams } from "../src/engine/dot-plot.js";
 
 // SPEC-SESSION-0
 
@@ -698,5 +699,95 @@ describe("SPEC-WEB-4: Session.committeeBriefing", () => {
     s.committeeBriefing(0.1075);
     expect(s.current.date).toBe(dateBefore);
     expect(s.current.vars.credibility).toBe(credBefore);
+  });
+});
+
+describe("SPEC-DOCT-2: dot-plot meeting effect wired into Session.proposeRate()", () => {
+  // SPEC-DOCT-2: when the dot-plot doctrine is adopted, proposeRate must route through
+  // applyDotPlotMeetingEffects generically (no hardcoded content ID). Adopted → credibility
+  // differs from not-adopted; specifically the anchoring bonus (+1.5) is applied.
+
+  it("proposeRate with dot-plot adopted yields higher credibility than without (anchoring bonus)", () => {
+    // SPEC-DOCT-2
+    // Baseline: no doctrine — credibility unchanged at 25 (neutral stance, off-target inflation).
+    const base = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    base.proposeRate(0.1075);
+    const credWithout = base.current.vars.credibility as number;
+
+    // With dot-plot adopted: anchoring bonus applies (+1.5), making credibility higher.
+    const withDotPlot = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    withDotPlot.adoptDoctrine("doctrine.dot_plot");
+    withDotPlot.proposeRate(0.1075);
+    const credWith = withDotPlot.current.vars.credibility as number;
+
+    expect(credWith).toBeGreaterThan(credWithout);
+  });
+
+  it("abandoning dot-plot before proposeRate removes the meeting effect", () => {
+    // SPEC-DOCT-2: after adoption then abandonment, the meeting hook no longer applies.
+    // The flip-flop cost is charged on abandonment (before proposeRate), so we verify
+    // that proposeRate does NOT apply the anchoring bonus on top — i.e. the credibility
+    // delta from proposeRate alone matches the no-doctrine baseline delta (zero here:
+    // neutral stance, off-target inflation → no surprise penalty, no onTarget bonus).
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    s.adoptDoctrine("doctrine.dot_plot");
+    s.abandonDoctrine("doctrine.dot_plot");
+    const credBeforePropose = s.current.vars.credibility as number;
+    s.proposeRate(0.1075);
+    const credAfterPropose = s.current.vars.credibility as number;
+
+    // Without the meeting hook, proposeRate should not change credibility here
+    // (neutral stance, inflation far off-target → no surprise, no onTarget bonus).
+    expect(credAfterPropose).toBe(credBeforePropose);
+  });
+
+  it("proposeRate applies dot-plot meeting hook: credibility delta matches formula (integration)", () => {
+    // SPEC-DOCT-2: verify the hook fires via Session.proposeRate and produces the correct delta.
+    // applyMeetingOutcome uses fixed +3/-5 steps independent of current credibility, so the
+    // difference between a session with vs without doctrine equals: adoption standing_effect
+    // (+3) plus the dot-plot meeting delta — no matter whether spread is above or below threshold.
+    const sWith = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    const sWithout = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+
+    const credBeforeAdopt = sWith.current.vars.credibility as number;
+    sWith.adoptDoctrine("doctrine.dot_plot");
+    const adoptionBoost = (sWith.current.vars.credibility as number) - credBeforeAdopt;
+
+    // previews are credibility-independent (fomc.ts never reads credibility).
+    const { previews } = sWith.committeeBriefing(0.1075);
+    const params = loadDotPlotParams();
+    const spread = computeVoteSpread(previews);
+    const dissents = previews.filter((p) => p.wouldDissent).length;
+
+    let dotPlotDelta = params.anchoring_bonus;
+    if (spread > params.spread_threshold) {
+      const multiplier = dissents > 0 ? params.dissent_multiplier : 1.0;
+      dotPlotDelta -= spread * 100 * params.exposure_per_pp * multiplier;
+    }
+
+    sWith.proposeRate(0.1075);
+    sWithout.proposeRate(0.1075);
+
+    const credWith = sWith.current.vars.credibility as number;
+    const credWithout = sWithout.current.vars.credibility as number;
+    expect(credWith - credWithout).toBeCloseTo(adoptionBoost + dotPlotDelta, 5);
+  });
+
+  it("proposeRate applies spread-exposure cost when committee is visibly divided (spread > threshold)", () => {
+    // SPEC-DOCT-2: exercises the full spread → exposure-cost path via Session.proposeRate.
+    // An extreme proposed rate (0.30, far above the 1979 starting rate) maximises disagreement
+    // among members — the spread is almost certainly above the 0.005 threshold.
+    // With dot-plot adopted, credibility should end up lower than credAfterAdopt + anchoring_bonus.
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    s.adoptDoctrine("doctrine.dot_plot");
+    const credAfterAdopt = s.current.vars.credibility as number;
+
+    const params = loadDotPlotParams();
+
+    s.proposeRate(0.30); // extreme rate → large member spread
+    const credAfterPropose = s.current.vars.credibility as number;
+
+    // Net credibility change must be less than anchoring_bonus alone (spread cost bites)
+    expect(credAfterPropose - credAfterAdopt).toBeLessThan(params.anchoring_bonus);
   });
 });
