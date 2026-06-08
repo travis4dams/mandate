@@ -449,3 +449,20 @@ Phase 1:
          formula-based assertion using two parallel sessions (with vs without doctrine).
     PR #82 awaiting claude-review re-run (round 3).
   Closed PR #62 (stale old SPEC-DOCT-2 branch, superseded by #82).
+
+== CYCLE 22 — 2026-06-08 ==
+Phase 0 (issue queue): empty — fell through to Phase 1.
+Phase 1:
+  STOP CONDITION active: all 19 PRD stories passes=true. No new PRD story dispatched.
+
+  Non-PRD SPEC-DOCT-2 (PR #82): round-3 VERDICT: APPROVE (squash 6663225).
+  Merged PR #82 (SPEC-DOCT-2: dot-plot doctrine, VERDICT: APPROVE, squash 6663225).
+    Review noted 5 minor non-blocking items (comment wording, redundant assignment,
+    missing credibility-guard error test, dead vote() export, adopted:true hardcoded).
+    None were blockers; PR merged as-is.
+  Merged PR #84 (chore: cycle 21 progress, VERDICT: APPROVE, squash 96825b5).
+
+  All 19 PRD stories remain passes=true. Slice 2 is fully complete.
+  All non-PRD stories (SPEC-COMM-5, SPEC-COMM-6, SPEC-COMM-7, SPEC-LAG-1-extras,
+    SPEC-BRIEF-1, SPEC-BRIEF-2, SPEC-HEAR-1, SPEC-SCEN-2, SPEC-DOCT-1, SPEC-DOCT-2)
+    are also on main. No open PRs or agent-task issues remain.
