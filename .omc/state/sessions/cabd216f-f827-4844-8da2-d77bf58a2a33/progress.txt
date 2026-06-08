@@ -72,25 +72,20 @@ Phase 0 (issue queue): issue #37 (SPEC-COMM-5) still had agent-task label but PR
 exists (dedup). Removed orphaned label. 10 other agent-task issues remain (#38-#47) — oldest
 (#38, SPEC-COMM-6) will be picked up next cycle per one-issue-per-fire protocol.
 Phase 1:
-  PR #30 (SPEC-WEB-3, spec-web-3-charts) — STUCK ESCALATION. This is the 3rd consecutive
-  VERDICT: REQUEST_CHANGES. Round 3 blockers: (1) unsound type cast fogJson as Record<string,
-  FogParams> should be Partial<Record<string, FogParams>>; (2) missing component mount tests
-  (smoke-render + Plot.plot-throws fallback); (3) missing NaN/Infinity filter coverage in tests.
-  Per the 3-round stop rule, no executor dispatched. User input requested — see STUCK NOTE below.
-  PR #50 (SPEC-COMM-5, issue-37-spec-comm-5-trait-catalog) — round 1 REQUEST_CHANGES fixed.
-  Applied 7 fixes across 2 commits: stale JSDoc on FomcVote.dissents + MemberVotePreview.wouldDissent;
-  try/catch wrap in loadTraitCatalog; made traitCatalog required (no default []); 4 test coverage
-  gaps (Math.max floor, combined conviction+lean, multiple traits, vote() with lean catalog);
-  bandMod sign-flip guard; conviction_band_factor guard; Readonly<TraitEffects> on TraitEntry.
-  All 216 engine + 12 web tests pass. Pushed to issue-37-spec-comm-5-trait-catalog.
-  Next PRD story: US-014 (SPEC-LAG-1), branch spec-lag-1-distributed-lag — dispatcher pending.
-STUCK NOTE — PR #30 (SPEC-WEB-3): three rounds of REQUEST_CHANGES is the stop threshold.
-  Remaining fixes are mechanical but reviewers keep finding new gaps. Options for user:
-  (a) Close PR #30 and re-dispatch SPEC-WEB-3 from scratch on a fresh branch;
-  (b) Manually apply the round-3 blockers and push, bypassing the agent loop;
-  (c) Raise the retry cap for this SPEC in docs/ralph-runbook.md and let the agent retry.
-  US-012 remains passes=false until resolved.
-Stories still passing=false: US-012..US-019.
+  PR #30 (SPEC-WEB-3) confirmed on main (ca28bf1) → US-012 marked passes=true, pr=30.
+  PR #53 (SPEC-COMM-6): STUCK ESCALATION — 3rd consecutive VERDICT: REQUEST_CHANGES.
+    Round 3 blockers: (1) NaN member coefficients silently poison stance state;
+    (2) resolveStoredStance typed as unknown instead of number|undefined.
+    Round-3 fix (64d0f55) pushed by prior fire; CI pending at cycle end.
+  PR #55 (SPEC-COMM-7): STUCK ESCALATION — 3rd consecutive VERDICT: REQUEST_CHANGES.
+    Round 3 blockers: (1) budget not enforced against chairCapital() total;
+    (2) negative capitalSpend silently discarded.
+    Round-3 fix (e47f6070) by cycle 14 dispatcher. Branch dirty (base out of date).
+  Open PRs awaiting review: PR #61 (SPEC-DOCT-1 round-2 fix 892d061), PR #63 (SPEC-WEB-6),
+    PR #64 (SPEC-SIM-6 fix 48244aa dirty), PR #66 (SPEC-HEAR-1 round-1 fix cfc0f90),
+    PR #69 (chore cycle 14).
+  Chore PR #70 (chore/cycle-15-progress) opened; CI in progress.
+Stories still passing=false: US-013, US-015..US-019.
 
 == CYCLE 8 — 2026-06-05 ==
 Phase 0 (issue queue): issue #38 (SPEC-COMM-6, between-meeting stance drift). Implemented on
@@ -385,3 +380,44 @@ STUCK NOTE (cycle 19):
   3. PR #61 (SPEC-DOCT-1, non-PRD): One-line fix in dynamics.ts:97 (Math.min clamp).
   Once PRs #73 and #75 are approved and merged, all 19 stories will pass and Slice 2 is done.
   PRs #55 / #61 / #62 can be closed or re-dispatched independently — they are non-PRD stories.
+
+== CYCLE 20 — 2026-06-08 ==
+Phase 0 (issue queue): empty — fell through to Phase 1.
+Phase 1:
+  *** SLICE 2 COMPLETE — all 19 PRD stories now have passes=true ***
+  Since cycle 19, the user resolved the stuck PRs manually:
+    PR #73 (SPEC-PROD-1, US-015): merged as 4d9f6af. prd.json updated via PR #81 (c19f478).
+    PR #75 (SPEC-SHOCK-1, US-017): merged as 578d749. prd.json updated via PR #80 (f2b0376).
+    PR #55 (SPEC-COMM-7): merged as de0cda8. Non-PRD story.
+    PR #61 (SPEC-DOCT-1): merged as b0691fa. Non-PRD story.
+  All 19 stories (US-001..US-019) are passes=true. STOP CONDITION met — no new PRD story dispatched.
+
+  Non-PRD SPEC-DOCT-2 work (PR #82, branch issue-43-spec-doct-2-dot-plot-rebased):
+    PR #62 (old stuck SPEC-DOCT-2 branch) superseded by PR #82 (fresh re-dispatch).
+    PR #82 round-1 VERDICT: REQUEST_CHANGES — one blocker only:
+      GameVarName union in src/content/doctrines.ts missing "months_below_anchor".
+    Fix applied directly (commit 4112e74): added | "months_below_anchor" to the union.
+    All non-blocking items (MeetingHookFn adopted parameter; integration test assertion strength;
+    missing credibility-guard error test) left for reviewer to decide at round 2.
+    Awaiting claude-review re-run on PR #82.
+
+  SLICE 2 FINAL STATUS:
+    US-001 SPEC-PARAMS-1  passes=true pr=13
+    US-002 SPEC-SESSION-0 passes=true pr=15
+    US-003 SPEC-SIM-5     passes=true pr=20
+    US-004 SPEC-GUIDE-1   passes=true pr=19
+    US-005 SPEC-SESSION-1 passes=true pr=17
+    US-006 SPEC-WEB-1     passes=true pr=21
+    US-007 SPEC-WEB-2     passes=true pr=24
+    US-008 SPEC-MANDATE-1 passes=true pr=22
+    US-009 SPEC-COMM-3    passes=true pr=27
+    US-010 SPEC-WEB-4     passes=true pr=28
+    US-011 SPEC-WEB-5     passes=true pr=28
+    US-012 SPEC-WEB-3     passes=true pr=30
+    US-013 SPEC-WEB-6     passes=true pr=63
+    US-014 SPEC-LAG-1     passes=true pr=52
+    US-015 SPEC-PROD-1    passes=true pr=73
+    US-016 SPEC-TERM-1    passes=true pr=72
+    US-017 SPEC-SHOCK-1   passes=true pr=75
+    US-018 SPEC-CAL-2     passes=true pr=null
+    US-019 SPEC-CAL-3     passes=true pr=74
