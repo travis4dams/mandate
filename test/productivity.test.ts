@@ -36,10 +36,8 @@ describe("applyProductivityDrift — geometric drift (SPEC-PROD-1)", () => {
 
   it("after N months productivity equals 1.0 * (1 + rate)^N", () => {
     // SPEC-PROD-1: iterative multiplication matches the closed-form power to 12 decimal places.
-    // Note: SPEC-PROD-1 says "exactly" but IEEE-754 makes bit-exact equality unreliable between
-    // iterative multiplication and Math.pow (±1 ULP divergence). toBeCloseTo(x, 12) satisfies
-    // the spec's intent (|iterative − closed| < 5e-13, orders of magnitude tighter than any
-    // physically meaningful tolerance). The spec wording should be updated to reflect this.
+    // SPEC-PROD-1 says "to within floating-point precision" (IEEE-754 iterative multiplication and
+    // Math.pow may differ by ±1 ULP). toBeCloseTo(x, 12) satisfies this (|diff| < 5e-13).
     const N = 12;
     let state = makeState({ vars: {} });
     for (let i = 0; i < N; i++) {
@@ -152,6 +150,20 @@ describe("loadProductivityParams (SPEC-PROD-1)", () => {
     // SPEC-PROD-1: rate below -1 makes (1 + rate) < 0, producing negative productivity.
     registerContentFile("content/engine/productivity.json", { monthly_drift_rate: -2 });
     expect(() => loadProductivityParams()).toThrow();
+  });
+
+  it("loader rejects monthly_drift_rate > 1 (schema maximum: 1)", () => {
+    // SPEC-PROD-1: schema enforces maximum: 1; loader rethrows with a context message.
+    // TS-side guard (loaded.monthly_drift_rate > 1) provides defence-in-depth if schema changes.
+    registerContentFile("content/engine/productivity.json", { monthly_drift_rate: 1.5 });
+    expect(() => loadProductivityParams()).toThrow();
+  });
+
+  it("accepts monthly_drift_rate = 1.0 (inclusive maximum boundary)", () => {
+    // SPEC-PROD-1: the schema maximum is 1 (inclusive); the TypeScript guard is > 1 (strict).
+    registerContentFile("content/engine/productivity.json", { monthly_drift_rate: 1.0 });
+    const params = loadProductivityParams();
+    expect(params.monthly_drift_rate).toBe(1.0);
   });
 });
 

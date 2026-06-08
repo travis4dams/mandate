@@ -46,16 +46,18 @@ let _cachedParams: ProductivityParams | undefined;
  */
 export function loadProductivityParams(): ProductivityParams {
   if (_cachedParams !== undefined) return _cachedParams;
+  let loaded: ProductivityParams;
   try {
-    _cachedParams = loadValidatedFile<ProductivityParams>(SCHEMA_PATH, FILE_PATH);
+    loaded = loadValidatedFile<ProductivityParams>(SCHEMA_PATH, FILE_PATH);
   } catch (e) {
     throw new Error("Failed to load productivity params from content/engine/productivity.json", { cause: e });
   }
-  // AJV (via loadValidatedFile above) already enforces exclusiveMinimum: -1 and maximum: 1.
-  // Add a TypeScript-side upper-bound assertion for defence-in-depth, mirroring the schema.
-  if (_cachedParams.monthly_drift_rate > 1) {
-    throw new Error(`productivity: monthly_drift_rate must be <= 1, got ${_cachedParams.monthly_drift_rate}`);
+  // AJV enforces exclusiveMinimum: -1 and maximum: 1. Defence-in-depth: assert upper bound
+  // in TypeScript before caching so a corrupt params object is never stored in _cachedParams.
+  if (loaded.monthly_drift_rate > 1) {
+    throw new Error(`productivity: monthly_drift_rate must be <= 1, got ${loaded.monthly_drift_rate}`);
   }
+  _cachedParams = loaded;
   return _cachedParams;
 }
 
