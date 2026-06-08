@@ -5,6 +5,8 @@ import { loadCommittee } from "../content/committees.js";
 import { loadValidatedFile } from "../content/loader.js";
 import { tick } from "./clock.js";
 import { vote, previewVote, loadCommitteeParams } from "./fomc.js";
+import { computeChairCapital, computeEffectiveBands, loadChairCapitalParams } from "./chair-capital.js";
+import type { CapitalSpend } from "./chair-capital.js";
 import { applyIntermeetingDrift } from "./stance.js";
 import { loadTraitCatalog } from "../content/traits.js";
 import { applyMeetingOutcome, getCredibility } from "./credibility.js";
@@ -158,7 +160,7 @@ export class Session {
   // Committee id used by proposeRate; passed as a required factory argument.
   private readonly _committeeId: string;
 
-  // SPEC-GUIDE-1: stored stance; wired to expectations_anchor_pull in advance() via stanceMultiplier().
+  // SPEC-GUIDE-1: stored stance; scales `expectations_anchor_pull` passed to `applyMacroDynamics` via stanceMultiplier().
   private _stance: ForwardGuidanceStance = "neutral";
 
   // Subscriber set for the subscribe/unsubscribe protocol.
@@ -251,8 +253,11 @@ export class Session {
   // --- Mutators ---
 
   /**
-   * Advance the session by `months` months, applying per-month: replay action (if any),
-   * tick(), applyRateToOutputGap(), applyMacroDynamics(), applyIntermeetingDrift(), applyTermStructure().
+   * Advance the session by `months` months.
+   * For each month: applies any matching replay action, calls tick(), then calls
+   * applyMacroDynamics() to evolve all macro variables (inflation, unemployment,
+   * expectations_anchor, output_gap, etc.) with the forward-guidance stance applied,
+   * then applyIntermeetingDrift() (SPEC-COMM-6), then applyTermStructure().
    * @throws {Error} if months is not a positive integer.
    */
   advance(months: number): void {
@@ -408,14 +413,30 @@ export class Session {
   }
 
   /**
+   * Returns the Chair's persuasion budget for the current meeting.
+   * SPEC-COMM-7: computed from credibility; refreshed each meeting, never banked.
+   */
+  chairCapital(): number {
+    const credibility = getCredibility(this._state);
+    return computeChairCapital(credibility, loadChairCapitalParams());
+  }
+
+  /**
    * Preview how the committee would vote at the given proposed rate without committing.
    * Returns per-member preferred rates + dissent status, inflation/unemployment gaps, and
    * the content targets so the UI can render dynamic gap labels.
    * Pure: does not mutate any session state.
+   * SPEC-COMM-7: optional capitalSpend widens targeted members' bands for this preview.
    * @throws {Error} if proposedRate is not finite.
-   * @throws {VoteMissingVarError} if state vars (inflation, unemployment, policy_rate) are missing.
+   * @throws {Error} if any capitalSpend entry is not a non-negative finite number (SPEC-COMM-7).
+   * @throws {Error} if any capitalSpend entry exceeds max_spend_per_member (SPEC-COMM-7).
+   * @throws {Error} if total capitalSpend exceeds chairCapital() budget (SPEC-COMM-7).
+   * @throws {Error} if a capitalSpend key does not match any member id in the loaded committee,
+   *   or if the resulting widened band would exceed 0.5 (propagated from computeEffectiveBands).
+   * @throws {VoteMissingVarError} if state vars (inflation, unemployment, policy_rate) are missing or non-finite
+   *   (propagated from previewVote()).
    */
-  committeeBriefing(proposedRate: number): {
+  committeeBriefing(proposedRate: number, capitalSpend?: CapitalSpend): {
     previews: readonly MemberVotePreview[];
     gapInflation: number;
     gapUnemployment: number;
@@ -425,7 +446,8 @@ export class Session {
     const committee = loadCommittee(this._committeeId);
     const params = loadCommitteeParams();
     const traits = loadTraitCatalog();
-    const { previews, gapInflation, gapUnemployment } = previewVote(committee, proposedRate, this._state, params, traits);
+    const effectiveBands = this._resolveEffectiveBands(committee, capitalSpend, "committeeBriefing");
+    const { previews, gapInflation, gapUnemployment } = previewVote(committee, proposedRate, this._state, params, traits, effectiveBands);
     return {
       previews,
       gapInflation,
@@ -437,26 +459,33 @@ export class Session {
 
   /**
    * Propose a rate for the current month's FOMC meeting.
-   * SESSION-1 gates this on `isMeetingMonth()` — calling `proposeRate` in a month
+   * SPEC-SESSION-1 gates this on `isMeetingMonth()` — calling `proposeRate` in a month
    * that is not on the loaded FOMC schedule throws `NotMeetingMonthError` before
    * any rate-validity check runs.
    * Returns the FomcVote for the meeting.
+   * SPEC-COMM-7: optional capitalSpend widens targeted members' bands for this meeting.
+   * The spend is ephemeral — it is not written to state and does not carry over.
    * @throws {NotMeetingMonthError} if the current month is not a scheduled meeting month.
    * @throws {Error} if `rate` is not finite (only checked once the meeting-month gate passes).
+   * @throws {Error} if any capitalSpend entry is not a non-negative finite number (SPEC-COMM-7).
+   * @throws {Error} if any capitalSpend entry exceeds max_spend_per_member (SPEC-COMM-7).
+   * @throws {Error} if total capitalSpend exceeds chairCapital() budget (SPEC-COMM-7).
+   * @throws {Error} if a capitalSpend key does not match any member id, or the resulting widened
+   *   band would exceed 0.5 (propagated from computeEffectiveBands).
    * @throws {VoteMissingVarError} if state vars (inflation, unemployment, policy_rate) are missing or non-finite (propagated from vote()).
    */
-  proposeRate(rate: number): FomcVote {
+  proposeRate(rate: number, capitalSpend?: CapitalSpend): FomcVote {
     if (!this.isMeetingMonth()) {
       throw new NotMeetingMonthError(this._state.date);
     }
     if (!Number.isFinite(rate)) {
       throw new Error(`Session.proposeRate: rate ${rate} is not finite.`);
     }
-
     const committee = loadCommittee(this._committeeId);
     const params = loadCommitteeParams();
     const traits = loadTraitCatalog();
-    const fomcVote = vote(committee, rate, this._state, params, traits);
+    const effectiveBands = this._resolveEffectiveBands(committee, capitalSpend, "proposeRate");
+    const fomcVote = vote(committee, rate, this._state, params, traits, effectiveBands);
 
     // Apply the decided rate and compute new credibility.
     // SPEC-CRED-1 (issue #33): dissents no longer affect credibility, so fomcVote.dissents is
@@ -516,7 +545,7 @@ export class Session {
     this._notifyListeners();
   }
 
-  // SPEC-GUIDE-1: Store the forward-guidance stance; wired to expectations_anchor_pull via stanceMultiplier().
+  // SPEC-GUIDE-1: Store the forward-guidance stance; scales `expectations_anchor_pull` passed to `applyMacroDynamics` via stanceMultiplier().
   // The value is NOT written into state.vars; the stance is a Session-level concern, not a var.
   // Fires listeners (downstream UI may want to reflect the stored stance).
   setForwardGuidanceStance(stance: ForwardGuidanceStance): void {
@@ -563,6 +592,70 @@ export class Session {
     }
     if (errors.length === 1) throw errors[0];
     if (errors.length > 1) throw new AggregateError(errors, "Session: one or more listeners threw during notification.");
+  }
+
+  /**
+   * Resolve the per-member effectiveBands from an optional capitalSpend map.
+   * Runs `_assertWithinBudget` then `computeEffectiveBands`; returns `undefined` when
+   * no spend is provided. Shared by `committeeBriefing` and `proposeRate` to ensure both
+   * entry points run identical validation and cannot drift independently. (SPEC-COMM-7)
+   */
+  private _resolveEffectiveBands(
+    committee: import("../content/committees.js").Committee,
+    capitalSpend: CapitalSpend | undefined,
+    caller: string,
+  ): Readonly<Record<string, number>> | undefined {
+    if (!capitalSpend) return undefined;
+    const chairCapitalParams = loadChairCapitalParams();
+    Session._assertWithinBudget(capitalSpend, this.chairCapital(), chairCapitalParams.max_spend_per_member, caller);
+    return computeEffectiveBands(capitalSpend, committee, chairCapitalParams);
+  }
+
+  /**
+   * Throw a descriptive error if any capitalSpend entry is invalid or if the total exceeds
+   * the budget. Also throws if any single member's spend exceeds max_spend_per_member —
+   * over-allocating one member wastes budget silently, which contradicts the "hard persuasion
+   * budget" contract (SPEC-COMM-7).
+   *
+   * Intentional two-layer split: this method validates spend values and the total budget;
+   * unknown-key and post-widen band overflow checks are delegated to `computeEffectiveBands`
+   * (called by `_resolveEffectiveBands` immediately after this returns).
+   *
+   * Validation order:
+   *  1. Budget: must be a non-negative finite number (guards against corrupt credibility / NaN).
+   *  2. Per-entry: must be a non-negative finite number.
+   *  3. Per-entry: must not exceed max_spend_per_member (over-allocation fails loudly).
+   *  4. Total: sum must not exceed budget.
+   */
+  private static _assertWithinBudget(
+    capitalSpend: CapitalSpend,
+    budget: number,
+    maxPerMember: number,
+    caller: string,
+  ): void {
+    if (!Number.isFinite(budget) || budget < 0) {
+      throw new Error(
+        `Session.${caller}: chairCapital() returned a non-finite budget (${budget}); this indicates a corrupt credibility value in state.`,
+      );
+    }
+    for (const [id, v] of Object.entries(capitalSpend)) {
+      if (!Number.isFinite(v) || v < 0) {
+        throw new Error(
+          `Session.${caller}: capitalSpend["${id}"] must be a non-negative finite number, got ${v}.`,
+        );
+      }
+      if (v > maxPerMember) {
+        throw new Error(
+          `Session.${caller}: capitalSpend["${id}"] (${v}) exceeds max_spend_per_member (${maxPerMember}). Reduce spend for this member.`,
+        );
+      }
+    }
+    const total = Object.values(capitalSpend).reduce((sum, v) => sum + v, 0);
+    if (total > budget) {
+      throw new Error(
+        `Session.${caller}: total capitalSpend (${total}) exceeds chairCapital() budget (${budget}). Reduce spend to stay within the Chair's persuasion budget.`,
+      );
+    }
   }
 
   /** Extract a GameStateSnapshot from a GameState. */
