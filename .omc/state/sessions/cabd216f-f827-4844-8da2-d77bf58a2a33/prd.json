@@ -169,7 +169,7 @@
       "id": "US-017",
       "spec": "SPEC-SHOCK-1",
       "title": "Stochastic shocks: seeded supply-shock term injected into Phillips curve",
-      "passes": false,
+      "passes": true,
       "pr": 75,
       "dependencies": [
         "US-003"
