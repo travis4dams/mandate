@@ -13,6 +13,8 @@ import { loadClockCadenceParams, scaleParamsForTick } from "./cadence.js";
 import { applyRateToOutputGap, loadLagParams } from "./lags.js";
 import { applyTermStructure, loadTermStructureParams } from "./term-structure.js";
 import { onTarget, loadMandateParams } from "./mandate.js";
+import { applySupplyShock, loadShocksParams } from "./shocks.js";
+import { mulberry32, type SeededRng } from "./rng.js";
 import type { GameState, GameStateSnapshot } from "./state.js";
 import type { FomcVote, MemberVotePreview } from "./fomc.js";
 import type { Replay } from "../content/replays.js";
@@ -164,13 +166,19 @@ export class Session {
   // Snapshot of the initial state so reset() can restore it without re-loading content.
   private readonly _initialState: GameState;
 
-  // The `_seed` parameter is accepted positionally to preserve the public factory
-  // signatures (SPEC-SESSION-0: `fromScenario(scenarioId, seed, committeeId)`). It is
-  // currently unused — a future spec will wire stochastic mechanics through it.
-  private constructor(initialState: GameState, _seed: number, replay: Replay | null, committeeId: string) {
+  // SPEC-SHOCK-1: seeded RNG for supply shocks; initialized from the seed parameter.
+  // All randomness flows through this instance (SPEC-SIM-1 — never Math.random()).
+  // _seed is stored so reset() can reinitialise _rng to the same starting state (SPEC-SIM-1).
+  private readonly _seed: number;
+  private _rng: SeededRng;
+
+  // The `seed` parameter initialises `_rng` via mulberry32 (SPEC-SHOCK-1 / SPEC-SIM-1).
+  private constructor(initialState: GameState, seed: number, replay: Replay | null, committeeId: string) {
     this._replay = replay;
     this._committeeId = committeeId;
     this._initialState = initialState;
+    this._seed = seed;
+    this._rng = mulberry32(seed);
     this._state = { ...initialState, vars: { ...initialState.vars }, flags: { ...initialState.flags }, history: [] };
 
     const snapshot = Session._snapshotOf(this._state);
@@ -181,7 +189,7 @@ export class Session {
 
   /**
    * Construct a Session from a scenario content file.
-   * seed is accepted for API stability (SPEC-SESSION-0 factory signature); stochastic mechanics are not yet wired.
+   * seed initialises the mulberry32 RNG that drives per-month supply shocks in advance() (SPEC-SHOCK-1 / SPEC-SIM-1).
    * committeeId identifies the FOMC committee used by proposeRate (e.g. "comm.fomc_1979").
    */
   static fromScenario(scenarioId: string, seed: number, committeeId: string): Session {
@@ -251,11 +259,15 @@ export class Session {
       throw new Error(`Session.advance: months must be a positive integer, got ${months}.`);
     }
 
-    // Checkpoint for mid-loop rollback: capture the current state reference.
+    // Checkpoint for mid-loop rollback: capture the current state reference and RNG position.
     // Safe because all tick/spiral/dynamics functions are pure (CLAUDE.md) — they
     // return new GameState objects and never mutate in place, so this ref stays valid.
+    // The RNG checkpoint is required for SPEC-SIM-1: if the loop throws mid-way, draws
+    // already consumed by applySupplyShock must be rolled back so the next advance() call
+    // sees the same RNG stream as if the failed attempt never happened.
     const checkpointState = this._state;
     const checkpointTrajectoryLength = this._trajectoryInternal.length;
+    const checkpointRng = this._rng.snapshot();
 
     // SPEC-GUIDE-1 / SPEC-SIM-5 / SPEC-SIM-6: loaders + effectiveParams are loop-invariant.
     // The stance multiplier scales expectations_anchor_pull before tick scaling, so hawkish/
@@ -264,6 +276,8 @@ export class Session {
     const dynamicsParams = loadDynamicsParams();
     // SPEC-LAG-1: lag params are a cached singleton; hoisted for the same reason.
     const lagParams = loadLagParams();
+    // SPEC-SHOCK-1: shocks params are a cached singleton; hoisted for the same reason.
+    const shocksParams = loadShocksParams();
     // SPEC-TERM-1: term-structure params are a cached singleton; hoisted for the same reason.
     const termStructureParams = loadTermStructureParams();
     const effectiveParams = {
@@ -350,6 +364,9 @@ export class Session {
           };
         }
 
+        // SPEC-SHOCK-1: apply seeded supply shock after macro dynamics each month.
+        this._state = applySupplyShock(this._state, this._rng, shocksParams);
+
         // SPEC-COMM-6: evolve per-member stances toward Taylor target each month.
         const prevStateRef = this._state;
         this._state = applyIntermeetingDrift(this._state, committee, committeeParams);
@@ -361,6 +378,7 @@ export class Session {
             `inflation/unemployment/policy_rate is missing or non-finite.`,
           );
         }
+
         // SPEC-TERM-1: update long_rate via EWMA toward policy_rate, after macro dynamics.
         this._state = applyTermStructure(this._state, termStructureParams);
 
@@ -370,6 +388,7 @@ export class Session {
     } catch (err) {
       this._state = checkpointState;
       this._trajectoryInternal.length = checkpointTrajectoryLength;
+      this._rng.restore(checkpointRng);
       try {
         this._rebuildCaches();
       } catch {
@@ -478,6 +497,7 @@ export class Session {
    */
   reset(): void {
     this._stance = "neutral";
+    this._rng = mulberry32(this._seed);
     this._state = {
       ...this._initialState,
       vars: { ...this._initialState.vars },
