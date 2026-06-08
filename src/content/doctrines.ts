@@ -22,23 +22,26 @@ export interface StandingEffect {
 export type DoctrineHook = "dot_plot_meeting";
 
 /** Function signature for meeting-hook handlers.
- *  Receives the post-vote state, member previews, and adopted flag.
+ *  Receives the post-vote state and member previews.
  *  Returns updated state (pure — no mutations). */
 export type MeetingHookFn = (
   state: GameState,
   previews: readonly MemberVotePreview[],
-  adopted: boolean,
 ) => GameState;
 
 /**
  * Registry of meeting-hook handlers, keyed by DoctrineHook name.
  * Lives outside src/engine/ so no content ID is ever hardcoded in engine code.
- * To add a new meeting hook: (1) add the string to DoctrineHook + schema enum,
- * (2) implement a handler, (3) register it here — no changes to src/engine/session.ts needed.
+ * To add a new meeting hook:
+ * (0) add a params schema in schemas/ and a content file in content/engine/;
+ *     register both in tools/validate-content.ts.
+ * (1) add the string to DoctrineHook + schema enum,
+ * (2) implement a handler in src/engine/,
+ * (3) register it here — no changes to src/engine/session.ts needed.
  */
 export const HOOK_HANDLERS: Record<DoctrineHook, MeetingHookFn> = {
-  dot_plot_meeting: (state, previews, adopted) =>
-    applyDotPlotMeetingEffects(state, previews, loadDotPlotParams(), adopted),
+  dot_plot_meeting: (state, previews) =>
+    applyDotPlotMeetingEffects(state, previews, loadDotPlotParams(), true),
 };
 
 export interface DoctrineEntry {

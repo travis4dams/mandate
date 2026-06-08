@@ -474,7 +474,7 @@ export class Session {
    * @throws {Error} if total capitalSpend exceeds chairCapital() budget (SPEC-COMM-7).
    * @throws {Error} if a capitalSpend key does not match any member id, or the resulting widened
    *   band would exceed 0.5 (propagated from computeEffectiveBands).
-   * @throws {VoteMissingVarError} if state vars (inflation, unemployment, policy_rate) are missing or non-finite (propagated from vote()).
+   * @throws {VoteMissingVarError} if state vars (inflation, unemployment, policy_rate) are missing or non-finite (propagated from previewVote()).
    */
   proposeRate(rate: number, capitalSpend?: CapitalSpend): FomcVote {
     if (!this.isMeetingMonth()) {
@@ -520,24 +520,25 @@ export class Session {
     // src/content/doctrines.ts maps each hook name to its handler. To add a new
     // meeting hook: add the string to DoctrineHook + schema enum, implement a handler,
     // and register it in HOOK_HANDLERS — no changes to this file needed.
-    const checkpoint = this._state;
+    // Vote outcome committed before the hook loop so a hook error never rolls back
+    // the player's rate decision — only hook effects are restored on failure.
+    let stateAfterMeeting: GameState = {
+      ...this._state,
+      vars: { ...this._state.vars, policy_rate: fomcVote.decided, credibility: newCredibility },
+    };
+    this._state = stateAfterMeeting;
+    const hookCheckpoint = this._state;
     try {
-      let stateAfterMeeting: GameState = {
-        ...this._state,
-        vars: { ...this._state.vars, policy_rate: fomcVote.decided, credibility: newCredibility },
-      };
       const catalog = loadDoctrineCatalog();
       for (const doctrine of catalog) {
         if (doctrine.meeting_hook === undefined) continue;
         if (stateAfterMeeting.flags[doctrineFlagKey(doctrine.id)] !== true) continue;
-        const handler = HOOK_HANDLERS[doctrine.meeting_hook];
-        if (handler !== undefined) {
-          stateAfterMeeting = handler(stateAfterMeeting, previews, true);
-        }
+        stateAfterMeeting = HOOK_HANDLERS[doctrine.meeting_hook](stateAfterMeeting, previews);
       }
       this._state = stateAfterMeeting;
     } catch (err) {
-      this._state = checkpoint;
+      this._state = hookCheckpoint;
+      this._rebuildCaches();
       throw err;
     }
 

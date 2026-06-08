@@ -741,32 +741,36 @@ describe("SPEC-DOCT-2: dot-plot meeting effect wired into Session.proposeRate()"
     expect(credAfterPropose).toBe(credBeforePropose);
   });
 
-  it("proposeRate grants anchoring_bonus when spread is below threshold (integration)", () => {
-    // SPEC-DOCT-2: end-to-end wiring — previewVote → spread computation →
-    // applyDotPlotMeetingEffects → credibility increase.
-    // Holding the current rate (0.1075) in the 1979 scenario produces a small spread
-    // (members mostly agree on holding). Net credibility after proposeRate should be
-    // exactly credAfterAdopt + anchoring_bonus when spread ≤ threshold.
-    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
-    s.adoptDoctrine("doctrine.dot_plot");
-    const credAfterAdopt = s.current.vars.credibility as number;
+  it("proposeRate applies dot-plot meeting hook: credibility delta matches formula (integration)", () => {
+    // SPEC-DOCT-2: verify the hook fires via Session.proposeRate and produces the correct delta.
+    // applyMeetingOutcome uses fixed +3/-5 steps independent of current credibility, so the
+    // difference between a session with vs without doctrine equals: adoption standing_effect
+    // (+3) plus the dot-plot meeting delta — no matter whether spread is above or below threshold.
+    const sWith = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    const sWithout = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
 
-    // Determine actual spread for the hold rate to assert the test assumption
-    const { previews } = s.committeeBriefing(0.1075);
+    const credBeforeAdopt = sWith.current.vars.credibility as number;
+    sWith.adoptDoctrine("doctrine.dot_plot");
+    const adoptionBoost = (sWith.current.vars.credibility as number) - credBeforeAdopt;
+
+    // previews are credibility-independent (fomc.ts never reads credibility).
+    const { previews } = sWith.committeeBriefing(0.1075);
     const params = loadDotPlotParams();
     const spread = computeVoteSpread(previews);
+    const dissents = previews.filter((p) => p.wouldDissent).length;
 
-    s.proposeRate(0.1075);
-    const credAfterPropose = s.current.vars.credibility as number;
-
-    if (spread <= params.spread_threshold) {
-      // Only anchoring bonus applied
-      expect(credAfterPropose).toBeCloseTo(credAfterAdopt + params.anchoring_bonus, 5);
-    } else {
-      // Some exposure cost too — just assert it changed in the correct direction
-      // (still > credAfterAdopt when bonus > cost, or lower if severely divided)
-      expect(credAfterPropose).not.toBe(credAfterAdopt);
+    let dotPlotDelta = params.anchoring_bonus;
+    if (spread > params.spread_threshold) {
+      const multiplier = dissents > 0 ? params.dissent_multiplier : 1.0;
+      dotPlotDelta -= spread * 100 * params.exposure_per_pp * multiplier;
     }
+
+    sWith.proposeRate(0.1075);
+    sWithout.proposeRate(0.1075);
+
+    const credWith = sWith.current.vars.credibility as number;
+    const credWithout = sWithout.current.vars.credibility as number;
+    expect(credWith - credWithout).toBeCloseTo(adoptionBoost + dotPlotDelta, 5);
   });
 
   it("proposeRate applies spread-exposure cost when committee is visibly divided (spread > threshold)", () => {

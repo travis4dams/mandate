@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import { loadValidatedFile } from "../content/loader.js";
-import { clampCredibility } from "./credibility.js";
+import { clampCredibility, getCredibility } from "./credibility.js";
 import type { GameState } from "./state.js";
 import type { MemberVotePreview } from "./fomc.js";
 
@@ -68,13 +68,6 @@ export function applyDotPlotMeetingEffects(
 ): GameState {
   if (!adopted) return state;
 
-  if (state.vars.credibility === undefined) {
-    throw new Error(
-      "applyDotPlotMeetingEffects: state.vars.credibility is missing. " +
-      "All scenarios must initialise 'credibility' (it is in REQUIRED_VARS).",
-    );
-  }
-
   const spread = computeVoteSpread(previews);
   const dissents = previews.filter((p) => p.wouldDissent).length;
 
@@ -85,7 +78,7 @@ export function applyDotPlotMeetingEffects(
     credDelta -= spread * 100 * params.exposure_per_pp * multiplier;
   }
 
-  const current = state.vars.credibility;
+  const current = getCredibility(state);
   return {
     ...state,
     vars: {
