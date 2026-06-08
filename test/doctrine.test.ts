@@ -15,6 +15,7 @@ import {
   _resetDoctrineCatalogCache,
   type DoctrineEntry,
 } from "../src/content/doctrines.js";
+import { applyMacroDynamics, loadDynamicsParams, _resetDynamicsParamsCache } from "../src/engine/dynamics.js";
 import { Session } from "../src/engine/session.js";
 
 // SPEC-DOCT-1
@@ -187,6 +188,7 @@ describe("getDoctrine", () => {
 describe("loadDoctrineCatalog", () => {
   afterEach(() => {
     _resetDoctrineCatalogCache();
+    _resetDynamicsParamsCache();
   });
 
   // SPEC-DOCT-1: loads successfully and returns at least one doctrine
@@ -252,6 +254,37 @@ describe("adoptDoctrine / abandonDoctrine — round-trip symmetry", () => {
     const restored = abandonDoctrine(adopted, { ...doctrine, flip_flop_cost: 0 });
     // Should restore to exactly 98 (not 98-5+2 or similar clamp artifact)
     expect(restored.vars.credibility).toBe(98);
+  });
+
+  // SPEC-DOCT-1: dynamics.ts must clamp credibility/CRED_MAX to 1 so the sign of the
+  // adaptive-expectations term never inverts when a doctrine pushes credibility above 100.
+  it("advance(1) after adopt pushing credibility above 100 produces finite, in-range result", () => {
+    // Reproduce the bug scenario: credibility 96 + standing_effect +5 = 101 > CRED_MAX.
+    // Without Math.min in dynamics.ts, c = 101/100 = 1.01 and (1-c) = -0.01 (sign inverts).
+    const params = loadDynamicsParams();
+    const state = makeState({
+      vars: {
+        credibility: 96,
+        inflation: 0.1,
+        unemployment: 0.06,
+        expectations_anchor: 0.08,
+        policy_rate: 0.1,
+      },
+    });
+    const doctrine: DoctrineEntry = {
+      id: "doctrine.high_gain",
+      name: "doctrine.high_gain.name",
+      description: "doctrine.high_gain.desc",
+      standing_effects: [{ target: "credibility", value: 5 }],
+      flip_flop_cost: 0,
+    };
+    const adopted = adoptDoctrine(state, doctrine);
+    expect(adopted.vars.credibility).toBe(101);
+    const advanced = applyMacroDynamics(adopted, params);
+    // Math.min fix ensures c is clamped to 1 — result must be finite and [0, 100].
+    expect(Number.isFinite(advanced.vars.credibility as number)).toBe(true);
+    expect(advanced.vars.credibility as number).toBeGreaterThanOrEqual(0);
+    expect(advanced.vars.credibility as number).toBeLessThanOrEqual(100);
   });
 });
 
