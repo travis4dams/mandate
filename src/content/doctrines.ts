@@ -11,7 +11,8 @@ export type GameVarName =
   | "expectations_anchor"
   | "inflation"
   | "unemployment"
-  | "policy_rate";
+  | "policy_rate"
+  | "months_below_anchor";
 
 export interface StandingEffect {
   target: GameVarName;
