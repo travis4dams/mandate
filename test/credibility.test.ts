@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
 import {
+  CRED_MIN,
+  CRED_MAX,
   applyMeetingOutcome,
   expectationsAnchored,
   painMultiplier,
@@ -39,5 +42,34 @@ describe("credibility", () => {
     expect(painMultiplier(100)).toBe(1);
     expect(painMultiplier(50)).toBe(2);
     expect(painMultiplier(0)).toBe(3);
+  });
+});
+
+// SPEC-CRED-5: bounds and meeting-outcome weights come from content/engine/credibility.json,
+// not from literals in engine code. These assertions read the content file and require the
+// engine's behavior to match it, so editing the JSON is sufficient to retune the mechanic.
+describe("SPEC-CRED-5: weights and bounds are content-driven", () => {
+  const raw = JSON.parse(
+    readFileSync("content/engine/credibility.json", "utf8"),
+  ) as { cred_min: number; cred_max: number; surprise_penalty: number; on_target_gain: number };
+
+  it("content file declares the four params", () => {
+    expect(raw.cred_min).toBeTypeOf("number");
+    expect(raw.cred_max).toBeTypeOf("number");
+    expect(raw.surprise_penalty).toBeTypeOf("number");
+    expect(raw.on_target_gain).toBeTypeOf("number");
+  });
+
+  it("exported bounds equal the content values", () => {
+    expect(CRED_MIN).toBe(raw.cred_min);
+    expect(CRED_MAX).toBe(raw.cred_max);
+  });
+
+  it("applyMeetingOutcome deltas equal the content values", () => {
+    const mid = (raw.cred_min + raw.cred_max) / 2;
+    expect(applyMeetingOutcome(mid, { surprisedMarkets: true, onTarget: false }))
+      .toBe(mid - raw.surprise_penalty);
+    expect(applyMeetingOutcome(mid, { surprisedMarkets: false, onTarget: true }))
+      .toBe(mid + raw.on_target_gain);
   });
 });
