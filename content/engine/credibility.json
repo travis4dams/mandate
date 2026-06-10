@@ -5,5 +5,9 @@
   "expectations_anchor_pull": 0.025,
   "credibility_mission_gain": 300,
   "credibility_unemployment_weight": 0.5,
-  "anchor_threshold": 60
+  "anchor_threshold": 60,
+  "cred_min": 0,
+  "cred_max": 100,
+  "surprise_penalty": 5,
+  "on_target_gain": 3
 }

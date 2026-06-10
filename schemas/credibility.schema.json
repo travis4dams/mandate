@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://mandate.dev/schemas/credibility.schema.json",
   "title": "CredibilityParams",
-  "description": "Expectations & credibility parameters. SPEC-CRED-4 (continuous credibility-weighted expectations) + SPEC-CRED-6 (mission-tied credibility).",
+  "description": "Expectations & credibility parameters. SPEC-CRED-4 (continuous credibility-weighted expectations) + SPEC-CRED-6 (mission-tied credibility) + SPEC-CRED-5 (bounds and meeting-outcome weights as content).",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -12,7 +12,11 @@
     "expectations_anchor_pull",
     "credibility_mission_gain",
     "credibility_unemployment_weight",
-    "anchor_threshold"
+    "anchor_threshold",
+    "cred_min",
+    "cred_max",
+    "surprise_penalty",
+    "on_target_gain"
   ],
   "properties": {
     "target_inflation": {
@@ -53,6 +57,28 @@
       "minimum": 0,
       "maximum": 100,
       "description": "Credibility below this counts as a month 'below anchor' for the persistent-memory stat (months_below_anchor)."
+    },
+    "cred_min": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "SPEC-CRED-5: lower bound of the credibility score. Must be below cred_max (clampCredibility degenerates if the range is inverted)."
+    },
+    "cred_max": {
+      "type": "number",
+      "minimum": 1,
+      "maximum": 1000,
+      "description": "SPEC-CRED-5: upper bound of the credibility score. Must exceed cred_min."
+    },
+    "surprise_penalty": {
+      "type": "number",
+      "minimum": 0,
+      "description": "SPEC-CRED-5: credibility lost when a decision diverges from prior forward guidance (SPEC-CRED-1)."
+    },
+    "on_target_gain": {
+      "type": "number",
+      "minimum": 0,
+      "description": "SPEC-CRED-5: credibility gained when the mandate is satisfied within tolerance at a meeting (SPEC-CRED-1)."
     }
   }
 }
