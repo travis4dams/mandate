@@ -202,7 +202,7 @@ git commit -m "SPEC-CRED-5: move credibility bounds + meeting-outcome weights to
 - Modify: `spec/requirements.md` (Content section — insert after the SPEC-CONTENT-3 entry)
 - Test/Modify: `test/content.test.ts`
 
-- [ ] **Step 1: Register the requirement**
+- [x] **Step 1: Register the requirement**
 
 Insert after the `SPEC-CONTENT-3` bullet:
 
@@ -210,7 +210,7 @@ Insert after the `SPEC-CONTENT-3` bullet:
 - **SPEC-CONTENT-4** `[testable]` The shipped-content validation test covers every content directory, not just events and tech: `test/content.test.ts` loads `content/scenarios` against `schemas/scenario.schema.json`, `content/doctrines` against `schemas/doctrine.schema.json`, `content/briefings` against `schemas/briefing.schema.json`, and `content/hearings` against `schemas/hearing.schema.json` via `loadValidated`, asserting each directory yields at least one validated file.
 ```
 
-- [ ] **Step 2: Extend the test**
+- [x] **Step 2: Extend the test**
 
 Append inside the existing `describe("shipped content validates against schema", ...)` block in `test/content.test.ts`:
 
@@ -234,17 +234,17 @@ Append inside the existing `describe("shipped content validates against schema",
   });
 ```
 
-- [ ] **Step 3: Run the test**
+- [x] **Step 3: Run the test**
 
 Run: `npx vitest run test/content.test.ts`
 Expected: PASS immediately — the content already validates; the test IS the deliverable here (it pins the invariant). This is a test-only requirement, so the usual red step doesn't apply; confirm instead that each new `it` actually executed (5+ tests reported).
 
-- [ ] **Step 4: Run the full verifier**
+- [x] **Step 4: Run the full verifier**
 
 Run: `npm run check`
 Expected: green, and `spec:trace` finds the `// SPEC-CONTENT-4` comment.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add spec/requirements.md test/content.test.ts

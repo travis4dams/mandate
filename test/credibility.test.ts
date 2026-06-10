@@ -25,10 +25,11 @@ describe("credibility", () => {
     expect(applyMeetingOutcome(70, { surprisedMarkets: false, onTarget: false })).toBe(70);
   });
 
-  // SPEC-CRED-1
-  it("clamps to [0, 100]", () => {
-    expect(applyMeetingOutcome(2, { surprisedMarkets: true, onTarget: false })).toBe(0);
-    expect(applyMeetingOutcome(99, { surprisedMarkets: false, onTarget: true })).toBe(100);
+  // SPEC-CRED-1 / SPEC-CRED-5: bounds come from content, so assert against the exported
+  // constants, probing AT the bounds so the clamp is exercised for any non-negative weights.
+  it("clamps to [CRED_MIN, CRED_MAX]", () => {
+    expect(applyMeetingOutcome(CRED_MIN, { surprisedMarkets: true, onTarget: false })).toBe(CRED_MIN);
+    expect(applyMeetingOutcome(CRED_MAX, { surprisedMarkets: false, onTarget: true })).toBe(CRED_MAX);
   });
 
   // SPEC-CRED-2
@@ -37,11 +38,11 @@ describe("credibility", () => {
     expect(expectationsAnchored(59, 60)).toBe(false);
   });
 
-  // SPEC-CRED-3
+  // SPEC-CRED-3 / SPEC-CRED-5: the 1x-3x guarantee holds over the content-driven range.
   it("raises the pain multiplier as credibility falls", () => {
-    expect(painMultiplier(100)).toBe(1);
-    expect(painMultiplier(50)).toBe(2);
-    expect(painMultiplier(0)).toBe(3);
+    expect(painMultiplier(CRED_MAX)).toBe(1);
+    expect(painMultiplier((CRED_MIN + CRED_MAX) / 2)).toBe(2);
+    expect(painMultiplier(CRED_MIN)).toBe(3);
   });
 });
 

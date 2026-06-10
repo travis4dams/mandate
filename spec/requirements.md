@@ -33,6 +33,7 @@ Tag meanings: `[testable]` = must be covered by an automated test;
 - **SPEC-CONTENT-1** `[testable]` All shipped content (events, techs) validates against its JSON Schema before the engine loads it.
 - **SPEC-CONTENT-2** `[design]` All player-facing strings are referenced by localization key; no display text appears in logic files.
 - **SPEC-CONTENT-3** `[testable]` Named people in the game (committee members, characters) MUST use randomly-generated names. Content files MUST NOT contain ids whose slug matches a blocklist of real historical or famous public figures (e.g., FOMC chairs from any era, well-known economists). Enforced by `test/content-lint.test.ts` which walks `content/**/*.json` and asserts every id passes the blocklist.
+- **SPEC-CONTENT-4** `[testable]` The shipped-content validation test covers every content directory, not just events and tech: `test/content.test.ts` loads `content/scenarios` against `schemas/scenario.schema.json`, `content/doctrines` against `schemas/doctrine.schema.json`, `content/briefings` against `schemas/briefing.schema.json`, and `content/hearings` against `schemas/hearing.schema.json` via `loadValidated`, asserting each directory yields at least one validated file.
 
 ## Institution & governance
 - **SPEC-GOV-1** `[design]` The Chair cannot be removed except for cause; the soft continue-gate is 4-year reappointment, not firing.
