@@ -25,10 +25,10 @@ describe("credibility", () => {
     expect(applyMeetingOutcome(70, { surprisedMarkets: false, onTarget: false })).toBe(70);
   });
 
-  // SPEC-CRED-1
-  it("clamps to [0, 100]", () => {
-    expect(applyMeetingOutcome(2, { surprisedMarkets: true, onTarget: false })).toBe(0);
-    expect(applyMeetingOutcome(99, { surprisedMarkets: false, onTarget: true })).toBe(100);
+  // SPEC-CRED-1 / SPEC-CRED-5: bounds come from content, so assert against the exported constants.
+  it("clamps to [CRED_MIN, CRED_MAX]", () => {
+    expect(applyMeetingOutcome(CRED_MIN + 2, { surprisedMarkets: true, onTarget: false })).toBe(CRED_MIN);
+    expect(applyMeetingOutcome(CRED_MAX - 1, { surprisedMarkets: false, onTarget: true })).toBe(CRED_MAX);
   });
 
   // SPEC-CRED-2

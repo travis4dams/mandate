@@ -6,6 +6,8 @@ import type { GameState } from "./state.js";
 
 // SPEC-CRED-5: bounds and meeting-outcome weights are content, not code.
 // cwd-safe path resolution — mirrors src/engine/fog.ts.
+// Subset of the credibility.json fields: the expectations/dynamics params in the same
+// file are consumed by src/engine/dynamics.ts, which loads it independently.
 interface CredibilityMeetingParams {
   cred_min: number;
   cred_max: number;
@@ -17,6 +19,14 @@ const SCHEMA_PATH = join(new URL(".", import.meta.url).pathname, "../../schemas/
 const FILE_PATH = join(new URL(".", import.meta.url).pathname, "../../content/engine/credibility.json");
 
 const params = loadValidatedFile<CredibilityMeetingParams>(SCHEMA_PATH, FILE_PATH);
+
+// JSON Schema cannot compare two properties, so the range invariant is enforced here:
+// an inverted range would make clampCredibility return cred_max for every input.
+if (params.cred_min >= params.cred_max) {
+  throw new Error(
+    `content/engine/credibility.json: cred_min (${params.cred_min}) must be < cred_max (${params.cred_max})`,
+  );
+}
 
 export const CRED_MIN = params.cred_min;
 export const CRED_MAX = params.cred_max;
@@ -49,9 +59,11 @@ export function expectationsAnchored(credibility: number, threshold: number): bo
   return credibility >= threshold;
 }
 
-// SPEC-CRED-3: lower credibility → higher pain multiplier (1.0x at full credibility, up to 3.0x at zero).
+// SPEC-CRED-3: lower credibility → higher pain multiplier (1.0x at CRED_MAX, 3.0x at CRED_MIN).
+// Expressed in terms of the content-driven range so retuning cred_min/cred_max preserves the
+// 1x–3x guarantee instead of silently rescaling it.
 export function painMultiplier(credibility: number): number {
-  return 1 + (CRED_MAX - clampCredibility(credibility)) / 50;
+  return 1 + (2 * (CRED_MAX - clampCredibility(credibility))) / (CRED_MAX - CRED_MIN);
 }
 
 export function getCredibility(state: GameState): number {
