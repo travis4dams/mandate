@@ -697,7 +697,7 @@ Same deferred debt as Task 6, for `observe()`. Fog params come from `content/eng
 - Modify: `spec/requirements.md` (insert after the SPEC-FOG-1 entry)
 - Test: `test/fog.test.ts` (append)
 
-- [ ] **Step 1: Register the requirement**
+- [x] **Step 1: Register the requirement**
 
 Insert after the `SPEC-FOG-1` bullet:
 
@@ -705,7 +705,7 @@ Insert after the `SPEC-FOG-1` bullet:
 - **SPEC-FOG-2** `[testable]` Fog noise is distributionally correct: for a series whose `content/engine/fog.json` entry has `noise_scale > 0`, at least 2,000 `observe()` draws over a single seeded RNG stream (fixed state and history) have a sample mean within 3 standard errors of the lagged truth and a sample standard deviation within ±10% of the configured `noise_scale`. The test reads the configured `noise_scale`/`lag_months` from the content file rather than hardcoding them.
 ```
 
-- [ ] **Step 2: Write the test**
+- [x] **Step 2: Write the test**
 
 Append to `test/fog.test.ts`, reusing that file's existing state/history construction helpers and imports:
 
@@ -748,16 +748,16 @@ describe("SPEC-FOG-2: fog noise distribution properties", () => {
 
 `makeStateWithHistory(truth, lag_months)` stands for the construction pattern already present in `test/fog.test.ts`'s lag tests — extract or inline it to produce a `GameState` where the value `observe` reads (current var for lag 0, `history[lag_months - 1]` otherwise) equals `truth`. All series the state carries must include whatever `state.vars`/history entries the existing tests provide.
 
-- [ ] **Step 3: Run the test**
+- [x] **Step 3: Run the test**
 
 Run: `npx vitest run test/fog.test.ts`
 Expected: PASS with the fixed seed. Same statistical-failure protocol as Task 6 Step 3: try alternate seeds before suspecting the engine; never widen tolerances silently.
 
-- [ ] **Step 4: Run the full verifier**
+- [x] **Step 4: Run the full verifier**
 
 Run: `npm run check` → green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add spec/requirements.md test/fog.test.ts
