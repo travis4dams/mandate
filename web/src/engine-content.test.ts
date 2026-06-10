@@ -1,0 +1,25 @@
+import { describe, it, expect } from "vitest";
+import "./engine-content";
+import { loadTraitCatalog } from "../../src/content/traits";
+import { loadDoctrineCatalog } from "../../src/content/doctrines";
+import { loadHearing } from "../../src/content/hearings";
+
+// SPEC-WEB-2: every content type the engine loads at runtime must be pre-registered
+// in the browser content registry. Session's meeting flow loads the trait catalog
+// (member preferences) and the doctrine catalog (meeting hooks); the hearing flow
+// loads hearings. Under the node:fs → node-stubs alias these tests take the same
+// registry-only path as the browser bundle, so a missed registration throws here
+// instead of breaking committee consensus at runtime.
+describe("SPEC-WEB-2: registry covers all engine-loaded content", () => {
+  it("trait catalog loads from the registry", () => {
+    expect(loadTraitCatalog().length).toBeGreaterThan(0);
+  });
+
+  it("doctrine catalog loads from the registry", () => {
+    expect(loadDoctrineCatalog().length).toBeGreaterThan(0);
+  });
+
+  it("confirmation hearing loads from the registry", () => {
+    expect(loadHearing("hearing.confirmation").id).toBe("hearing.confirmation");
+  });
+});

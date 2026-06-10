@@ -126,8 +126,13 @@ export function resolveHearing(
   const modifiers: HearingStateModifier[] = [];
 
   for (let i = 0; i < hearing.questions.length; i++) {
-    const question = hearing.questions[i];
-    const answerId = answers[i];
+    // The loop is bounds-checked and the guard above pins answers.length to
+    // questions.length, but noUncheckedIndexedAccess (web tsconfig) widens indexed
+    // reads to `| undefined`. The non-null assertions are safe.
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const question = hearing.questions[i]!;
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const answerId = answers[i]!;
     const answer = question.answers.find((a) => a.id === answerId);
     if (!answer) throw new HearingAnswerNotFoundError(answerId, question.id);
 
@@ -146,7 +151,10 @@ export function resolveHearing(
     .filter((id) => scores[id] === winnerScore)
     .sort();
 
-  const scenarioId = candidates[0];
+  // candidates is non-empty: winnerScore > 0 implies at least one scored scenario,
+  // and every score key filtered against the max survives at least once.
+  // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+  const scenarioId = candidates[0]!;
 
   return { scenarioId, modifiers };
 }
