@@ -623,7 +623,7 @@ Slice 2 deferred this: `test/shocks.test.ts` proves shocks vary and are determin
 - Modify: `spec/requirements.md` (insert after the SPEC-SHOCK-1 entry)
 - Test: `test/shocks.test.ts` (append)
 
-- [ ] **Step 1: Register the requirement**
+- [x] **Step 1: Register the requirement**
 
 Insert after the `SPEC-SHOCK-1` bullet:
 
@@ -631,7 +631,7 @@ Insert after the `SPEC-SHOCK-1` bullet:
 - **SPEC-SHOCK-2** `[testable]` Supply shocks are distributionally correct, not merely non-constant: over a single seeded RNG stream of at least 2,000 `applySupplyShock` draws (with base inflation far above 0 so the floor never binds), the sample mean of the shock is within 3 standard errors of 0, the sample standard deviation is within ±10% of `supply_shock_sigma`, and the fraction of draws within 2σ of 0 lies in [0.93, 0.985] (normal coverage ≈ 0.954).
 ```
 
-- [ ] **Step 2: Write the test**
+- [x] **Step 2: Write the test**
 
 Append to `test/shocks.test.ts`, reusing the file's existing state-construction helper (it already builds a minimal `GameState` for the SPEC-SHOCK-1 tests — use the same one):
 
@@ -671,16 +671,16 @@ describe("SPEC-SHOCK-2: shock distribution properties", () => {
 
 (`makeState` here stands for whatever helper `test/shocks.test.ts` already uses to build a `GameState` with a given inflation — match its actual name and shape. `mulberry32` and `applySupplyShock` are already imported in that file.)
 
-- [ ] **Step 3: Run the test**
+- [x] **Step 3: Run the test**
 
 Run: `npx vitest run test/shocks.test.ts`
 Expected: PASS with the fixed seed 424242. If an assertion fails, do NOT widen tolerances — first check whether the failure is statistical bad luck (try seeds 7, 1337: if most seeds pass, pick one passing seed and note why in a comment) or a genuine Box-Muller defect (most seeds fail → escalate as a bug).
 
-- [ ] **Step 4: Run the full verifier**
+- [x] **Step 4: Run the full verifier**
 
 Run: `npm run check` → green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add spec/requirements.md test/shocks.test.ts
