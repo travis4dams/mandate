@@ -60,11 +60,15 @@
     },
     "cred_min": {
       "type": "number",
-      "description": "SPEC-CRED-5: lower bound of the credibility score."
+      "minimum": 0,
+      "maximum": 100,
+      "description": "SPEC-CRED-5: lower bound of the credibility score. Must be below cred_max (clampCredibility degenerates if the range is inverted)."
     },
     "cred_max": {
       "type": "number",
-      "description": "SPEC-CRED-5: upper bound of the credibility score."
+      "minimum": 1,
+      "maximum": 1000,
+      "description": "SPEC-CRED-5: upper bound of the credibility score. Must exceed cred_min."
     },
     "surprise_penalty": {
       "type": "number",

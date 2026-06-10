@@ -29,7 +29,7 @@ Slice 2 deferred this. `src/engine/credibility.ts` hardcodes `CRED_MIN = 0`, `CR
 - Modify: `src/engine/credibility.ts`
 - Test: `test/credibility.test.ts` (add to existing file)
 
-- [ ] **Step 1: Register the requirement in spec/requirements.md**
+- [x] **Step 1: Register the requirement in spec/requirements.md**
 
 Insert in the Credibility section, after the existing `SPEC-CRED-6` bullet:
 
@@ -37,7 +37,7 @@ Insert in the Credibility section, after the existing `SPEC-CRED-6` bullet:
 - **SPEC-CRED-5** `[testable]` Credibility bounds and meeting-outcome weights are content, not code: `cred_min`, `cred_max`, `surprise_penalty`, and `on_target_gain` live in `content/engine/credibility.json` (schema-governed by `schemas/credibility.schema.json`). `src/engine/credibility.ts` loads them through the validated content loader; the exported `CRED_MIN`/`CRED_MAX` constants and `applyMeetingOutcome` (which subtracts `surprise_penalty` when `surprisedMarkets` and adds `on_target_gain` when `onTarget`) take their values from that file, with no hardcoded copies in engine code. Tests assert the engine's observed deltas and bounds equal the content-file values.
 ```
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 Append to `test/credibility.test.ts`:
 
@@ -76,12 +76,12 @@ describe("SPEC-CRED-5: weights and bounds are content-driven", () => {
 
 Reuse the file's existing imports of `CRED_MIN`, `CRED_MAX`, `applyMeetingOutcome` (add any that are missing to the import from `../src/engine/credibility`).
 
-- [ ] **Step 3: Run the test, confirm it fails**
+- [x] **Step 3: Run the test, confirm it fails**
 
 Run: `npx vitest run test/credibility.test.ts`
 Expected: FAIL — `raw.cred_min` is `undefined` (content file doesn't declare the params yet).
 
-- [ ] **Step 4: Add the params to content and schema**
+- [x] **Step 4: Add the params to content and schema**
 
 `content/engine/credibility.json` — add four keys (keep existing seven):
 
@@ -126,7 +126,7 @@ Expected: FAIL — `raw.cred_min` is `undefined` (content file doesn't declare t
 
 Also update the schema's top-level `description` to mention SPEC-CRED-5.
 
-- [ ] **Step 5: Rewrite src/engine/credibility.ts to load from content**
+- [x] **Step 5: Rewrite src/engine/credibility.ts to load from content**
 
 Replace the constants and `applyMeetingOutcome` body; keep every export name and signature identical:
 
@@ -180,12 +180,12 @@ export function applyMeetingOutcome(credibility: number, o: MeetingOutcome): num
 
 Keep `expectationsAnchored`, `painMultiplier`, and `getCredibility` exactly as they are (painMultiplier's `/50` is SPEC-CRED-3 territory, out of scope here).
 
-- [ ] **Step 6: Run the full verifier**
+- [x] **Step 6: Run the full verifier**
 
 Run: `npm run check`
 Expected: all four steps green (typecheck, validate, spec:trace, test). If `npm run validate` fails on credibility.json, the schema and content edits in Step 4 are out of sync — fix there, max 3 self-fix cycles.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add spec/requirements.md content/engine/credibility.json schemas/credibility.schema.json src/engine/credibility.ts test/credibility.test.ts

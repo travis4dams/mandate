@@ -743,7 +743,8 @@ describe("SPEC-DOCT-2: dot-plot meeting effect wired into Session.proposeRate()"
 
   it("proposeRate applies dot-plot meeting hook: credibility delta matches formula (integration)", () => {
     // SPEC-DOCT-2: verify the hook fires via Session.proposeRate and produces the correct delta.
-    // applyMeetingOutcome uses fixed +3/-5 steps independent of current credibility, so the
+    // applyMeetingOutcome uses content-tuned steps (on_target_gain/surprise_penalty in
+    // content/engine/credibility.json, SPEC-CRED-5) independent of current credibility, so the
     // difference between a session with vs without doctrine equals: adoption standing_effect
     // (+3) plus the dot-plot meeting delta — no matter whether spread is above or below threshold.
     const sWith = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
