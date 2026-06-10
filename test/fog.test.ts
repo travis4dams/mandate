@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { observe } from "../src/engine/fog";
-import { makeState, type GameState } from "../src/engine/state";
+import { makeState, type GameState, type GameStateSnapshot } from "../src/engine/state";
 import { mulberry32 } from "../src/engine/rng";
 import { readFileSync } from "node:fs";
 
@@ -98,7 +98,7 @@ describe("SPEC-FOG-2: fog noise distribution properties", () => {
     // For lag_months>=1, need history[lag_months-1].vars.inflation = truth.
     // Simplest generic approach: build ALL history entries with vars.inflation = truth,
     // and also set state.vars.inflation = truth, so the test works for any lag_months ≥ 0.
-    const history: GameState[] = [];
+    const history: GameStateSnapshot[] = [];
     for (let i = 0; i < Math.max(lag_months, 1); i++) {
       history.push({
         date: "1979-07",
