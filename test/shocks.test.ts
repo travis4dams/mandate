@@ -202,3 +202,35 @@ describe("Session.reset — RNG reset (SPEC-SHOCK-1)", () => {
     expect(reused.trajectory).toEqual(fresh.trajectory);
   });
 });
+
+// SPEC-SHOCK-2: the shock is N(0, sigma) in distribution, not just "some noise".
+// One seeded stream, many draws; base inflation 0.5 keeps the max(0, ...) clamp inert.
+describe("SPEC-SHOCK-2: shock distribution properties", () => {
+  it("mean ≈ 0, std ≈ sigma, ~95% of draws within 2σ", () => {
+    const sigma = 0.01;
+    const N = 2000;
+    const base = 0.5;
+    const state = makeState({ vars: { ...BASE_VARS, inflation: base } });
+    const rng = mulberry32(424242);
+
+    const shocks: number[] = [];
+    for (let i = 0; i < N; i++) {
+      const next = applySupplyShock(state, rng, { supply_shock_sigma: sigma });
+      shocks.push(next.vars.inflation! - base);
+    }
+
+    const mean = shocks.reduce((a, b) => a + b, 0) / N;
+    const variance = shocks.reduce((a, b) => a + (b - mean) ** 2, 0) / N;
+    const std = Math.sqrt(variance);
+    const within2Sigma = shocks.filter((s) => Math.abs(s) <= 2 * sigma).length / N;
+
+    // standard error of the mean is sigma/sqrt(N); 3 SEs is a deterministic-seed-safe bound
+    expect(Math.abs(mean)).toBeLessThan((3 * sigma) / Math.sqrt(N));
+    expect(std).toBeGreaterThan(sigma * 0.9);
+    expect(std).toBeLessThan(sigma * 1.1);
+    expect(within2Sigma).toBeGreaterThan(0.93);
+    expect(within2Sigma).toBeLessThan(0.985);
+    // the clamp must never have fired, or the distribution is censored
+    expect(Math.min(...shocks)).toBeGreaterThan(-base);
+  });
+});
