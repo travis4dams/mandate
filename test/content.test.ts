@@ -13,20 +13,22 @@ describe("shipped content validates against schema", () => {
     expect(techs.length).toBeGreaterThan(0);
   });
   // SPEC-CONTENT-4: the backstop covers all shipped content types, not just events/tech.
+  // Floor is "at least one validated file" per the spec; content COUNT policy lives with
+  // the content specs themselves (e.g. SPEC-SCEN-2), not here.
   it("scenarios", () => {
     const scenarios = loadValidated("schemas/scenario.schema.json", "content/scenarios");
-    expect(scenarios.length).toBeGreaterThanOrEqual(3);
+    expect(scenarios.length).toBeGreaterThan(0);
   });
   it("doctrines", () => {
     const doctrines = loadValidated("schemas/doctrine.schema.json", "content/doctrines");
-    expect(doctrines.length).toBeGreaterThanOrEqual(2);
+    expect(doctrines.length).toBeGreaterThan(0);
   });
   it("briefings", () => {
     const briefings = loadValidated("schemas/briefing.schema.json", "content/briefings");
-    expect(briefings.length).toBeGreaterThanOrEqual(1);
+    expect(briefings.length).toBeGreaterThan(0);
   });
   it("hearings", () => {
     const hearings = loadValidated("schemas/hearing.schema.json", "content/hearings");
-    expect(hearings.length).toBeGreaterThanOrEqual(1);
+    expect(hearings.length).toBeGreaterThan(0);
   });
 });
