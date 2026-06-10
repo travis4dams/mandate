@@ -540,7 +540,7 @@ The confirmation hearing's `scenario_weights` already reference all three scenar
 - Modify: `spec/requirements.md` (Confirmation hearing section — insert after the SPEC-HEAR-1 entry)
 - Test: `test/hearing-content.test.ts` (new file; if hearing content tests already live elsewhere, append there)
 
-- [ ] **Step 1: Register the requirement**
+- [x] **Step 1: Register the requirement**
 
 Insert after the `SPEC-HEAR-1` bullet:
 
@@ -548,7 +548,7 @@ Insert after the `SPEC-HEAR-1` bullet:
 - **SPEC-HEAR-2** `[testable]` Hearing/scenario cross-content integrity: every scenario id referenced in any hearing answer's `scenario_weights` corresponds to a shipped file in `content/scenarios/`, and each of the three authored starting scenarios (`scen.1979_stagflation`, `scen.2008_gfc`, `scen.covid_2020`) is reachable — i.e. appears with a positive weight in at least one answer of `content/hearings/confirmation.json`. Enforced by test so a renamed or added scenario cannot silently break hearing resolution.
 ```
 
-- [ ] **Step 2: Write the test**
+- [x] **Step 2: Write the test**
 
 Create `test/hearing-content.test.ts`:
 
@@ -597,16 +597,16 @@ describe("SPEC-HEAR-2: hearing/scenario cross-content integrity", () => {
 
 (Note: the reachability list is deliberately the three authored scenarios, not "every file in the directory" — `content/scenarios/recovery_test.json` is a test fixture and must not be required to be reachable.)
 
-- [ ] **Step 3: Run the test**
+- [x] **Step 3: Run the test**
 
 Run: `npx vitest run test/hearing-content.test.ts`
 Expected: PASS (current content is already consistent — the test pins the invariant; like Task 2, the test is the deliverable).
 
-- [ ] **Step 4: Run the full verifier**
+- [x] **Step 4: Run the full verifier**
 
 Run: `npm run check` → green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add spec/requirements.md test/hearing-content.test.ts
