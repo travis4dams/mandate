@@ -45,6 +45,7 @@ Tag meanings: `[testable]` = must be covered by an automated test;
 
 ## Data fog
 - **SPEC-FOG-1** `[testable]` A pure `observe(state, seriesId, rng)` returns a fogged view of the true state variable, with `noise_scale` and `lag_months` parameters from `content/engine/params.json#fog[seriesId]` (validated by `schemas/engine-params.schema.json`). Lag indexing: `lag_months === 0` reads the current `state.vars[seriesId]`; `lag_months >= 1` reads `state.history[lag_months - 1].vars[seriesId]`; out-of-range falls back to the current value. Same seed + state → same observation.
+- **SPEC-FOG-2** `[testable]` Fog noise is distributionally correct: for a series whose `content/engine/fog.json` entry has `noise_scale > 0`, at least 2,000 `observe()` draws over a single seeded RNG stream (fixed state and history) have a sample mean within 3 standard errors of the lagged truth and a sample standard deviation within ±10% of the configured `noise_scale`. The test reads the configured `noise_scale`/`lag_months` from the content file rather than hardcoding them.
 
 ## Committee
 *`SPEC-COMM-1`/`SPEC-COMM-2` defined the original committee model; `SPEC-COMM-3` redesigned it around empirical FOMC dynamics after player feedback that the trichotomy produced 1500bp dot spreads instead of the historical ~150bp.*

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { observe } from "../src/engine/fog";
 import { makeState, type GameState } from "../src/engine/state";
 import { mulberry32 } from "../src/engine/rng";
+import { readFileSync } from "node:fs";
 
 // SPEC-FOG-1
 
@@ -79,5 +80,52 @@ describe("observe (data fog)", () => {
     const state = makeState({ date: "1979-08", vars: {}, flags: {} });
     const rng = mulberry32(1);
     expect(() => observe(state, "nonexistent_series", rng)).toThrow();
+  });
+});
+
+// SPEC-FOG-2: observe() noise is N(truth, noise_scale) in distribution. Params are read
+// from content/engine/fog.json so retuning fog content cannot silently break this test.
+describe("SPEC-FOG-2: fog noise distribution properties", () => {
+  it("mean ≈ lagged truth, std ≈ noise_scale for the inflation series", () => {
+    const fogParams = JSON.parse(readFileSync("content/engine/fog.json", "utf8")) as
+      Record<string, { noise_scale: number; lag_months: number }>;
+    const { noise_scale, lag_months } = fogParams["inflation"]!;
+    expect(noise_scale).toBeGreaterThan(0); // precondition: series must be noisy for this test
+
+    const truth = 0.08;
+    // Build a state whose lagged inflation (per lag_months) equals `truth`.
+    // For lag_months===0, set vars.inflation = truth (no history needed).
+    // For lag_months>=1, need history[lag_months-1].vars.inflation = truth.
+    // Simplest generic approach: build ALL history entries with vars.inflation = truth,
+    // and also set state.vars.inflation = truth, so the test works for any lag_months ≥ 0.
+    const history: GameState[] = [];
+    for (let i = 0; i < Math.max(lag_months, 1); i++) {
+      history.push({
+        date: "1979-07",
+        vars: { inflation: truth },
+        flags: {},
+      });
+    }
+    const state: GameState = {
+      date: "1979-08",
+      vars: { inflation: truth },
+      flags: {},
+      history,
+    };
+
+    const N = 2000;
+    const rng = mulberry32(99001122);
+    const draws: number[] = [];
+    for (let i = 0; i < N; i++) {
+      draws.push(observe(state, "inflation", rng));
+    }
+
+    const mean = draws.reduce((a, b) => a + b, 0) / N;
+    const variance = draws.reduce((a, b) => a + (b - mean) ** 2, 0) / N;
+    const std = Math.sqrt(variance);
+
+    expect(Math.abs(mean - truth)).toBeLessThan((3 * noise_scale) / Math.sqrt(N));
+    expect(std).toBeGreaterThan(noise_scale * 0.9);
+    expect(std).toBeLessThan(noise_scale * 1.1);
   });
 });
