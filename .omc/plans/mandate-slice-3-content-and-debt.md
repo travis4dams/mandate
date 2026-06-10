@@ -444,7 +444,7 @@ The doctrine catalog has two entries (`dot_plot`, `inflation_targeting`). Add `d
 - Modify: `content/localization/en.json`
 - Test: `test/doctrines-content.test.ts` (new file; if a doctrine content test file already exists, append there instead)
 
-- [ ] **Step 1: Register the requirement**
+- [x] **Step 1: Register the requirement**
 
 Insert after the `SPEC-DOCT-2` bullet:
 
@@ -452,7 +452,7 @@ Insert after the `SPEC-DOCT-2` bullet:
 - **SPEC-DOCT-3** `[testable]` A third adoptable doctrine ships as pure content: `content/doctrines/gradualism.json` validates against `schemas/doctrine.schema.json`, uses only generic schema fields (standing effects + flip-flop cost, no meeting hook, no bespoke engine code), appears in `loadDoctrineCatalog()`, resolves via `getDoctrine("doctrine.gradualism")`, and its localization keys resolve in `content/localization/en.json`.
 ```
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 Create `test/doctrines-content.test.ts`:
 
@@ -490,12 +490,12 @@ describe("SPEC-DOCT-3: gradualism doctrine", () => {
 
 (Match the actual exported API of `src/content/doctrines.ts` — check whether `getDoctrine` throws or returns undefined for unknown ids, and adjust.)
 
-- [ ] **Step 3: Run the test, confirm it fails**
+- [x] **Step 3: Run the test, confirm it fails**
 
 Run: `npx vitest run test/doctrines-content.test.ts`
 Expected: FAIL — catalog has 2 entries, `doctrine.gradualism` missing.
 
-- [ ] **Step 4: Author the doctrine + localization**
+- [x] **Step 4: Author the doctrine + localization**
 
 Create `content/doctrines/gradualism.json`:
 
@@ -518,12 +518,12 @@ Add to `content/localization/en.json` (alongside the existing `doctrine.*` keys)
 "doctrine.gradualism.desc": "Commit to moving the policy rate in small, well-telegraphed steps. Markets reward the predictability with a standing credibility bonus — but abandoning the commitment mid-cycle is costly."
 ```
 
-- [ ] **Step 5: Run the test, then the full verifier**
+- [x] **Step 5: Run the test, then the full verifier**
 
 Run: `npx vitest run test/doctrines-content.test.ts` → PASS.
 Run: `npm run check` → green.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add spec/requirements.md content/doctrines/gradualism.json content/localization/en.json test/doctrines-content.test.ts

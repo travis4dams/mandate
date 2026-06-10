@@ -1,0 +1,9 @@
+{
+  "id": "doctrine.gradualism",
+  "name": "doctrine.gradualism.name",
+  "description": "doctrine.gradualism.desc",
+  "standing_effects": [
+    { "target": "credibility", "value": 2 }
+  ],
+  "flip_flop_cost": 8
+}
