@@ -264,7 +264,7 @@ Only `brief.1979_q3_stagflation` exists. The 2008 and COVID scenarios (already s
 - Modify: `content/localization/en.json`
 - Test: `test/briefings-content.test.ts` (new file)
 
-- [ ] **Step 1: Register the requirement**
+- [x] **Step 1: Register the requirement**
 
 Insert after the `SPEC-BRIEF-2` bullet:
 
@@ -272,7 +272,7 @@ Insert after the `SPEC-BRIEF-2` bullet:
 - **SPEC-BRIEF-3** `[testable]` Each authored starting scenario beyond 1979 ships with a staff briefing: `content/briefings/2008_q4_crisis.json` and `content/briefings/2020_q1_pandemic.json` validate against `schemas/briefing.schema.json`, load via `loadBriefing`, and every localization key they reference resolves in `content/localization/en.json`. Forecasts are internally consistent with each scenario's demand-collapse regime: the raise scenario forecasts strictly lower `inflation_outlook` and strictly higher `unemployment_outlook` than the lower scenario. No real person names appear.
 ```
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 Create `test/briefings-content.test.ts`:
 
@@ -318,12 +318,12 @@ describe("SPEC-BRIEF-3: crisis-scenario briefings", () => {
 
 (Adjust property access to the actual `Briefing` type exported by `src/content/briefings.ts` if field names differ — check that file before running.)
 
-- [ ] **Step 3: Run the test, confirm it fails**
+- [x] **Step 3: Run the test, confirm it fails**
 
 Run: `npx vitest run test/briefings-content.test.ts`
 Expected: FAIL — `loadBriefing("brief.2008_q4_crisis")` throws (file not found).
 
-- [ ] **Step 4: Author the briefing content**
+- [x] **Step 4: Author the briefing content**
 
 Create `content/briefings/2008_q4_crisis.json`:
 
@@ -403,7 +403,7 @@ Create `content/briefings/2020_q1_pandemic.json`:
 }
 ```
 
-- [ ] **Step 5: Add localization entries**
+- [x] **Step 5: Add localization entries**
 
 Add to `content/localization/en.json` (alongside the existing `brief.1979_q3_stagflation.*` keys):
 
@@ -420,12 +420,12 @@ Add to `content/localization/en.json` (alongside the existing `brief.1979_q3_sta
 "brief.2020_q1_pandemic.lower.name": "Lower — Cut to the Floor"
 ```
 
-- [ ] **Step 6: Run the test, then the full verifier**
+- [x] **Step 6: Run the test, then the full verifier**
 
 Run: `npx vitest run test/briefings-content.test.ts` → PASS.
 Run: `npm run check` → green (validate covers the new briefing files against the schema).
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add spec/requirements.md content/briefings/2008_q4_crisis.json content/briefings/2020_q1_pandemic.json content/localization/en.json test/briefings-content.test.ts
