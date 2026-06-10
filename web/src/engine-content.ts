@@ -42,6 +42,26 @@ const briefingFiles = import.meta.glob<{ default: unknown }>(
   "../../content/briefings/*.json",
   { eager: true },
 );
+const traitFiles = import.meta.glob<{ default: unknown }>(
+  "../../content/traits/*.json",
+  { eager: true },
+);
+const doctrineFiles = import.meta.glob<{ default: unknown }>(
+  "../../content/doctrines/*.json",
+  { eager: true },
+);
+const hearingFiles = import.meta.glob<{ default: unknown }>(
+  "../../content/hearings/*.json",
+  { eager: true },
+);
+const eventFiles = import.meta.glob<{ default: unknown }>(
+  "../../content/events/*.json",
+  { eager: true },
+);
+const techFiles = import.meta.glob<{ default: unknown }>(
+  "../../content/tech/*.json",
+  { eager: true },
+);
 
 // Reject `mod.default === undefined` at registration time rather than letting
 // such a value enter the registry and surface later as an opaque AJV
@@ -95,3 +115,16 @@ registerDirEntities(replayFiles, "content/replays");
 registerDirEntities(calibrationFiles, "content/calibration");
 registerEach(briefingFiles);
 registerDirEntities(briefingFiles, "content/briefings");
+// Session's meeting flow loads traits (member preferences) and doctrines (meeting
+// hooks) at runtime — a missed registration here breaks committee consensus in the
+// browser even though Node-side tests pass (they read from disk, not the registry).
+registerEach(traitFiles);
+registerDirEntities(traitFiles, "content/traits");
+registerEach(doctrineFiles);
+registerDirEntities(doctrineFiles, "content/doctrines");
+registerEach(hearingFiles);
+registerDirEntities(hearingFiles, "content/hearings");
+registerEach(eventFiles);
+registerDirEntities(eventFiles, "content/events");
+registerEach(techFiles);
+registerDirEntities(techFiles, "content/tech");
