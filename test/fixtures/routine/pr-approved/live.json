@@ -1,0 +1,13 @@
+{
+  "agentTaskIssues": [],
+  "openPRs": [
+    {
+      "number": 42,
+      "title": "SPEC-FOG-1: fog series implementation",
+      "headRef": "spec/spec-fog-1",
+      "checksGreen": true,
+      "reviewVerdict": "APPROVE",
+      "fixRounds": 0
+    }
+  ]
+}
