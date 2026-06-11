@@ -13,6 +13,12 @@
     "tech": 2,
     "traits": 1
   },
+  "manual": {
+    "activeSlice": "slice-4",
+    "gates": [],
+    "notes": "",
+    "parked": []
+  },
   "slices": [
     {
       "checkboxes": {
@@ -296,6 +302,7 @@
       "tag": "testable",
       "tests": [
         "test/fog.test.ts",
+        "test/gen-docs.test.ts",
         "test/gen-state.test.ts"
       ]
     },
@@ -376,7 +383,16 @@
       "section": "Repo metadata",
       "tag": "testable",
       "tests": [
+        "test/gen-docs.test.ts",
         "test/gen-state.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-META-2",
+      "section": "Repo metadata",
+      "tag": "testable",
+      "tests": [
+        "test/gen-docs.test.ts"
       ]
     },
     {
