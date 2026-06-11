@@ -1,44 +1,30 @@
-import { readFileSync, readdirSync, existsSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync } from "node:fs";
 
 // Requirements traceability — the automated "level-set against the spec".
 // Every requirement in spec/requirements.md tagged [testable] must be referenced
 // by at least one test (by its SPEC-XXX-N id). Orphans fail CI, so the spec and
 // the test suite can never silently drift apart.
+//
+// SPEC-META-1: refactored to consume tools/lib/spec-parse.ts; CLI behaviour
+// and exit codes are unchanged.
 
-const ID_RE = /\bSPEC-[A-Z]+-\d+\b/g;
+import { parseSpecs } from "./lib/spec-parse.js";
 
-const specText = readFileSync("spec/requirements.md", "utf8");
-const testable = new Set<string>();
-for (const line of specText.split("\n")) {
-  if (line.includes("[testable]")) {
-    for (const id of line.match(ID_RE) ?? []) testable.add(id);
-  }
-}
-
-const referenced = new Set<string>();
-function walk(dir: string): void {
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    const p = join(dir, entry.name);
-    if (entry.isDirectory()) {
-      if (entry.name === "node_modules" || entry.name === "dist") continue;
-      walk(p);
-    } else if (entry.name.endsWith(".ts") || entry.name.endsWith(".tsx")) {
-      for (const id of readFileSync(p, "utf8").match(ID_RE) ?? []) referenced.add(id);
-    }
-  }
-}
 // Each walk root is existsSync-guarded so a missing directory (wrong CWD, renamed dir)
-// surfaces as a structured diagnostic, not an opaque ENOENT crash. node_modules and dist
-// subtrees are skipped inside walk() itself.
-if (existsSync("test")) walk("test");
-if (existsSync("web/src")) walk("web/src");
+// surfaces as a structured diagnostic, not an opaque ENOENT crash.
+const testDirs: string[] = [];
+if (existsSync("test")) testDirs.push("test");
+if (existsSync("web/src")) testDirs.push("web/src");
 
-const orphans = [...testable].filter((id) => !referenced.has(id));
-console.log(`Testable requirements: ${testable.size}`);
-console.log(`Covered by tests:      ${[...testable].filter((id) => referenced.has(id)).length}`);
+const entries = parseSpecs("spec/requirements.md", testDirs);
+const testable = entries.filter((e) => e.tag === "testable");
+const covered = testable.filter((e) => e.tests.length > 0);
+const orphans = testable.filter((e) => e.tests.length === 0);
+
+console.log(`Testable requirements: ${testable.length}`);
+console.log(`Covered by tests:      ${covered.length}`);
 if (orphans.length) {
-  console.error(`\u2717 Orphan requirements (specced, untested): ${orphans.join(", ")}`);
+  console.error(`✗ Orphan requirements (specced, untested): ${orphans.map((e) => e.id).join(", ")}`);
   process.exit(1);
 }
-console.log("\u2713 Every testable requirement is referenced by a test.");
+console.log("✓ Every testable requirement is referenced by a test.");
