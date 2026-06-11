@@ -30,9 +30,20 @@ against this file on every pull request.
   markers (1979 stagflation, late-1970s tightening) are fine. This applies to
   content/localization values, scenario/replay ids that reference a person, and any
   future characters.
+- **Browser content registry.** Any content directory the engine loads at runtime
+  MUST be registered in `web/src/engine-content.ts` and covered by
+  `web/src/engine-content.test.ts` (SPEC-WEB-2). Node-side tests read from disk and
+  will NOT catch a missing registration — it surfaces as a runtime crash in the
+  browser (this once broke committee consensus; see PR #104).
+- **Web tsconfig is stricter.** Any `src/**` module imported (even transitively) by
+  `web/` code or web tests compiles under `noUncheckedIndexedAccess` — guard or
+  justify indexed reads (`arr[i]`, `record[key]`) or the web typecheck fails in CI
+  even when the root `tsc` passes.
 
 ## Before opening a PR
 - Run `npm run check` (typecheck + validate + spec:trace + test) — all green.
+- Run the `spec-reviewer` agent (`.claude/agents/spec-reviewer.md`) on the branch
+  diff — it checks spec/test/implementation agreement plus the gotchas above.
 - Keep PRs small: ideally one SPEC requirement each.
 - Fill in the PR template, including the SPEC id you implemented.
 
@@ -40,7 +51,12 @@ against this file on every pull request.
 - The vision and the "why": `spec/DESIGN.md`.
 - The enforceable "what": `spec/requirements.md`.
 - The content contract: `schemas/`.
-- Worked examples to copy: `content/events/oil_shock.json`, `content/tech/*.json`.
+- Worked examples to copy: `content/scenarios/2008_gfc.json`,
+  `content/doctrines/gradualism.json`, `content/briefings/2008_q4_crisis.json`,
+  `content/events/oil_shock.json`.
+- The playable UI: `web/` (`npm run web:install` once, then `npm run web:dev`).
+- Adding a SPEC id / content type: use the `/new-spec` skill
+  (`.claude/skills/new-spec/SKILL.md`) for the id, placement, and registry rules.
 
 ## Issue-driven autonomous work
 GitHub issues labelled **`agent-task`** are picked up by the recurring agent on
