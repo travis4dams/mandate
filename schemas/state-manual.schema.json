@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "StateManual",
+  "description": "Hand-owned repo metadata — human intent that no generator ever writes.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["activeSlice", "gates", "notes", "parked"],
+  "properties": {
+    "activeSlice": {
+      "type": "string",
+      "description": "The slice currently in active development (e.g. 'slice-4')."
+    },
+    "gates": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Open gate conditions blocking the next slice."
+    },
+    "notes": {
+      "type": "string",
+      "description": "Free-form human notes about current repo state."
+    },
+    "parked": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Parked ideas or deferred items not yet in the spec."
+    }
+  }
+}

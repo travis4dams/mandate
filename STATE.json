@@ -1,0 +1,548 @@
+{
+  "content": {
+    "briefings": 3,
+    "calibration": 1,
+    "committees": 1,
+    "doctrines": 3,
+    "engine": 17,
+    "events": 1,
+    "hearings": 1,
+    "localization": 1,
+    "replays": 1,
+    "scenarios": 4,
+    "tech": 2,
+    "traits": 1
+  },
+  "slices": [
+    {
+      "checkboxes": {
+        "done": 0,
+        "total": 14
+      },
+      "file": "mandate-slice-1-volcker-plan.md",
+      "title": "Consensus Plan: MANDATE \u2014 Vertical Slice 1 (1979 Volcker, engine-only)"
+    },
+    {
+      "checkboxes": null,
+      "file": "mandate-slice-2-engine-and-react-ui.md",
+      "title": "Consensus Plan: MANDATE \u2014 Vertical Slice 2 (Rich engine + React inspector UI)"
+    },
+    {
+      "checkboxes": {
+        "done": 40,
+        "total": 40
+      },
+      "file": "mandate-slice-3-content-and-debt.md",
+      "title": "MANDATE Slice 3 \u2014 Content Expansion + Deferred Tech Debt Implementation Plan"
+    },
+    {
+      "checkboxes": null,
+      "file": "mandate-slice-4-self-maintaining-metadata.md",
+      "title": "MANDATE Slice 4 \u2014 Self-Maintaining Repo Metadata (Consensus Plan)"
+    }
+  ],
+  "specs": [
+    {
+      "id": "SPEC-BRIEF-1",
+      "section": "Briefings",
+      "tag": "testable",
+      "tests": [
+        "test/briefings.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-BRIEF-2",
+      "section": "Briefings",
+      "tag": "testable",
+      "tests": [
+        "test/forecast-quality.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-BRIEF-3",
+      "section": "Briefings",
+      "tag": "testable",
+      "tests": [
+        "test/briefings-content.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-CAL-1",
+      "section": "Calibration",
+      "tag": "testable",
+      "tests": [
+        "test/calibration.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-CAL-2",
+      "section": "Calibration",
+      "tag": "testable",
+      "tests": [
+        "test/calibration-volcker.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-CAL-3",
+      "section": "Calibration",
+      "tag": "testable",
+      "tests": [
+        "test/calibration-thresholds.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-COMM-1",
+      "section": "Committee",
+      "tag": "testable",
+      "tests": [
+        "test/committee.test.ts",
+        "test/gen-state.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-COMM-2",
+      "section": "Committee",
+      "tag": "testable",
+      "tests": [
+        "test/fomc.test.ts",
+        "test/gen-state.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-COMM-3",
+      "section": "Committee",
+      "tag": "testable",
+      "tests": [
+        "test/committee.test.ts",
+        "test/engine-params-loaders.test.ts",
+        "test/fomc.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-COMM-4",
+      "section": "Committee",
+      "tag": "testable",
+      "tests": [
+        "test/engine-params-loaders.test.ts",
+        "test/fomc.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-COMM-5",
+      "section": "Committee",
+      "tag": "testable",
+      "tests": [
+        "test/committee.test.ts",
+        "test/engine-params-loaders.test.ts",
+        "test/fomc.test.ts",
+        "test/traits.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-COMM-6",
+      "section": "Committee",
+      "tag": "testable",
+      "tests": [
+        "test/session.test.ts",
+        "test/stance.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-COMM-7",
+      "section": "Committee",
+      "tag": "testable",
+      "tests": [
+        "test/chair-capital.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-COND-1",
+      "section": "Content language",
+      "tag": "testable",
+      "tests": [
+        "test/conditions.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-COND-2",
+      "section": "Content language",
+      "tag": "testable",
+      "tests": [
+        "test/conditions.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-CONTENT-1",
+      "section": "Content integrity",
+      "tag": "testable",
+      "tests": [
+        "test/content.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-CONTENT-2",
+      "section": "Content integrity",
+      "tag": "design",
+      "tests": []
+    },
+    {
+      "id": "SPEC-CONTENT-3",
+      "section": "Content integrity",
+      "tag": "testable",
+      "tests": [
+        "test/content-lint.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-CONTENT-4",
+      "section": "Content integrity",
+      "tag": "testable",
+      "tests": [
+        "test/content.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-CRED-1",
+      "section": "Credibility & expectations",
+      "tag": "testable",
+      "tests": [
+        "test/credibility.test.ts",
+        "test/fomc.test.ts",
+        "test/session.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-CRED-2",
+      "section": "Credibility & expectations",
+      "tag": "testable",
+      "tests": [
+        "test/credibility.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-CRED-3",
+      "section": "Credibility & expectations",
+      "tag": "testable",
+      "tests": [
+        "test/credibility.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-CRED-4",
+      "section": "Credibility & expectations",
+      "tag": "testable",
+      "tests": [
+        "test/calibration-volcker.test.ts",
+        "test/credibility.test.ts",
+        "test/dynamics.test.ts",
+        "test/engine-params-loaders.test.ts",
+        "test/gen-state.test.ts",
+        "test/session.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-CRED-5",
+      "section": "Credibility & expectations",
+      "tag": "testable",
+      "tests": [
+        "test/credibility.test.ts",
+        "test/session.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-CRED-6",
+      "section": "Credibility & expectations",
+      "tag": "testable",
+      "tests": [
+        "test/calibration-volcker.test.ts",
+        "test/credibility.test.ts",
+        "test/dynamics.test.ts",
+        "test/engine-params-loaders.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-DOCT-1",
+      "section": "Doctrine",
+      "tag": "testable",
+      "tests": [
+        "test/doctrine.test.ts",
+        "test/dynamics.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-DOCT-2",
+      "section": "Doctrine",
+      "tag": "testable",
+      "tests": [
+        "test/dot-plot.test.ts",
+        "test/session.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-DOCT-3",
+      "section": "Doctrine",
+      "tag": "testable",
+      "tests": [
+        "test/doctrines-content.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-FOG-1",
+      "section": "Data fog",
+      "tag": "testable",
+      "tests": [
+        "test/fog.test.ts",
+        "test/gen-state.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-FOG-2",
+      "section": "Data fog",
+      "tag": "testable",
+      "tests": [
+        "test/fog.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-GOV-1",
+      "section": "Institution & governance",
+      "tag": "design",
+      "tests": []
+    },
+    {
+      "id": "SPEC-GOV-2",
+      "section": "Institution & governance",
+      "tag": "design",
+      "tests": []
+    },
+    {
+      "id": "SPEC-GUIDE-1",
+      "section": "Engine session",
+      "tag": "testable",
+      "tests": [
+        "test/guide.test.ts",
+        "test/session.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-GUIDE-2",
+      "section": "Engine session",
+      "tag": "testable",
+      "tests": [
+        "test/session.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-HEAR-1",
+      "section": "Confirmation hearing",
+      "tag": "testable",
+      "tests": [
+        "test/hearing.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-HEAR-2",
+      "section": "Confirmation hearing",
+      "tag": "testable",
+      "tests": [
+        "test/hearing-content.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-LAG-1",
+      "section": "Macro dynamics",
+      "tag": "testable",
+      "tests": [
+        "test/lags.test.ts",
+        "test/session.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-MANDATE-1",
+      "section": "Mandate evaluator",
+      "tag": "testable",
+      "tests": [
+        "test/engine-params-loaders.test.ts",
+        "test/mandate.test.ts",
+        "test/session.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-META-1",
+      "section": "Repo metadata",
+      "tag": "testable",
+      "tests": [
+        "test/gen-state.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-PARAMS-1",
+      "section": "Engine params",
+      "tag": "testable",
+      "tests": [
+        "test/engine-params-loaders.test.ts",
+        "test/fomc.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-PROD-1",
+      "section": "Macro dynamics",
+      "tag": "testable",
+      "tests": [
+        "test/productivity.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-SCEN-1",
+      "section": "Scenarios",
+      "tag": "testable",
+      "tests": [
+        "test/gen-state.test.ts",
+        "test/scenarios.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-SCEN-2",
+      "section": "Scenarios",
+      "tag": "testable",
+      "tests": [
+        "test/content.test.ts",
+        "test/scenarios.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-SESSION-0",
+      "section": "Engine session",
+      "tag": "testable",
+      "tests": [
+        "test/session.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-SESSION-1",
+      "section": "Engine session",
+      "tag": "testable",
+      "tests": [
+        "test/session.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-SHOCK-1",
+      "section": "Macro dynamics",
+      "tag": "testable",
+      "tests": [
+        "test/session.test.ts",
+        "test/shocks.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-SHOCK-2",
+      "section": "Macro dynamics",
+      "tag": "testable",
+      "tests": [
+        "test/shocks.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-SIM-1",
+      "section": "Simulation core",
+      "tag": "testable",
+      "tests": [
+        "test/lags.test.ts",
+        "test/replay.test.ts",
+        "test/rng.test.ts",
+        "test/term-structure.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-SIM-2",
+      "section": "Simulation core",
+      "tag": "design",
+      "tests": []
+    },
+    {
+      "id": "SPEC-SIM-3",
+      "section": "Simulation core",
+      "tag": "testable",
+      "tests": [
+        "test/clock.test.ts",
+        "test/gen-state.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-SIM-4",
+      "section": "Simulation core",
+      "tag": "testable",
+      "tests": [
+        "test/gen-state.test.ts",
+        "test/replay.test.ts",
+        "test/run-replay.ts"
+      ]
+    },
+    {
+      "id": "SPEC-SIM-5",
+      "section": "Macro dynamics",
+      "tag": "testable",
+      "tests": [
+        "test/calibration-volcker.test.ts",
+        "test/dynamics.test.ts",
+        "test/engine-params-loaders.test.ts",
+        "test/session.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-SIM-6",
+      "section": "Simulation core",
+      "tag": "testable",
+      "tests": [
+        "test/cadence.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-TERM-1",
+      "section": "Macro dynamics",
+      "tag": "testable",
+      "tests": [
+        "test/term-structure.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-WEB-1",
+      "section": "Web UI",
+      "tag": "testable",
+      "tests": []
+    },
+    {
+      "id": "SPEC-WEB-2",
+      "section": "Web UI",
+      "tag": "testable",
+      "tests": []
+    },
+    {
+      "id": "SPEC-WEB-3",
+      "section": "Web UI",
+      "tag": "testable",
+      "tests": []
+    },
+    {
+      "id": "SPEC-WEB-4",
+      "section": "Web UI",
+      "tag": "testable",
+      "tests": [
+        "test/session.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-WEB-5",
+      "section": "Web UI",
+      "tag": "testable",
+      "tests": []
+    },
+    {
+      "id": "SPEC-WEB-6",
+      "section": "Web UI",
+      "tag": "testable",
+      "tests": []
+    }
+  ]
+}

@@ -29,3 +29,4 @@ jobs:
         run: npm run web:build
       - name: Verify web/dist/index.html exists
         run: test -f web/dist/index.html
+      - run: npm run state:check

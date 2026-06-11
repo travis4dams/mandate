@@ -15,7 +15,9 @@
     "web:dev": "cd web && npm run dev",
     "web:build": "cd web && npm run build",
     "web:test": "cd web && npm test",
-    "check": "npm run typecheck && (cd web && tsc --noEmit) && npm run validate && npm run spec:trace && npm test && npm run web:test && npm run web:build && test -f web/dist/index.html"
+    "state:gen": "tsx tools/gen-state.ts",
+    "state:check": "tsx tools/gen-state.ts --check",
+    "check": "npm run typecheck && (cd web && tsc --noEmit) && npm run validate && npm run spec:trace && npm test && npm run web:test && npm run web:build && test -f web/dist/index.html && npm run state:check"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",
