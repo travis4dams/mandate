@@ -152,7 +152,9 @@
       "section": "Committee",
       "tag": "testable",
       "tests": [
-        "test/chair-capital.test.ts"
+        "test/chair-capital.test.ts",
+        "web/src/PersuasionView.test.tsx",
+        "web/src/PersuasionView.tsx"
       ]
     },
     {
@@ -183,7 +185,9 @@
       "id": "SPEC-CONTENT-2",
       "section": "Content integrity",
       "tag": "design",
-      "tests": []
+      "tests": [
+        "web/src/loc.ts"
+      ]
     },
     {
       "id": "SPEC-CONTENT-3",
@@ -415,7 +419,8 @@
       "section": "Engine session",
       "tag": "testable",
       "tests": [
-        "test/session.test.ts"
+        "test/session.test.ts",
+        "web/src/useSession.ts"
       ]
     },
     {
@@ -510,39 +515,63 @@
       "id": "SPEC-WEB-1",
       "section": "Web UI",
       "tag": "testable",
-      "tests": []
+      "tests": [
+        "web/src/App.test.tsx"
+      ]
     },
     {
       "id": "SPEC-WEB-2",
       "section": "Web UI",
       "tag": "testable",
-      "tests": []
+      "tests": [
+        "web/src/App.test.tsx",
+        "web/src/App.tsx",
+        "web/src/Dashboard.tsx",
+        "web/src/engine-content.test.ts",
+        "web/src/engine-content.ts",
+        "web/src/node-stubs.ts",
+        "web/src/useSession.ts"
+      ]
     },
     {
       "id": "SPEC-WEB-3",
       "section": "Web UI",
       "tag": "testable",
-      "tests": []
+      "tests": [
+        "web/src/ChartsPanel.plot-throws.test.tsx",
+        "web/src/ChartsPanel.test.tsx",
+        "web/src/ChartsPanel.tsx",
+        "web/src/Dashboard.tsx"
+      ]
     },
     {
       "id": "SPEC-WEB-4",
       "section": "Web UI",
       "tag": "testable",
       "tests": [
-        "test/session.test.ts"
+        "test/session.test.ts",
+        "web/src/App.test.tsx",
+        "web/src/Dashboard.tsx",
+        "web/src/MeetingPanel.tsx"
       ]
     },
     {
       "id": "SPEC-WEB-5",
       "section": "Web UI",
       "tag": "testable",
-      "tests": []
+      "tests": [
+        "web/src/App.test.tsx",
+        "web/src/Dashboard.tsx"
+      ]
     },
     {
       "id": "SPEC-WEB-6",
       "section": "Web UI",
       "tag": "testable",
-      "tests": []
+      "tests": [
+        "web/src/PersuasionView.test.tsx",
+        "web/src/PersuasionView.tsx"
+      ]
     }
   ]
 }

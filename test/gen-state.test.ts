@@ -50,7 +50,11 @@ describe("checkbox counting in fixture plans", () => {
   });
 
   it("slice-1-style nested AC checkboxes — exactly {done: 0, total: 14}", () => {
-    // SPEC-META-1: copy the real slice-1 checkbox lines (14 items, all unchecked)
+    // SPEC-META-1: copy the real slice-1 checkbox lines (14 items, all unchecked).
+    // Note: the fixture text embeds SPEC ids (SIM-3, SCEN-1, FOG-1, SIM-4, CRED-4,
+    // COMM-1, COMM-2) as plain text in AC labels. The scanner will find those ids in
+    // this test file and add test/gen-state.test.ts to their tests[] arrays in
+    // STATE.json — this is expected and consistent with spec-trace semantics.
     const slice1CheckboxLines = `
 # Slice 1
 
@@ -156,8 +160,8 @@ describe("state.manual.json is untouched by the generator", () => {
 describe("state.manual.json Ajv validation", () => {
   it("an invalid manual file (extra key) fails Ajv validation with an error", async () => {
     // SPEC-META-1: additionalProperties: false rejects unknown keys
-    const { default: Ajv } = await import("ajv");
-    const ajv = new Ajv({ strict: true, allErrors: true });
+    const { default: Ajv2020 } = await import("ajv/dist/2020");
+    const ajv = new Ajv2020({ strict: true, allErrors: true });
     const schema = JSON.parse(readFileSync("schemas/state-manual.schema.json", "utf8"));
     const validate = ajv.compile(schema);
 
@@ -177,8 +181,8 @@ describe("state.manual.json Ajv validation", () => {
 
   it("the real state.manual.json passes Ajv validation", async () => {
     // SPEC-META-1: the committed file must always be valid
-    const { default: Ajv } = await import("ajv");
-    const ajv = new Ajv({ strict: true, allErrors: true });
+    const { default: Ajv2020 } = await import("ajv/dist/2020");
+    const ajv = new Ajv2020({ strict: true, allErrors: true });
     const schema = JSON.parse(readFileSync("schemas/state-manual.schema.json", "utf8"));
     const validate = ajv.compile(schema);
 
@@ -189,8 +193,8 @@ describe("state.manual.json Ajv validation", () => {
 
   it("missing required field (e.g. notes) fails Ajv validation", async () => {
     // SPEC-META-1: all four fields are required
-    const { default: Ajv } = await import("ajv");
-    const ajv = new Ajv({ strict: true, allErrors: true });
+    const { default: Ajv2020 } = await import("ajv/dist/2020");
+    const ajv = new Ajv2020({ strict: true, allErrors: true });
     const schema = JSON.parse(readFileSync("schemas/state-manual.schema.json", "utf8"));
     const validate = ajv.compile(schema);
 

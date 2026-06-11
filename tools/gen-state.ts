@@ -94,10 +94,10 @@ export function genSlices(plansDir: string = ".omc/plans"): SliceEntry[] {
   });
 }
 
-/** Generate spec entries from spec/requirements.md and test/ directory. */
+/** Generate spec entries from spec/requirements.md and test/ + web/src/ directories. */
 export function genSpecs(
   specPath: string = "spec/requirements.md",
-  testDirs: string[] = ["test"]
+  testDirs: string[] = ["test", "web/src"]
 ): SpecEntry[] {
   const testDirsExisting = testDirs.filter((d) => existsSync(d));
   return parseSpecs(specPath, testDirsExisting);
@@ -163,9 +163,9 @@ if (isCheck) {
     process.exit(2);
   }
 
-  // Dynamic import of Ajv (ESM-compatible)
-  const { default: Ajv } = await import("ajv");
-  const ajv = new Ajv({ strict: true, allErrors: true });
+  // Dynamic import of Ajv2020 to match repo convention (ajv/dist/2020, not draft-07)
+  const { default: Ajv2020 } = await import("ajv/dist/2020");
+  const ajv = new Ajv2020({ strict: true, allErrors: true });
   const schema = JSON.parse(readFileSync(schemaPath, "utf8"));
   const validate = ajv.compile(schema);
   const manual = JSON.parse(readFileSync(manualPath, "utf8"));
