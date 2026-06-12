@@ -30,12 +30,16 @@ jobs:
       # Skip-guard (Architect F8): reads the marker from the push event payload
       # before checkout — credential-agnostic so it works for any commit author.
       # Sets the step output `skip=true`; all subsequent steps check this output.
+      # SUBJECT LINE ONLY: commit bodies may legitimately *mention* the marker
+      # (e.g. squash bodies carrying PR descriptions — this false-skipped run 1);
+      # the bot's own commits always carry the marker in their subject.
       - name: Check for bot-enrichment marker
         id: guard
         env:
           COMMIT_MSG: ${{ github.event.head_commit.message }}
         run: |
-          if echo "$COMMIT_MSG" | grep -q '\[bot-enrichment\]'; then
+          SUBJECT="$(printf '%s' "$COMMIT_MSG" | head -n 1)"
+          if printf '%s' "$SUBJECT" | grep -qF '[bot-enrichment]'; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
             echo "Head commit is a bot-enrichment merge — will skip all work."
           else
