@@ -45,7 +45,7 @@ input in plain mode; only `--enrich` (workflow-only) fills empty cells from git 
 | SPEC-LAG-1 | testable | Macro dynamics | `test/lags.test.ts`, `test/session.test.ts` | #52 |
 | SPEC-MANDATE-1 | testable | Mandate evaluator | `test/engine-params-loaders.test.ts`, `test/mandate.test.ts`, `test/session.test.ts` | #22 |
 | SPEC-META-1 | testable | Repo metadata | `test/gen-docs.test.ts`, `test/gen-state.test.ts` | #111 |
-| SPEC-META-2 | testable | Repo metadata | `test/gen-docs.test.ts` |  |
+| SPEC-META-2 | testable | Repo metadata | `test/gen-docs.test.ts` | #113 |
 | SPEC-META-3 | testable | Repo metadata | `test/routine-dryrun.test.ts` | #112 |
 | SPEC-PARAMS-1 | testable | Engine params | `test/engine-params-loaders.test.ts`, `test/fomc.test.ts` | #13 |
 | SPEC-PROD-1 | testable | Macro dynamics | `test/productivity.test.ts` | #81 |
