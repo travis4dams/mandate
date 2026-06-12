@@ -13,12 +13,6 @@
     "tech": 2,
     "traits": 1
   },
-  "manual": {
-    "activeSlice": "slice-4",
-    "gates": [],
-    "notes": "",
-    "parked": []
-  },
   "slices": [
     {
       "checkboxes": {
@@ -26,12 +20,12 @@
         "total": 14
       },
       "file": "mandate-slice-1-volcker-plan.md",
-      "title": "Consensus Plan: MANDATE \u2014 Vertical Slice 1 (1979 Volcker, engine-only)"
+      "title": "Consensus Plan: MANDATE — Vertical Slice 1 (1979 Volcker, engine-only)"
     },
     {
       "checkboxes": null,
       "file": "mandate-slice-2-engine-and-react-ui.md",
-      "title": "Consensus Plan: MANDATE \u2014 Vertical Slice 2 (Rich engine + React inspector UI)"
+      "title": "Consensus Plan: MANDATE — Vertical Slice 2 (Rich engine + React inspector UI)"
     },
     {
       "checkboxes": {
@@ -39,12 +33,12 @@
         "total": 40
       },
       "file": "mandate-slice-3-content-and-debt.md",
-      "title": "MANDATE Slice 3 \u2014 Content Expansion + Deferred Tech Debt Implementation Plan"
+      "title": "MANDATE Slice 3 — Content Expansion + Deferred Tech Debt Implementation Plan"
     },
     {
       "checkboxes": null,
       "file": "mandate-slice-4-self-maintaining-metadata.md",
-      "title": "MANDATE Slice 4 \u2014 Self-Maintaining Repo Metadata (Consensus Plan)"
+      "title": "MANDATE Slice 4 — Self-Maintaining Repo Metadata (Consensus Plan)"
     }
   ],
   "specs": [
