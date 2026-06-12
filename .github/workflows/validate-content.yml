@@ -6,10 +6,6 @@ on:
   push:
     branches: [main]
   pull_request:
-    paths:
-      - "content/**"
-      - "schemas/**"
-      - "src/content/**"
 
 jobs:
   validate:

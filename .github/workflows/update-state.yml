@@ -1,0 +1,121 @@
+name: Update State and Docs
+
+# Post-merge enrichment workflow (Slice 4, Architect F1/F8).
+#
+# Triggers on every push to main. Skips when the head commit already contains
+# the [bot-enrichment] marker so enrichment merges never trigger a second cycle.
+#
+# Requires:
+#   - secret ENRICHMENT_TOKEN: fine-grained PAT with contents:write and
+#     pull-requests:write on this repo (operator sets this up; see plan §PR 4).
+#   - repo setting allow_auto_merge: true (operator enables via gh api).
+#   - required status checks include build-and-test, validate, trace so the
+#     bot PR is actually gated before auto-merge fires.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: update-state
+  cancel-in-progress: false
+
+jobs:
+  update-state:
+    runs-on: ubuntu-latest
+    steps:
+      # Skip-guard (Architect F8): reads the marker from the push event payload
+      # before checkout — credential-agnostic so it works for any commit author.
+      # Sets the step output `skip=true`; all subsequent steps check this output.
+      - name: Check for bot-enrichment marker
+        id: guard
+        env:
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+        run: |
+          if echo "$COMMIT_MSG" | grep -q '\[bot-enrichment\]'; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Head commit is a bot-enrichment merge — will skip all work."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v6
+        if: steps.guard.outputs.skip != 'true'
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.ENRICHMENT_TOKEN }}
+
+      - uses: actions/setup-node@v4
+        if: steps.guard.outputs.skip != 'true'
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        if: steps.guard.outputs.skip != 'true'
+        run: npm ci
+
+      - name: Regenerate STATE.json
+        if: steps.guard.outputs.skip != 'true'
+        run: npm run state:gen
+
+      - name: Regenerate docs (enrich mode — reads git history at fetch-depth 0)
+        # plain docs:gen is the contributor/PR-gate command; --enrich is
+        # exclusively for this workflow (full checkout, fills empty PR cells).
+        if: steps.guard.outputs.skip != 'true'
+        run: npx tsx tools/gen-docs.ts --enrich
+
+      - name: Check for changes
+        if: steps.guard.outputs.skip != 'true'
+        id: diff
+        run: |
+          if git diff --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Configure git author
+        if: steps.guard.outputs.skip != 'true' && steps.diff.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Create enrichment branch, commit, and push
+        if: steps.guard.outputs.skip != 'true' && steps.diff.outputs.changed == 'true'
+        env:
+          MERGED_SHA: ${{ github.event.head_commit.id }}
+          GH_TOKEN: ${{ secrets.ENRICHMENT_TOKEN }}
+        run: |
+          BRANCH="bot/update-state-${{ github.run_id }}"
+          git checkout -b "$BRANCH"
+          git add STATE.json docs/ README.md
+          git commit -m "chore: regenerate STATE/docs after ${MERGED_SHA} [bot-enrichment]
+
+          Co-Authored-By: github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
+          # Push via HTTPS with the PAT so that CI triggers on the resulting PR.
+          # The default GITHUB_TOKEN would not trigger required checks (Architect F1).
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
+          git push origin "$BRANCH"
+
+      - name: Open PR and enable auto-merge
+        if: steps.guard.outputs.skip != 'true' && steps.diff.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.ENRICHMENT_TOKEN }}
+          MERGED_SHA: ${{ github.event.head_commit.id }}
+        run: |
+          BRANCH="bot/update-state-${{ github.run_id }}"
+          PR_URL=$(gh pr create \
+            --title "chore: regenerate STATE/docs [bot-enrichment]" \
+            --body "Automated post-merge enrichment: regenerates \`STATE.json\` and \`docs/\` after merging \`${MERGED_SHA}\`.
+
+          The commit message contains \`[bot-enrichment]\` so this PR's own merge will not trigger a second enrichment cycle.
+
+          This PR was created automatically by the \`update-state\` workflow." \
+            --head "$BRANCH" \
+            --base main)
+          echo "Opened enrichment PR: $PR_URL"
+          gh pr merge --auto --squash "$PR_URL"
