@@ -2,8 +2,10 @@
 // trajectory so far (SPEC-WEB-3 ChartsPanel), and controls to advance time.
 // SPEC-WEB-4 adds the FOMC meeting panel so the Chair can propose rates;
 // SPEC-WEB-5 adds stance controls and advance-to-next-meeting.
+// SPEC-WEB-9: inflation/unemployment tiles and chart series show fogged
+// observations (Session.observed), plus mandate status, long_rate, output_gap.
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useSession } from "./useSession";
 import { t } from "./loc";
 import { MeetingPanel } from "./MeetingPanel";
@@ -29,6 +31,23 @@ export function Dashboard(): JSX.Element {
     catch (e) { setBtnError(e instanceof Error ? e.message : String(e)); }
   }
 
+  // SPEC-WEB-9: the player sees observations, not truth. Substitute fogged
+  // inflation/unemployment into each trajectory point so the chart (and its
+  // fog bands) center on what was actually observed each month.
+  const foggedTrajectory = useMemo(
+    () =>
+      trajectory.map((snap, i) => ({
+        ...snap,
+        vars: {
+          ...snap.vars,
+          inflation: session.observed("inflation", i),
+          unemployment: session.observed("unemployment", i),
+        },
+      })),
+    [session, trajectory],
+  );
+  const mandateOk = session.mandateOnTarget();
+
   return (
     <div style={{ fontFamily: "system-ui, sans-serif", maxWidth: 960, margin: "0 auto", padding: "24px" }}>
       <header>
@@ -48,17 +67,42 @@ export function Dashboard(): JSX.Element {
       >
         <Stat label={t("ui.dashboard.stat.date")} value={current.date} />
         <Stat label={t("ui.dashboard.stat.policy_rate")} value={fmtPercent(current.vars.policy_rate)} />
-        <Stat label={t("ui.dashboard.stat.inflation")} value={fmtPercent(current.vars.inflation)} />
-        <Stat label={t("ui.dashboard.stat.unemployment")} value={fmtPercent(current.vars.unemployment)} />
+        <Stat label={t("ui.dashboard.stat.inflation")} value={fmtPercent(session.observed("inflation"))} testId="stat-inflation" />
+        <Stat label={t("ui.dashboard.stat.unemployment")} value={fmtPercent(session.observed("unemployment"))} testId="stat-unemployment" />
         <Stat label={t("ui.dashboard.stat.credibility")} value={fmtPlain(current.vars.credibility, 1)} />
         <Stat label={t("ui.dashboard.stat.expectations_anchor")} value={fmtPercent(current.vars.expectations_anchor)} />
         <Stat label={t("ui.dashboard.stat.months_below_anchor")} value={fmtPlain(current.vars.months_below_anchor, 0)} />
         <Stat label={t("ui.dashboard.stat.months_elapsed")} value={String(trajectory.length - 1)} />
+        <Stat label={t("ui.dashboard.stat.long_rate")} value={fmtPercent(current.vars.long_rate)} testId="stat-long-rate" />
+        <Stat label={t("ui.dashboard.stat.output_gap")} value={fmtPercent(current.vars.output_gap)} testId="stat-output-gap" />
+        <div
+          data-testid="mandate-status"
+          style={{
+            border: "1px solid #ddd",
+            borderRadius: 6,
+            padding: "10px 12px",
+            background: mandateOk ? "#ebfbee" : "#fff5f5",
+          }}
+        >
+          <div style={{ fontSize: 12, color: "#666", textTransform: "uppercase" }}>
+            {t("ui.mandate.label")}
+          </div>
+          <div
+            style={{
+              fontSize: 20,
+              fontWeight: 600,
+              marginTop: 4,
+              color: mandateOk ? "#2b8a3e" : "#c92a2a",
+            }}
+          >
+            {mandateOk ? t("ui.mandate.on") : t("ui.mandate.off")}
+          </div>
+        </div>
       </section>
 
       <section style={{ margin: "16px 0" }}>
         <h2 style={{ fontSize: 16, marginBottom: 8 }}>{t("ui.dashboard.trajectory_heading")} ({trajectory.length})</h2>
-        <ChartsPanel trajectory={trajectory} />
+        <ChartsPanel trajectory={foggedTrajectory} />
       </section>
 
       <MeetingPanel session={session} briefingId="brief.1979_q3_stagflation" />
@@ -131,11 +175,11 @@ function advanceToNextMeeting(session: Session): void {
   throw new Error("advanceToNextMeeting: no meeting month within 12 months");
 }
 
-function Stat(props: { label: string; value: string }): JSX.Element {
+function Stat(props: { label: string; value: string; testId?: string }): JSX.Element {
   return (
     <div style={{ border: "1px solid #ddd", borderRadius: 6, padding: "10px 12px", background: "#fafafa" }}>
       <div style={{ fontSize: 12, color: "#666", textTransform: "uppercase" }}>{props.label}</div>
-      <div style={{ fontSize: 20, fontWeight: 600, marginTop: 4 }}>{props.value}</div>
+      <div data-testid={props.testId} style={{ fontSize: 20, fontWeight: 600, marginTop: 4 }}>{props.value}</div>
     </div>
   );
 }

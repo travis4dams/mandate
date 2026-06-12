@@ -19,7 +19,8 @@ import { onTarget, loadMandateParams } from "./mandate.js";
 import { adoptDoctrine as _adoptDoctrine, abandonDoctrine as _abandonDoctrine, doctrineFlagKey } from "./doctrine.js";
 import { loadDoctrineCatalog, getDoctrine, HOOK_HANDLERS, type DoctrineEntry } from "../content/doctrines.js";
 import { applySupplyShock, loadShocksParams } from "./shocks.js";
-import { mulberry32, type SeededRng } from "./rng.js";
+import { mulberry32, fnv1a32, type SeededRng } from "./rng.js";
+import { observe } from "./fog.js";
 import type { GameState, GameStateSnapshot } from "./state.js";
 import type { FomcVote, MemberVotePreview } from "./fomc.js";
 import type { Replay } from "../content/replays.js";
@@ -412,6 +413,46 @@ export class Session {
 
     this._rebuildCaches();
     this._notifyListeners();
+  }
+
+  /**
+   * SPEC-WEB-9: fogged observation of a series at a trajectory point.
+   * Applies SPEC-FOG-1 `observe()` (content-driven lag + noise) using a derived
+   * RNG seeded via FNV-1a over `(session seed, snapshot date, seriesId)`. The
+   * derived stream means observations are deterministic — identical inputs give
+   * identical values, and a historical point's observation never changes as play
+   * continues — and side-effect-free: `this._rng` is never consumed, so reading
+   * observations cannot perturb a subsequent `advance()`.
+   * @param seriesId — a series declared in content/engine/fog.json.
+   * @param index — trajectory index to observe (default: the latest point).
+   * @throws {Error} if index is out of range or seriesId is unknown to fog content.
+   */
+  observed(seriesId: string, index?: number): number {
+    const traj = this._trajectoryInternal;
+    const i = index ?? traj.length - 1;
+    const snap = traj[i];
+    if (snap === undefined) {
+      throw new Error(
+        `Session.observed: trajectory index ${i} out of range [0, ${traj.length - 1}]`,
+      );
+    }
+    // Rebuild the history view observe() expects: most recent prior point first.
+    const history: GameStateSnapshot[] = [];
+    for (let k = i - 1; k >= 0; k--) {
+      const prior = traj[k];
+      if (prior !== undefined) history.push(prior);
+    }
+    const pseudo: GameState = { date: snap.date, vars: snap.vars, flags: snap.flags, history };
+    const rng = mulberry32(fnv1a32(`${this._seed}|${snap.date}|${seriesId}`));
+    return observe(pseudo, seriesId, rng);
+  }
+
+  /**
+   * SPEC-WEB-9: whether the economy currently satisfies the mandate
+   * (delegates to the SPEC-MANDATE-1 evaluator with content-loaded params).
+   */
+  mandateOnTarget(): boolean {
+    return onTarget(this._state, loadMandateParams());
   }
 
   /**
