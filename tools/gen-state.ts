@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join, basename } from "node:path";
+import { fileURLToPath } from "node:url";
 
 // SPEC-META-1
 // Emits STATE.json (repo root) with deterministic, tree-only facts:
@@ -131,9 +132,19 @@ function sortedReplacer(_key: string, value: unknown): unknown {
 
 // ---- CLI entry point --------------------------------------------------------
 
+// Import guard (mirrors tools/gen-docs.ts): the CLI block must run ONLY when this
+// file is executed as a script. Without it, importing the module from tests takes
+// the default write branch and silently regenerates STATE.json on disk — which made
+// both the byte-equality test and the CI state:check step vacuous (caught live by
+// the AC-6 red-PR test: a deliberately corrupted STATE.json merged green, PR #117).
+const isMain =
+  typeof import.meta.url === "string" &&
+  process.argv[1] !== undefined &&
+  fileURLToPath(import.meta.url) === process.argv[1];
+
 const isCheck = process.argv.includes("--check");
 
-if (isCheck) {
+if (isMain && isCheck) {
   // --check mode: regenerate to memory, byte-compare with STATE.json,
   //               Ajv-validate state.manual.json against its schema.
   let failed = false;
@@ -182,7 +193,7 @@ if (isCheck) {
     process.exit(2);
   }
   console.log("state:check: STATE.json is up-to-date and state.manual.json is valid.");
-} else {
+} else if (isMain) {
   // Default: write STATE.json
   const state = generateState();
   const output = serialiseState(state);
