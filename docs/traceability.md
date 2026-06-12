@@ -69,4 +69,4 @@ input in plain mode; only `--enrich` (workflow-only) fills empty cells from git 
 | SPEC-WEB-5 | testable | Web UI | `web/src/App.test.tsx`, `web/src/Dashboard.tsx` | #28 |
 | SPEC-WEB-6 | testable | Web UI | `web/src/PersuasionView.test.tsx`, `web/src/PersuasionView.tsx` | #63 |
 | SPEC-WEB-7 | testable | Web UI | `web/src/DoctrinePanel.test.tsx`, `web/src/DoctrinePanel.tsx` | #122 |
-| SPEC-WEB-8 | testable | Web UI | `web/src/MeetingPanel.test.tsx`, `web/src/MeetingPanel.tsx`, `web/src/PersuasionView.test.tsx`, `web/src/PersuasionView.tsx` |  |
+| SPEC-WEB-8 | testable | Web UI | `web/src/MeetingPanel.test.tsx`, `web/src/MeetingPanel.tsx`, `web/src/PersuasionView.test.tsx`, `web/src/PersuasionView.tsx` | #124 |
