@@ -380,6 +380,14 @@
       ]
     },
     {
+      "id": "SPEC-META-3",
+      "section": "Repo metadata",
+      "tag": "testable",
+      "tests": [
+        "test/routine-dryrun.test.ts"
+      ]
+    },
+    {
       "id": "SPEC-PARAMS-1",
       "section": "Engine params",
       "tag": "testable",

@@ -1,0 +1,13 @@
+{
+  "agentTaskIssues": [],
+  "openPRs": [
+    {
+      "number": 55,
+      "title": "SPEC-CRED-4: continuous expectations model",
+      "headRef": "spec/spec-cred-4",
+      "checksGreen": true,
+      "reviewVerdict": "REQUEST_CHANGES",
+      "fixRounds": 0
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "agentTaskIssues": [
+    { "number": 10, "title": "Add fog to unemployment series", "createdAt": "2026-05-01T10:00:00Z" },
+    { "number": 7, "title": "Fix chart tooltip", "createdAt": "2026-04-15T08:00:00Z" }
+  ],
+  "openPRs": []
+}

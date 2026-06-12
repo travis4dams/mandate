@@ -1,0 +1,21 @@
+{
+  "agentTaskIssues": [],
+  "openPRs": [
+    {
+      "number": 60,
+      "title": "SPEC-COMM-1: committee vote model",
+      "headRef": "spec/spec-comm-1",
+      "checksGreen": false,
+      "reviewVerdict": "REQUEST_CHANGES",
+      "fixRounds": 3
+    },
+    {
+      "number": 61,
+      "title": "SPEC-COMM-2: committee voice model",
+      "headRef": "spec/spec-comm-2",
+      "checksGreen": true,
+      "reviewVerdict": "REQUEST_CHANGES",
+      "fixRounds": 2
+    }
+  ]
+}
