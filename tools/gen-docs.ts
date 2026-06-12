@@ -59,8 +59,8 @@ const EXAMPLE_MAP: Record<string, string | null> = {
   briefing: "content/briefings/1979_q3_stagflation.json",
   hearing: "content/hearings/confirmation.json",
   event: "content/events/oil_shock.json",
-  tech: null,
-  traits: null,
+  tech: "content/tech/applied.json",
+  traits: "content/traits/catalog.json",
   committee: "content/committees/1979.json",
   replay: "content/replays/1979_chair_tightening.json",
 };
@@ -399,36 +399,46 @@ export function generateDocs(options: {
 }
 
 // ---- CLI entry point -------------------------------------------------------
+// Guard: only execute when this file is run as a script, not on import.
 
-const isCheck = process.argv.includes("--check");
-const isEnrich = process.argv.includes("--enrich");
+import { fileURLToPath } from "node:url";
 
-if (isCheck) {
-  const generated = generateDocs({ enrich: false });
-  let failed = false;
-  const checks: Array<[string, string]> = [
-    ["README.md", generated.readme],
-    ["docs/content-reference.md", generated.contentReference],
-    ["docs/traceability.md", generated.traceability],
-  ];
-  for (const [path, content] of checks) {
-    if (!existsSync(path)) {
-      console.error(`docs:check: ${path} does not exist — run npm run docs:gen first`);
-      process.exit(2);
+const isMain =
+  typeof import.meta.url === "string" &&
+  process.argv[1] !== undefined &&
+  fileURLToPath(import.meta.url) === process.argv[1];
+
+if (isMain) {
+  const isCheck = process.argv.includes("--check");
+  const isEnrich = process.argv.includes("--enrich");
+
+  if (isCheck) {
+    const generated = generateDocs({ enrich: false });
+    let failed = false;
+    const checks: Array<[string, string]> = [
+      ["README.md", generated.readme],
+      ["docs/content-reference.md", generated.contentReference],
+      ["docs/traceability.md", generated.traceability],
+    ];
+    for (const [path, content] of checks) {
+      if (!existsSync(path)) {
+        console.error(`docs:check: ${path} does not exist — run npm run docs:gen first`);
+        process.exit(2);
+      }
+      const committed = readFileSync(path, "utf8");
+      if (content !== committed) {
+        console.error(`docs:check: ${path} is stale — run npm run docs:gen to regenerate`);
+        failed = true;
+      }
     }
-    const committed = readFileSync(path, "utf8");
-    if (content !== committed) {
-      console.error(`docs:check: ${path} is stale — run npm run docs:gen to regenerate`);
-      failed = true;
-    }
+    if (failed) process.exit(2);
+    console.log("docs:check: all three doc artifacts are up-to-date.");
+  } else {
+    // Write mode (plain or --enrich)
+    const generated = generateDocs({ enrich: isEnrich });
+    writeFileSync("README.md", generated.readme, "utf8");
+    writeFileSync("docs/content-reference.md", generated.contentReference, "utf8");
+    writeFileSync("docs/traceability.md", generated.traceability, "utf8");
+    console.log(`Wrote README.md, docs/content-reference.md, docs/traceability.md${isEnrich ? " (--enrich)" : ""}`);
   }
-  if (failed) process.exit(2);
-  console.log("docs:check: all three doc artifacts are up-to-date.");
-} else {
-  // Write mode (plain or --enrich)
-  const generated = generateDocs({ enrich: isEnrich });
-  writeFileSync("README.md", generated.readme, "utf8");
-  writeFileSync("docs/content-reference.md", generated.contentReference, "utf8");
-  writeFileSync("docs/traceability.md", generated.traceability, "utf8");
-  console.log(`Wrote README.md, docs/content-reference.md, docs/traceability.md${isEnrich ? " (--enrich)" : ""}`);
 }
