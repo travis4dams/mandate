@@ -4,7 +4,7 @@
 // populated (node:fs is stubbed in the web test environment).
 import "./engine-content";
 import { describe, it, expect, afterEach } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, act, fireEvent } from "@testing-library/react";
 import { App } from "./App";
 import { Session } from "../../src/engine/session";
 import { t } from "./loc";
@@ -12,6 +12,16 @@ import { t } from "./loc";
 afterEach(() => {
   cleanup();
 });
+
+// Boot through the start screen into the 1979 scenario at the default seed 42
+// so the twin-session observations below line up with what the UI displays.
+function bootGame(): ReturnType<typeof render> {
+  const result = render(<App />);
+  act(() => {
+    fireEvent.click(screen.getByTestId("start-scenario-scen.1979_stagflation"));
+  });
+  return result;
+}
 
 // Twin session: same scenario/seed/committee as the App's Dashboard, so its
 // observed() values are exactly what the UI must display (derived-RNG determinism).
@@ -25,7 +35,7 @@ describe("Dashboard fog + mandate surfacing", () => {
   it("inflation and unemployment tiles show the fogged observations", () => {
     // SPEC-WEB-9
     const twin = twinSession();
-    render(<App />);
+    bootGame();
     expect(screen.getByTestId("stat-inflation").textContent).toBe(
       fmtPercent(twin.observed("inflation")),
     );
@@ -41,14 +51,14 @@ describe("Dashboard fog + mandate surfacing", () => {
     if (trueInflation === undefined) throw new Error("scenario missing inflation");
     // Content gives inflation a nonzero noise_scale, so observation ≠ truth here.
     expect(twin.observed("inflation")).not.toBe(trueInflation);
-    render(<App />);
+    bootGame();
     expect(screen.getByTestId("stat-inflation").textContent).not.toBe(fmtPercent(trueInflation));
   });
 
   it("shows the mandate chip reflecting mandateOnTarget()", () => {
     // SPEC-WEB-9 — 1979 stagflation starts off-target.
     const twin = twinSession();
-    render(<App />);
+    bootGame();
     const chip = screen.getByTestId("mandate-status");
     const expected = twin.mandateOnTarget() ? t("ui.mandate.on") : t("ui.mandate.off");
     expect(chip.textContent).toContain(expected);
@@ -57,7 +67,7 @@ describe("Dashboard fog + mandate surfacing", () => {
 
   it("renders long_rate and output_gap stat tiles", () => {
     // SPEC-WEB-9 — cold-start: both vars are absent at boot and display "—".
-    const { container } = render(<App />);
+    const { container } = bootGame();
     expect(container.textContent).toContain(t("ui.dashboard.stat.long_rate"));
     expect(container.textContent).toContain(t("ui.dashboard.stat.output_gap"));
     expect(screen.getByTestId("stat-long-rate").textContent).toBe("—");

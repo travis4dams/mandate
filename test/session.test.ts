@@ -894,3 +894,41 @@ describe("Session.observed and mandateOnTarget (SPEC-WEB-9)", () => {
     expect(() => s.observed("not_a_series")).toThrow();
   });
 });
+
+// SPEC-WEB-10: fromScenario varDeltas — hearing modifiers applied to the start state.
+describe("Session.fromScenario varDeltas (SPEC-WEB-10)", () => {
+  it("applies additive deltas to the scenario's starting vars", () => {
+    // SPEC-WEB-10
+    const base = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    const adjusted = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979", {
+      varDeltas: { credibility: 5, policy_rate: -0.0025 },
+    });
+    const baseCred = base.current.vars.credibility;
+    const baseRate = base.current.vars.policy_rate;
+    expect(baseCred).toBeDefined();
+    expect(baseRate).toBeDefined();
+    expect(adjusted.current.vars.credibility).toBe((baseCred ?? 0) + 5);
+    expect(adjusted.current.vars.policy_rate).toBeCloseTo((baseRate ?? 0) - 0.0025, 10);
+  });
+
+  it("omitting opts leaves the starting state untouched", () => {
+    // SPEC-WEB-10
+    const a = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    const b = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979", {});
+    expect(a.current).toEqual(b.current);
+  });
+
+  it("throws on an unknown var and on a non-finite delta", () => {
+    // SPEC-WEB-10
+    expect(() =>
+      Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979", {
+        varDeltas: { not_a_var: 1 },
+      }),
+    ).toThrow(/not a var/);
+    expect(() =>
+      Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979", {
+        varDeltas: { credibility: Number.NaN },
+      }),
+    ).toThrow(/not finite/);
+  });
+});

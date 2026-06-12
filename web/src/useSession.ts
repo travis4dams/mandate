@@ -17,13 +17,14 @@ export function useSession(
   scenarioId: string,
   seed: number,
   committeeId: string,
+  opts?: { varDeltas?: Readonly<Record<string, number>> },
 ): { session: Session; current: GameStateSnapshot; trajectory: readonly GameStateSnapshot[] } {
   // useRef so the Session is created once per mount and never discarded when
   // scenarioId/seed/committeeId identity changes (e.g. parent re-renders with
   // new literals). useMemo would silently drop accumulated history on re-render.
   const sessionRef = useRef<Session | null>(null);
   if (sessionRef.current === null) {
-    sessionRef.current = Session.fromScenario(scenarioId, seed, committeeId);
+    sessionRef.current = Session.fromScenario(scenarioId, seed, committeeId, opts);
   }
   const session = sessionRef.current;
 

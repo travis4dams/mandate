@@ -11,5 +11,7 @@
     "policy_rate": 0.0025,
     "months_below_anchor": 0
   },
-  "flags": {}
+  "flags": {},
+  "playable": true,
+  "briefing": "brief.2020_q1_pandemic"
 }

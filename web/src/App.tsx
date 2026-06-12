@@ -1,8 +1,11 @@
 // SPEC-WEB-2: App renders the live Dashboard wrapped in an ErrorBoundary so
 // Session.fromScenario() failures (missing content, bad seed) surface as a message
 // rather than a blank/broken React tree.
-import { Component, type ReactNode } from "react";
+// SPEC-WEB-10: a start screen precedes the game — scenario picker, optional
+// seed, and the confirmation-hearing path; the chosen config boots Dashboard.
+import { Component, useState, type ReactNode } from "react";
 import { Dashboard } from "./Dashboard";
+import { StartScreen, type StartConfig } from "./StartScreen";
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
   constructor(props: { children: ReactNode }) {
@@ -25,9 +28,19 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
 }
 
 export function App(): JSX.Element {
+  const [config, setConfig] = useState<StartConfig | null>(null);
   return (
     <ErrorBoundary>
-      <Dashboard />
+      {config === null ? (
+        <StartScreen onStart={setConfig} />
+      ) : (
+        <Dashboard
+          scenarioId={config.scenarioId}
+          seed={config.seed}
+          briefingId={config.briefingId}
+          varDeltas={config.varDeltas}
+        />
+      )}
     </ErrorBoundary>
   );
 }

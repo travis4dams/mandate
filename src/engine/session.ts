@@ -197,9 +197,32 @@ export class Session {
    * Construct a Session from a scenario content file.
    * seed initialises the mulberry32 RNG that drives per-month supply shocks in advance() (SPEC-SHOCK-1 / SPEC-SIM-1).
    * committeeId identifies the FOMC committee used by proposeRate (e.g. "comm.fomc_1979").
+   * opts.varDeltas: optional additive adjustments applied to the scenario's
+   * starting vars before play begins (e.g. confirmation-hearing state
+   * modifiers). Each key must name a var present in the scenario; deltas must
+   * be finite. Throws otherwise.
    */
-  static fromScenario(scenarioId: string, seed: number, committeeId: string): Session {
+  static fromScenario(
+    scenarioId: string,
+    seed: number,
+    committeeId: string,
+    opts?: { varDeltas?: Readonly<Record<string, number>> },
+  ): Session {
     const state = loadScenario(scenarioId, [...REQUIRED_VARS]);
+    if (opts?.varDeltas !== undefined) {
+      for (const [key, delta] of Object.entries(opts.varDeltas)) {
+        const base = state.vars[key];
+        if (base === undefined) {
+          throw new Error(
+            `Session.fromScenario: varDeltas target "${key}" is not a var in scenario "${scenarioId}"`,
+          );
+        }
+        if (!Number.isFinite(delta)) {
+          throw new Error(`Session.fromScenario: varDeltas["${key}"] is not finite`);
+        }
+        state.vars[key] = base + delta;
+      }
+    }
     return new Session(state, seed, null, committeeId);
   }
 

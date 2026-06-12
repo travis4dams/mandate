@@ -18,6 +18,8 @@ An initial game state. Logic only — name and desc are localization keys, not i
 | `desc` | string | yes | Localization key for the scenario description, e.g. scen.1979_stagflation.desc. |
 | `vars` | object | yes | Initial continuous economic and institutional variables. |
 | `flags` | object | yes | Initial boolean world facts. |
+| `playable` | boolean | no | True for scenarios offered by the start screen; absent for test fixtures. |
+| `briefing` | string | no | Optional briefing content id for this scenario's meetings. |
 
 **Example:** [`content/scenarios/1979_stagflation.json`](content/scenarios/1979_stagflation.json)
 
