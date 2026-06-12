@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach } from "vitest";
 import { render, screen, act, fireEvent, cleanup } from "@testing-library/react";
 import { App } from "./App.js";
+import { Session } from "../../src/engine/session.js";
 
 afterEach(() => {
   cleanup();
@@ -23,10 +24,15 @@ describe("App", () => {
     // 1979 scenario starting vars: policy_rate=0.1075, inflation=0.114,
     // unemployment=0.058, credibility=25, expectations_anchor=0.090,
     // months_below_anchor=6. trajectory.length === 1 at boot → "0" months elapsed.
+    // Inflation/unemployment tiles show fogged observations (Session.observed,
+    // see the data-fog requirement), so derive expected text from a twin session
+    // with the same scenario/seed rather than the raw scenario vars.
+    const twin = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    const pct = (n: number): string => `${(n * 100).toFixed(2)}%`;
     expect(screen.getAllByText("1979-08").length).toBeGreaterThan(0);
     expect(container.textContent).toContain("10.75%"); // policy_rate
-    expect(container.textContent).toContain("11.40%"); // inflation
-    expect(container.textContent).toContain("5.80%");  // unemployment
+    expect(screen.getByTestId("stat-inflation").textContent).toBe(pct(twin.observed("inflation")));
+    expect(screen.getByTestId("stat-unemployment").textContent).toBe(pct(twin.observed("unemployment")));
     expect(container.textContent).toContain("25.0");   // credibility
     expect(container.textContent).toContain("9.00%");  // expectations_anchor
     expect(container.textContent).toContain("6");      // months_below_anchor

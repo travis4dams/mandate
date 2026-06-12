@@ -611,6 +611,16 @@
         "web/src/PersuasionView.test.tsx",
         "web/src/PersuasionView.tsx"
       ]
+    },
+    {
+      "id": "SPEC-WEB-9",
+      "section": "Web UI",
+      "tag": "testable",
+      "tests": [
+        "test/session.test.ts",
+        "web/src/Dashboard.test.tsx",
+        "web/src/Dashboard.tsx"
+      ]
     }
   ]
 }

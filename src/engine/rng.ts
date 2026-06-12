@@ -12,6 +12,20 @@ export interface SeededRng {
   restore(state: number): void;
 }
 
+/**
+ * FNV-1a 32-bit hash of a string. Used to derive per-key RNG seeds (e.g. a
+ * fogged-observation stream keyed by seed/date/series) without consuming any
+ * existing RNG stream. Pure and deterministic (SPEC-SIM-1-safe).
+ */
+export function fnv1a32(s: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return h >>> 0;
+}
+
 /** Deterministic PRNG (mulberry32). Returns a SeededRng yielding floats in [0, 1). */
 export function mulberry32(seed: number): SeededRng {
   let a = seed >>> 0;

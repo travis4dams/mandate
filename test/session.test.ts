@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
+import { readFileSync } from "node:fs";
 import { Session, NotMeetingMonthError, marketsSurprised } from "../src/engine/session.js";
 import type { ForwardGuidanceStance } from "../src/engine/session.js";
 import * as mandateModule from "../src/engine/mandate.js";
@@ -790,5 +791,106 @@ describe("SPEC-DOCT-2: dot-plot meeting effect wired into Session.proposeRate()"
 
     // Net credibility change must be less than anchoring_bonus alone (spread cost bites)
     expect(credAfterPropose - credAfterAdopt).toBeLessThan(params.anchoring_bonus);
+  });
+});
+
+// SPEC-WEB-9: fogged observation accessor + mandate status on Session.
+describe("Session.observed and mandateOnTarget (SPEC-WEB-9)", () => {
+  const makeSession = (): Session =>
+    Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+  const fogParams = (): Record<string, { noise_scale: number; lag_months: number }> =>
+    JSON.parse(readFileSync("content/engine/fog.json", "utf8"));
+
+  it("is deterministic: same seed, date, and series give identical observations", () => {
+    // SPEC-WEB-9
+    const a = makeSession();
+    const b = makeSession();
+    expect(a.observed("inflation")).toBe(b.observed("inflation"));
+    expect(a.observed("inflation")).toBe(a.observed("inflation"));
+  });
+
+  it("a zero-noise, zero-lag series passes the true var through exactly", () => {
+    // SPEC-WEB-9 — content-driven: policy_rate is configured noiseless/unlagged.
+    const fog = fogParams();
+    expect(fog.policy_rate?.noise_scale).toBe(0);
+    expect(fog.policy_rate?.lag_months).toBe(0);
+    const s = makeSession();
+    expect(s.observed("policy_rate")).toBe(s.current.vars.policy_rate);
+  });
+
+  it("a noisy series differs from the lagged truth, within a 6-sigma bound", () => {
+    // SPEC-WEB-9 — content-driven: inflation has noise_scale > 0.
+    const fog = fogParams();
+    const noiseScale = fog.inflation?.noise_scale ?? 0;
+    const lag = fog.inflation?.lag_months ?? 0;
+    expect(noiseScale).toBeGreaterThan(0);
+    const s = makeSession();
+    s.advance(6);
+    const traj = s.trajectory;
+    const laggedTruth = traj[traj.length - 1 - lag]?.vars.inflation;
+    expect(laggedTruth).toBeDefined();
+    const observed = s.observed("inflation");
+    expect(observed).not.toBe(laggedTruth);
+    expect(Math.abs(observed - (laggedTruth ?? NaN))).toBeLessThan(6 * noiseScale);
+  });
+
+  it("distinct series draw distinct noise (decorrelated derived streams)", () => {
+    // SPEC-WEB-9 — z-scores must differ across series at the same date.
+    const fog = fogParams();
+    const s = makeSession();
+    s.advance(6);
+    const traj = s.trajectory;
+    const z = (series: "inflation" | "unemployment"): number => {
+      const p = fog[series];
+      if (p === undefined) throw new Error(`fog params missing ${series}`);
+      const truth = traj[traj.length - 1 - p.lag_months]?.vars[series];
+      if (truth === undefined) throw new Error(`truth missing for ${series}`);
+      return (s.observed(series) - truth) / p.noise_scale;
+    };
+    expect(z("inflation")).not.toBe(z("unemployment"));
+  });
+
+  it("historical observations are stable after further play", () => {
+    // SPEC-WEB-9
+    const s = makeSession();
+    s.advance(3);
+    const at3 = s.observed("inflation", 3);
+    s.advance(9);
+    expect(s.observed("inflation", 3)).toBe(at3);
+  });
+
+  it("reading observations never perturbs the trajectory (twin sessions)", () => {
+    // SPEC-WEB-9
+    const a = makeSession();
+    const b = makeSession();
+    for (let i = 0; i < 5; i++) {
+      a.observed("inflation");
+      a.observed("unemployment");
+      a.mandateOnTarget();
+    }
+    a.advance(12);
+    b.advance(12);
+    expect(a.trajectory).toEqual(b.trajectory);
+  });
+
+  it("mandateOnTarget matches the SPEC-MANDATE-1 evaluator on the current state", () => {
+    // SPEC-WEB-9
+    const s = makeSession();
+    const params = mandateModule.loadMandateParams();
+    const direct = mandateModule.onTarget(
+      { date: s.current.date, vars: { ...s.current.vars }, flags: { ...s.current.flags }, history: [] },
+      params,
+    );
+    expect(s.mandateOnTarget()).toBe(direct);
+    // 1979 stagflation starts far off target — pin the meaningful direction.
+    expect(s.mandateOnTarget()).toBe(false);
+  });
+
+  it("throws on an out-of-range index and an unknown series", () => {
+    // SPEC-WEB-9
+    const s = makeSession();
+    expect(() => s.observed("inflation", 99)).toThrow(/out of range/);
+    expect(() => s.observed("inflation", -1)).toThrow(/out of range/);
+    expect(() => s.observed("not_a_series")).toThrow();
   });
 });
