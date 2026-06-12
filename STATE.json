@@ -153,6 +153,7 @@
       "tag": "testable",
       "tests": [
         "test/chair-capital.test.ts",
+        "web/src/MeetingPanel.tsx",
         "web/src/PersuasionView.test.tsx",
         "web/src/PersuasionView.tsx"
       ]
@@ -598,6 +599,17 @@
       "tests": [
         "web/src/DoctrinePanel.test.tsx",
         "web/src/DoctrinePanel.tsx"
+      ]
+    },
+    {
+      "id": "SPEC-WEB-8",
+      "section": "Web UI",
+      "tag": "testable",
+      "tests": [
+        "web/src/MeetingPanel.test.tsx",
+        "web/src/MeetingPanel.tsx",
+        "web/src/PersuasionView.test.tsx",
+        "web/src/PersuasionView.tsx"
       ]
     }
   ]
