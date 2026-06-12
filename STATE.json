@@ -590,6 +590,15 @@
         "web/src/PersuasionView.test.tsx",
         "web/src/PersuasionView.tsx"
       ]
+    },
+    {
+      "id": "SPEC-WEB-7",
+      "section": "Web UI",
+      "tag": "testable",
+      "tests": [
+        "web/src/DoctrinePanel.test.tsx",
+        "web/src/DoctrinePanel.tsx"
+      ]
     }
   ]
 }

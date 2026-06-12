@@ -8,6 +8,7 @@ import { useSession } from "./useSession";
 import { t } from "./loc";
 import { MeetingPanel } from "./MeetingPanel";
 import { ChartsPanel } from "./ChartsPanel";
+import { DoctrinePanel } from "./DoctrinePanel";
 import type { Session } from "../../src/engine/session";
 
 const fmtPercent = (n: number | undefined): string =>
@@ -61,6 +62,8 @@ export function Dashboard(): JSX.Element {
       </section>
 
       <MeetingPanel session={session} briefingId="brief.1979_q3_stagflation" />
+
+      <DoctrinePanel session={session} current={current} />
 
       <section style={{ display: "flex", flexWrap: "wrap", gap: 8, margin: "16px 0" }}>
         <button onClick={() => run(() => session.advance(1))}>{t("ui.dashboard.button.advance_1")}</button>
