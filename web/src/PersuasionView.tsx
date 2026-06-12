@@ -169,15 +169,56 @@ function ScenarioBriefingPanel(props: { briefingId: string }): JSX.Element | nul
   );
 }
 
-// Placeholder stub for SPEC-COMM-7 (Chair capital spend control not yet implemented).
-function SpendCapitalControl(): JSX.Element {
+// SPEC-WEB-8: Chair-capital spend control (wires SPEC-COMM-7). When
+// `chairCapital` is undefined the control degrades to the "—" placeholder
+// (SPEC-WEB-6 graceful-degradation contract for prop-only renders).
+function SpendCapitalControl(props: {
+  previews: readonly MemberVotePreview[];
+  chairCapital?: number;
+  capitalSpend?: Readonly<Record<string, number>>;
+  maxSpendPerMember?: number;
+  onSpendChange?: (memberId: string, value: number) => void;
+}): JSX.Element {
+  const { previews, chairCapital, capitalSpend, maxSpendPerMember, onSpendChange } = props;
+  if (chairCapital === undefined) {
+    return (
+      <div style={{ marginTop: 10, fontSize: 13, color: "#999" }}>
+        {t("ui.persuasion.capital.label")}:{" "}
+        <span data-testid="chair-capital-display">{t("ui.persuasion.capital.placeholder")}</span>
+      </div>
+    );
+  }
+  const spend = capitalSpend ?? {};
+  const allocated = Object.values(spend).reduce((sum, v) => sum + v, 0);
   return (
-    <div style={{ marginTop: 10, fontSize: 13, color: "#999" }}>
-      {t("ui.persuasion.capital.label")}:{" "}
-      <span data-testid="chair-capital-display">{t("ui.persuasion.capital.placeholder")}</span>
-      <span style={{ marginLeft: 6, fontSize: 11 }}>
-        ({t("ui.persuasion.capital.pending")})
-      </span>
+    <div style={{ marginTop: 10, fontSize: 13 }}>
+      <div>
+        {t("ui.persuasion.capital.label")}:{" "}
+        <strong data-testid="chair-capital-display">{chairCapital}</strong>
+        {" · "}
+        {t("ui.persuasion.capital.allocated")}{" "}
+        <span data-testid="chair-capital-allocated">{allocated}</span>
+      </div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 6 }}>
+        {previews.map((p) => (
+          <label
+            key={p.memberId}
+            style={{ fontSize: 12, display: "flex", gap: 4, alignItems: "center" }}
+          >
+            {t(p.nameKey)}
+            <input
+              type="number"
+              min={0}
+              max={maxSpendPerMember}
+              step={1}
+              value={spend[p.memberId] ?? 0}
+              onChange={(e) => onSpendChange?.(p.memberId, parseFloat(e.target.value) || 0)}
+              data-testid={`capital-spend-${p.memberId}`}
+              style={{ width: 52, padding: "2px 4px", fontFamily: "monospace" }}
+            />
+          </label>
+        ))}
+      </div>
     </div>
   );
 }
@@ -191,15 +232,27 @@ export interface PersuasionViewProps {
    *  When absent the briefing panel is hidden; when present but not found it
    *  degrades silently — SPEC-WEB-6 degrade-gracefully contract. */
   briefingId?: string;
+  /** SPEC-WEB-8: Chair-capital wiring. When `chairCapital` is undefined the
+   *  spend control degrades to the "—" placeholder. */
+  chairCapital?: number;
+  capitalSpend?: Readonly<Record<string, number>>;
+  maxSpendPerMember?: number;
+  onSpendChange?: (memberId: string, value: number) => void;
 }
 
 export function PersuasionView(props: PersuasionViewProps): JSX.Element {
-  const { previews, proposed, briefingId } = props;
+  const { previews, proposed, briefingId, chairCapital, capitalSpend, maxSpendPerMember, onSpendChange } = props;
   return (
     <div style={{ marginTop: 12 }}>
       <DotPlot dots={previews} proposed={proposed} />
       {briefingId !== undefined && <ScenarioBriefingPanel briefingId={briefingId} />}
-      <SpendCapitalControl />
+      <SpendCapitalControl
+        previews={previews}
+        chairCapital={chairCapital}
+        capitalSpend={capitalSpend}
+        maxSpendPerMember={maxSpendPerMember}
+        onSpendChange={onSpendChange}
+      />
     </div>
   );
 }

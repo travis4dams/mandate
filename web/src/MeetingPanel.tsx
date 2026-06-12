@@ -2,10 +2,13 @@
 // per-member preferred rates (so the Chair can see who would dissent and by how
 // much before voting), the proposed-rate input, the vote button, and the most
 // recent vote result with credibility delta.
+// SPEC-WEB-8: owns the per-member Chair-capital spend map (SPEC-COMM-7) and
+// threads it into committeeBriefing (live band preview) and proposeRate.
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Session } from "../../src/engine/session";
 import { type FomcVote, type MemberVotePreview } from "../../src/engine/fomc";
+import { loadChairCapitalParams } from "../../src/engine/chair-capital";
 import { t } from "./loc";
 import { PersuasionView } from "./PersuasionView";
 
@@ -20,6 +23,37 @@ export function MeetingPanel(props: { session: Session; briefingId?: string }): 
   const [lastVote, setLastVote] = useState<FomcVote | null>(null);
   const [credibilityDelta, setCredibilityDelta] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [capitalSpend, setCapitalSpend] = useState<Record<string, number>>({});
+
+  // Capital is per-meeting (use-it-or-lose-it): clear any staged spend when the
+  // displayed month changes.
+  useEffect(() => {
+    setCapitalSpend({});
+  }, [currentDate]);
+
+  const chairCapital = session.chairCapital();
+  const maxSpendPerMember = loadChairCapitalParams().max_spend_per_member;
+
+  // Clamp client-side to the per-member cap and the remaining budget so the
+  // engine's overdraw errors are unreachable through this UI (SPEC-WEB-8).
+  function onSpendChange(memberId: string, raw: number): void {
+    const allocatedToOthers = Object.entries(capitalSpend)
+      .filter(([id]) => id !== memberId)
+      .reduce((sum, [, v]) => sum + v, 0);
+    const clamped = Math.max(
+      0,
+      Math.min(Math.floor(raw), maxSpendPerMember, chairCapital - allocatedToOthers),
+    );
+    setCapitalSpend((prev) => {
+      const next = { ...prev };
+      if (clamped === 0) {
+        delete next[memberId];
+      } else {
+        next[memberId] = clamped;
+      }
+      return next;
+    });
+  }
 
   const parsedRate = parseFloat(rateInput);
 
@@ -29,11 +63,11 @@ export function MeetingPanel(props: { session: Session; briefingId?: string }): 
     | null => {
     if (!Number.isFinite(parsedRate)) return null;
     try {
-      return { ok: true, briefing: session.committeeBriefing(parsedRate) };
+      return { ok: true, briefing: session.committeeBriefing(parsedRate, capitalSpend) };
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : String(e) };
     }
-  }, [session, parsedRate, currentDate]);
+  }, [session, parsedRate, currentDate, capitalSpend]);
   const briefing = briefingResult?.ok ? briefingResult.briefing : null;
   const briefingError = briefingResult && !briefingResult.ok ? briefingResult.error : null;
 
@@ -47,7 +81,7 @@ export function MeetingPanel(props: { session: Session; briefingId?: string }): 
     const credBefore = session.current.vars.credibility;
     let vote: FomcVote;
     try {
-      vote = session.proposeRate(parsedRate);
+      vote = session.proposeRate(parsedRate, capitalSpend);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       setLastVote(null);
@@ -56,6 +90,7 @@ export function MeetingPanel(props: { session: Session; briefingId?: string }): 
     }
     const credAfter = session.current.vars.credibility;
     setError(null);
+    setCapitalSpend({});
     setLastVote(vote);
     setCredibilityDelta(
       credBefore !== undefined && credAfter !== undefined ? credAfter - credBefore : null,
@@ -113,6 +148,10 @@ export function MeetingPanel(props: { session: Session; briefingId?: string }): 
             previews={briefing.previews}
             proposed={parsedRate}
             briefingId={briefingId}
+            chairCapital={chairCapital}
+            capitalSpend={capitalSpend}
+            maxSpendPerMember={maxSpendPerMember}
+            onSpendChange={onSpendChange}
           />
         </>
       )}

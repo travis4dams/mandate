@@ -3,7 +3,7 @@
 // populated before briefings.ts / loader.ts module-level code runs.
 import "./engine-content";
 import { describe, it, expect, afterEach } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import { PersuasionView, buildDotPlotData } from "./PersuasionView";
 import type { MemberVotePreview } from "../../src/engine/fomc";
 
@@ -146,10 +146,52 @@ describe("PersuasionView component", () => {
     expect(cards.length).toBe(3);
   });
 
-  it("capital spend control renders as a placeholder (SPEC-COMM-7 not yet wired)", () => {
-    // SPEC-WEB-6
+  it("capital spend control degrades to a placeholder without capital props", () => {
+    // SPEC-WEB-6 (graceful degradation); wired behavior is SPEC-WEB-8 / SPEC-COMM-7.
     render(<PersuasionView previews={THREE_MEMBERS} proposed={0.10} />);
     expect(screen.getByTestId("chair-capital-display").textContent).toBe("—");
+  });
+
+  it("renders numeric capital, allocated total, and one spend input per member", () => {
+    // SPEC-WEB-8
+    const first = THREE_MEMBERS[0];
+    if (first === undefined) throw new Error("fixture is empty");
+    render(
+      <PersuasionView
+        previews={THREE_MEMBERS}
+        proposed={0.10}
+        chairCapital={4}
+        capitalSpend={{ [first.memberId]: 2 }}
+        maxSpendPerMember={3}
+        onSpendChange={() => {}}
+      />
+    );
+    expect(screen.getByTestId("chair-capital-display").textContent).toBe("4");
+    expect(screen.getByTestId("chair-capital-allocated").textContent).toBe("2");
+    const inputs = document.querySelectorAll("[data-testid^='capital-spend-']");
+    expect(inputs.length).toBe(THREE_MEMBERS.length);
+    expect((screen.getByTestId(`capital-spend-${first.memberId}`) as HTMLInputElement).value).toBe("2");
+  });
+
+  it("spend input change invokes onSpendChange with member id and value", () => {
+    // SPEC-WEB-8
+    const second = THREE_MEMBERS[1];
+    if (second === undefined) throw new Error("fixture too small");
+    const calls: Array<[string, number]> = [];
+    render(
+      <PersuasionView
+        previews={THREE_MEMBERS}
+        proposed={0.10}
+        chairCapital={4}
+        capitalSpend={{}}
+        maxSpendPerMember={3}
+        onSpendChange={(id, v) => calls.push([id, v])}
+      />
+    );
+    fireEvent.change(screen.getByTestId(`capital-spend-${second.memberId}`), {
+      target: { value: "2" },
+    });
+    expect(calls).toEqual([[second.memberId, 2]]);
   });
 
   it("dissent count updates when previews change (live dissent count)", () => {

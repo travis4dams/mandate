@@ -18,7 +18,7 @@ input in plain mode; only `--enrich` (workflow-only) fills empty cells from git 
 | SPEC-COMM-4 | testable | Committee | `test/engine-params-loaders.test.ts`, `test/fomc.test.ts` |  |
 | SPEC-COMM-5 | testable | Committee | `test/committee.test.ts`, `test/engine-params-loaders.test.ts`, `test/fomc.test.ts`, `test/traits.test.ts` | #50 |
 | SPEC-COMM-6 | testable | Committee | `test/session.test.ts`, `test/stance.test.ts` | #53 |
-| SPEC-COMM-7 | testable | Committee | `test/chair-capital.test.ts`, `web/src/PersuasionView.test.tsx`, `web/src/PersuasionView.tsx` | #55 |
+| SPEC-COMM-7 | testable | Committee | `test/chair-capital.test.ts`, `web/src/MeetingPanel.tsx`, `web/src/PersuasionView.test.tsx`, `web/src/PersuasionView.tsx` | #55 |
 | SPEC-COND-1 | testable | Content language | `test/conditions.test.ts` |  |
 | SPEC-COND-2 | testable | Content language | `test/conditions.test.ts` |  |
 | SPEC-CONTENT-1 | testable | Content integrity | `test/content.test.ts` |  |
@@ -69,3 +69,4 @@ input in plain mode; only `--enrich` (workflow-only) fills empty cells from git 
 | SPEC-WEB-5 | testable | Web UI | `web/src/App.test.tsx`, `web/src/Dashboard.tsx` | #28 |
 | SPEC-WEB-6 | testable | Web UI | `web/src/PersuasionView.test.tsx`, `web/src/PersuasionView.tsx` | #63 |
 | SPEC-WEB-7 | testable | Web UI | `web/src/DoctrinePanel.test.tsx`, `web/src/DoctrinePanel.tsx` | #122 |
+| SPEC-WEB-8 | testable | Web UI | `web/src/MeetingPanel.test.tsx`, `web/src/MeetingPanel.tsx`, `web/src/PersuasionView.test.tsx`, `web/src/PersuasionView.tsx` |  |
