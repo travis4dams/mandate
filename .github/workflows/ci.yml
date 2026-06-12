@@ -31,3 +31,5 @@ jobs:
         run: test -f web/dist/index.html
       - name: State freshness check
         run: npm run state:check
+      - name: Docs freshness check
+        run: npm run docs:check
