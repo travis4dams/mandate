@@ -7,9 +7,11 @@
     "inflation": 0.114,
     "unemployment": 0.058,
     "credibility": 25,
-    "expectations_anchor": 0.090,
+    "expectations_anchor": 0.09,
     "policy_rate": 0.1075,
     "months_below_anchor": 6
   },
-  "flags": {}
+  "flags": {},
+  "playable": true,
+  "briefing": "brief.1979_q3_stagflation"
 }

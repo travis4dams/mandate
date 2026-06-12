@@ -11,5 +11,7 @@
     "policy_rate": 0.02,
     "months_below_anchor": 0
   },
-  "flags": {}
+  "flags": {},
+  "playable": true,
+  "briefing": "brief.2008_q4_crisis"
 }

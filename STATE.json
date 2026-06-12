@@ -539,6 +539,18 @@
       ]
     },
     {
+      "id": "SPEC-WEB-10",
+      "section": "Web UI",
+      "tag": "testable",
+      "tests": [
+        "test/scenarios.test.ts",
+        "test/session.test.ts",
+        "web/src/App.tsx",
+        "web/src/StartScreen.test.tsx",
+        "web/src/StartScreen.tsx"
+      ]
+    },
+    {
       "id": "SPEC-WEB-2",
       "section": "Web UI",
       "tag": "testable",

@@ -18,12 +18,21 @@ const fmtPercent = (n: number | undefined): string =>
 const fmtPlain = (n: number | undefined, digits = 0): string =>
   n === undefined ? "—" : n.toFixed(digits);
 
-export function Dashboard(): JSX.Element {
+export interface DashboardProps {
+  scenarioId: string;
+  seed: number;
+  briefingId?: string;
+  varDeltas?: Readonly<Record<string, number>>;
+}
+
+export function Dashboard(props: DashboardProps): JSX.Element {
+  const { scenarioId, seed, briefingId, varDeltas } = props;
   const [btnError, setBtnError] = useState<string | null>(null);
   const { session, current, trajectory } = useSession(
-    "scen.1979_stagflation",
-    42,
+    scenarioId,
+    seed,
     "comm.fomc_1979",
+    varDeltas === undefined ? undefined : { varDeltas },
   );
 
   function run(action: () => void): void {
@@ -53,7 +62,7 @@ export function Dashboard(): JSX.Element {
       <header>
         <h1 style={{ margin: 0 }}>{t("ui.dashboard.title")}</h1>
         <p style={{ marginTop: 4, color: "#666" }}>
-          {t("ui.dashboard.scenario_label")} <code>scen.1979_stagflation</code> · {t("ui.dashboard.seed_label")} 42
+          {t("ui.dashboard.scenario_label")} <code>{scenarioId}</code> · {t("ui.dashboard.seed_label")} {seed}
         </p>
       </header>
 
@@ -105,7 +114,7 @@ export function Dashboard(): JSX.Element {
         <ChartsPanel trajectory={foggedTrajectory} />
       </section>
 
-      <MeetingPanel session={session} briefingId="brief.1979_q3_stagflation" />
+      <MeetingPanel session={session} briefingId={briefingId} />
 
       <DoctrinePanel session={session} current={current} />
 

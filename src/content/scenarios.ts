@@ -3,13 +3,17 @@ import { loadValidated } from "./loader.js";
 import { makeState, type GameState } from "../engine/state.js";
 
 // Scenario content type — mirrors schemas/scenario.schema.json.
-interface Scenario {
+export interface Scenario {
   id: string;
   date: string;
   name: string;
   desc: string;
   vars: Record<string, number>;
   flags: Record<string, boolean>;
+  /** True for player-facing scenarios offered by the start screen (SPEC-WEB-10 filter). */
+  playable?: boolean;
+  /** Optional briefing content id shown in this scenario's meetings. */
+  briefing?: string;
 }
 
 // Thrown when the caller requests vars that are absent from the scenario.
@@ -42,6 +46,23 @@ const SCHEMA_PATH = join(
   new URL(".", import.meta.url).pathname,
   "../../schemas/scenario.schema.json"
 );
+
+let _catalogCache: Scenario[] | null = null;
+
+/**
+ * Load the full scenario catalog (the start screen filters it on
+ * `playable === true`). Cached after the first read.
+ */
+export function loadScenarioCatalog(): Scenario[] {
+  if (_catalogCache !== null) return _catalogCache;
+  _catalogCache = loadValidated<Scenario>(SCHEMA_PATH, SCENARIOS_DIR);
+  return _catalogCache;
+}
+
+/** Test-only: clear the scenario catalog cache. */
+export function _resetScenarioCatalogCache(): void {
+  _catalogCache = null;
+}
 
 /**
  * Load a scenario by id and return the initial GameState.

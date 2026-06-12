@@ -63,6 +63,7 @@ input in plain mode; only `--enrich` (workflow-only) fills empty cells from git 
 | SPEC-SIM-6 | testable | Simulation core | `test/cadence.test.ts` | #64 |
 | SPEC-TERM-1 | testable | Macro dynamics | `test/term-structure.test.ts` |  |
 | SPEC-WEB-1 | testable | Web UI | `web/src/App.test.tsx` | #21 |
+| SPEC-WEB-10 | testable | Web UI | `test/scenarios.test.ts`, `test/session.test.ts`, `web/src/App.tsx`, `web/src/StartScreen.test.tsx`, `web/src/StartScreen.tsx` |  |
 | SPEC-WEB-2 | testable | Web UI | `web/src/App.test.tsx`, `web/src/App.tsx`, `web/src/Dashboard.tsx`, `web/src/engine-content.test.ts`, `web/src/engine-content.ts`, `web/src/node-stubs.ts`, `web/src/useSession.ts` | #104 |
 | SPEC-WEB-3 | testable | Web UI | `web/src/ChartsPanel.plot-throws.test.tsx`, `web/src/ChartsPanel.test.tsx`, `web/src/ChartsPanel.tsx`, `web/src/Dashboard.tsx` | #30 |
 | SPEC-WEB-4 | testable | Web UI | `test/session.test.ts`, `web/src/App.test.tsx`, `web/src/Dashboard.tsx`, `web/src/MeetingPanel.tsx` | #28 |

@@ -1,8 +1,8 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { loadScenario, MissingVarsError } from "../src/content/scenarios";
+import { loadScenario, loadScenarioCatalog, _resetScenarioCatalogCache, MissingVarsError } from "../src/content/scenarios";
 import { loadValidated } from "../src/content/loader";
 import { Session } from "../src/engine/session";
 
@@ -149,5 +149,40 @@ describe("scenario schema validation", () => {
       rmSync(dir, { recursive: true, force: true });
     }
     expect(threw).toBe(true);
+  });
+});
+
+// SPEC-WEB-10: scenario catalog + playable filter for the start screen.
+describe("loadScenarioCatalog (SPEC-WEB-10)", () => {
+  beforeEach(() => {
+    _resetScenarioCatalogCache();
+  });
+
+  it("returns every scenario on disk, and exactly the authored three are playable", () => {
+    // SPEC-WEB-10
+    const catalog = loadScenarioCatalog();
+    expect(catalog.length).toBeGreaterThanOrEqual(4);
+    const playable = catalog.filter((s) => s.playable === true);
+    expect(playable.map((s) => s.id).sort()).toEqual([
+      "scen.1979_stagflation",
+      "scen.2008_gfc",
+      "scen.covid_2020",
+    ]);
+  });
+
+  it("recovery_test is a fixture: present in the catalog but not playable", () => {
+    // SPEC-WEB-10
+    const catalog = loadScenarioCatalog();
+    const fixture = catalog.find((s) => s.id === "scen.recovery_test");
+    expect(fixture).toBeDefined();
+    expect(fixture?.playable).not.toBe(true);
+  });
+
+  it("every playable scenario names a briefing with the brief. id shape", () => {
+    // SPEC-WEB-10
+    const catalog = loadScenarioCatalog();
+    for (const s of catalog.filter((x) => x.playable === true)) {
+      expect(s.briefing).toMatch(/^brief\.[a-z0-9_]+$/);
+    }
   });
 });
