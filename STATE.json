@@ -310,7 +310,8 @@
       "tag": "testable",
       "tests": [
         "test/division-effects.test.ts",
-        "test/session-institution-depth.test.ts"
+        "test/session-institution-depth.test.ts",
+        "web/src/InstitutionPanel.tsx"
       ]
     },
     {
@@ -719,7 +720,11 @@
       "id": "SPEC-WEB-14",
       "section": "Legacy & tenure",
       "tag": "testable",
-      "tests": []
+      "tests": [
+        "web/src/AppShell.tsx",
+        "web/src/InstitutionDepth.test.tsx",
+        "web/src/InstitutionPanel.tsx"
+      ]
     },
     {
       "id": "SPEC-WEB-2",

@@ -140,6 +140,10 @@ export function AppShell(props: AppShellProps): JSX.Element {
   const termProg = session.termProgress();
   const credibility = current.vars.credibility;
   const chairName = session.npcName("member.chair");
+  // SPEC-WEB-14: institution-depth headline readouts.
+  const independence = session.independence();
+  const fragility = session.bankFragility();
+  const crisisActive = current.flags.crisis === true;
 
   return (
     <div style={{ ...surface.page, minHeight: "100vh" }}>
@@ -248,8 +252,47 @@ export function AppShell(props: AppShellProps): JSX.Element {
               {fmtPlain(credibility, 1)}
             </div>
           </div>
+          <div>
+            <div
+              style={{
+                ...heading.label,
+                color: color.onNavySoft,
+                marginBottom: space.xs,
+              }}
+            >
+              {t("ui.shell.independence_label")}
+            </div>
+            <div
+              data-testid="shell-independence"
+              style={{
+                fontFamily: font.mono,
+                fontSize: 14,
+                color: independence >= 50 ? color.onNavy : color.negative,
+              }}
+            >
+              {fmtPlain(independence, 1)}
+            </div>
+          </div>
         </div>
       </header>
+
+      {/* SPEC-WEB-14: a financial crisis surfaces as a prominent banner across the shell. */}
+      {crisisActive && (
+        <div
+          data-testid="crisis-banner"
+          style={{
+            background: color.negative,
+            color: "#fff",
+            fontFamily: font.sans,
+            fontSize: 13,
+            fontWeight: 600,
+            padding: `${space.sm}px ${space.xl}px`,
+            textAlign: "center",
+          }}
+        >
+          {t("ui.crisis.banner")}
+        </div>
+      )}
 
       {/* ---- Tab bar ---- */}
       <nav
@@ -323,6 +366,7 @@ export function AppShell(props: AppShellProps): JSX.Element {
               <Stat label={t("ui.dashboard.stat.months_elapsed")} value={String(trajectory.length - 1)} />
               <Stat label={t("ui.dashboard.stat.long_rate")} value={fmtPercent(current.vars.long_rate)} testId="stat-long-rate" />
               <Stat label={t("ui.dashboard.stat.output_gap")} value={fmtPercent(current.vars.output_gap)} testId="stat-output-gap" />
+              <Stat label={t("ui.dashboard.stat.fragility")} value={`${(fragility * 100).toFixed(0)}%`} testId="stat-fragility" />
               {/* Mandate status tile */}
               <div
                 data-testid="mandate-status"
