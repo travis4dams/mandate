@@ -20,9 +20,13 @@ legacy portfolio yield; remittances to Treasury halt until repaid); **CAMELS**/*
 supervisory rating vocabulary; semiannual **Monetary Policy Report** + Humphrey-Hawkins
 testimony (Feb/Jun report, Mar/Jul testimony) to Senate Banking & House Financial Services.
 
-## Delivery: two reviewable PRs
-- **PR A — Institution & economy** (this spec, full detail): director skill model, per-division function effects, institutional culture, banking fragility + endogenous crises, balance sheet / net income / deferred asset, Congressional pressure on political capital AND independence. Engine + content + UI.
-- **PR B — Monetary Policy Report & testimony** (outlined here, detailed in its own pass): semiannual testimony set-piece reusing the hearing Q&A mechanic, state-driven questions, outcomes feeding political capital / credibility / reappointment.
+## Delivery: reviewable PRs
+- **PR A — Institution & economy** (this spec, full detail): director skill model, the **full division set**, per-division function effects, institutional culture, banking fragility + endogenous crises, balance sheet / net income / deferred asset, Congressional pressure on political capital AND independence. Engine + content + UI.
+- **PR B — Monetary Policy Report & testimony** (outlined here): semiannual testimony set-piece reusing the hearing Q&A mechanic, state-driven questions, outcomes feeding political capital / credibility / reappointment.
+- **PR C — The regulatory constellation & FSOC** (outlined here): the peer agencies (FDIC, OCC, CFPB, SEC) the Chair coordinates with via FSOC; relationships feed supervision/fragility/crisis response.
+
+Already shipped to PR #130 as a precursor: `SPEC-COMM-8` — committee dot-plot spread
+recalibrated to a realistic SEP range (~100–120bp, down from ~190bp) with a tested bound.
 
 ---
 
@@ -46,6 +50,21 @@ can go slightly negative — e.g. a light-touch supervisor lets fragility build)
 Content: each `content/divisions/*.json` gains `skill_weights`. New schema fields.
 `hireStaff` stores the chosen director's skills + effectiveness in state
 (`staff.<id>.eff`, and per-skill if needed). Pure; existing INST-2 behavior preserved.
+
+**Full division set** (`SPEC-DIV-2`, content-only) — expand beyond the initial five to the
+real Board's staffable divisions (DESIGN.md): Research & Statistics, Monetary Affairs,
+International Finance, Financial Stability, Supervision & Regulation, **Reserve Bank
+Operations & Payment Systems (RBOPS)**, **Consumer & Community Affairs**, **Legal**,
+**Office of the COO**, **OIG**. Each declares `skill_weights` and a function channel (the
+new ones map to: RBOPS → payment-system resilience / operational risk, a small fragility
++ crisis-recovery contribution; Consumer & Community Affairs → political capital with
+Congress (consumer-protection record) and a fairness dimension; Legal → reduces the
+political/independence cost of contested actions; COO → an org-efficiency multiplier that
+lowers division upkeep cost and lifts overall effectiveness slightly; OIG → reduces the
+risk of scandal events and audit findings). Some divisions are **era/tech-gated** in
+content (an IT/CDO/CAIO division lights up only once the relevant tech is unlocked — a
+later hook; for now the schema carries an optional `unlocked_by` that defaults to always).
+No real person names. `npm run validate` green over the expanded catalog.
 
 ### A2. Per-division function effects — `SPEC-DIV-1`
 A pure resolver `divisionEffects(state, catalog): DivisionEffects` returns the live
@@ -134,6 +153,18 @@ sheet, **high** fragility, crisis regime; 2020: large sheet). Defaults cover abs
   as a scheduled obligation on the Desk/Committee.
 
 ---
+
+## PR C (outline — own detailed spec later)
+
+### The regulatory constellation & FSOC — `SPEC-FSOC-1` (+ web)
+The Chair's responsibilities extend beyond the Board to the wider network of federal
+finance/banking agencies (DESIGN.md "regulatory constellation"). These are **peer actors,
+not subordinates**, coordinated via the **FSOC** (Treasury chairs; the Fed holds a seat).
+- A content catalog `content/agencies/*.json`: **FDIC, OCC, CFPB, SEC** (plus Treasury as FSOC chair), each with a generated leader (SPEC-NAME-1), a mandate, and an ideological lean (e.g. a deregulation-minded OCC, an aggressive CFPB).
+- A per-agency **relationship** var ∈ [-1,1] the Chair builds or strains through choices (joint actions, turf, public alignment). Pure `applyFsocDynamics`.
+- **Coordination effect**: strong FSOC relationships boost cross-agency `fragility_mitigation` and **crisis response** (a coordinated response damps a crisis's severity and shortens it); poor relationships mean fragmented supervision (gaps fragility can exploit) and turf fights that cost political capital.
+- Hooks into PR A's fragility/crisis system and PR B's testimony (agency leaders and FSOC disputes surface as question topics). Agency leaders are characters you ally or clash with — event-driven, lightweight at first, with room to deepen.
+- Open fork resolved: FSOC peers are **mechanically active but lightweight** — they modify fragility/crisis-response coefficients and spawn events, rather than being fully simulated agents (keeps it legible per the four-question rule).
 
 ## Determinism, purity, governance (applies to everything)
 - All randomness via the session's seeded RNG (`mulberry32`/`fnv1a32`); no `Math.random`/`Date.now` in `src/**`.
