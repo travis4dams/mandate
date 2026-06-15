@@ -11,8 +11,8 @@ afterEach(() => {
   cleanup();
 });
 
-// 1979 scenario: credibility = 25, reappointment_credibility_min = 48
-// (term_length_months = 48, reappointment_credibility_min = 50 per content).
+// 1979 scenario: credibility = 25. Per content/engine/legacy.json:
+// term_length_months = 48, reappointment_credibility_min = 50.
 // Fail session: credibility 25 < 50 → reappointed = false.
 // Pass session: credibility 25 + 30 = 55 >= 50 → reappointed = true.
 function makeSession(varDeltas?: Readonly<Record<string, number>>): Session {

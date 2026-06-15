@@ -61,7 +61,9 @@ export function generateName(rng: SeededRng, pools: NamePools): GeneratedName {
  * Pure: does not touch any shared RNG state.
  */
 export function nameForId(seed: number, npcId: string, pools: NamePools): GeneratedName {
-  const subSeed = fnv1a32(`${seed}:${npcId}`);
+  // Pipe separator matches SPEC-NAME-1 and the compound-key format used by
+  // generateCandidates in institution.ts, so both helpers derive sub-seeds the same way.
+  const subSeed = fnv1a32(`${seed}|${npcId}`);
   const rng = mulberry32(subSeed);
   return generateName(rng, pools);
 }

@@ -1,0 +1,97 @@
+- generic [ref=e34]:
+  - banner [ref=e35]:
+    - generic [ref=e36]:
+      - generic [ref=e37]: Office of the Chair
+      - heading "Chair Dr. Eleanor Ashford" [level=1] [ref=e38]
+    - generic [ref=e39]:
+      - generic [ref=e40]: Date
+      - generic [ref=e41]: 1979-08
+    - generic [ref=e42]:
+      - generic [ref=e43]:
+        - generic [ref=e44]: Term
+        - generic [ref=e45]: 0 / 48
+      - generic [ref=e46]:
+        - generic [ref=e47]: Credibility
+        - generic [ref=e48]: "25.0"
+  - navigation [ref=e49]:
+    - tab "The Desk" [selected] [ref=e50] [cursor=pointer]
+    - tab "The Committee" [ref=e51] [cursor=pointer]
+    - tab "The Institution" [ref=e52] [cursor=pointer]
+    - tab "Legacy" [ref=e53] [cursor=pointer]
+  - main [ref=e54]:
+    - generic [ref=e55]:
+      - heading "The Economy" [level=2] [ref=e56]
+      - generic [ref=e57]:
+        - generic [ref=e58]:
+          - generic [ref=e59]: Date
+          - generic [ref=e60]: 1979-08
+        - generic [ref=e61]:
+          - generic [ref=e62]: Policy rate
+          - generic [ref=e63]: 10.75%
+        - generic [ref=e64]:
+          - generic [ref=e65]: Inflation
+          - generic [ref=e66]: 11.29%
+        - generic [ref=e67]:
+          - generic [ref=e68]: Unemployment
+          - generic [ref=e69]: 5.82%
+        - generic [ref=e70]:
+          - generic [ref=e71]: Credibility
+          - generic [ref=e72]: "25.0"
+        - generic [ref=e73]:
+          - generic [ref=e74]: Anchor
+          - generic [ref=e75]: 9.00%
+        - generic [ref=e76]:
+          - generic [ref=e77]: Months below anchor
+          - generic [ref=e78]: "6"
+        - generic [ref=e79]:
+          - generic [ref=e80]: Months elapsed
+          - generic [ref=e81]: "0"
+        - generic [ref=e82]:
+          - generic [ref=e83]: Long rate
+          - generic [ref=e84]: —
+        - generic [ref=e85]:
+          - generic [ref=e86]: Output gap
+          - generic [ref=e87]: —
+        - generic [ref=e88]:
+          - generic [ref=e89]: Mandate
+          - generic [ref=e90]: Off target
+      - generic [ref=e91]:
+        - heading "Trajectory (1)" [level=3] [ref=e92]
+        - generic [ref=e93]:
+          - img [ref=e95]:
+            - generic "y-axis tick label" [ref=e97]:
+              - generic [ref=e98]: "5"
+              - generic [ref=e99]: "10"
+              - generic [ref=e100]: "15"
+              - generic [ref=e101]: "20"
+              - generic [ref=e102]: "25"
+            - generic "x-axis tick label" [ref=e103]:
+              - generic [ref=e104]: 1979-08
+            - generic "area"
+            - generic "line"
+            - generic "area"
+            - generic "line"
+            - generic "line"
+            - generic "line"
+            - generic "tip"
+            - generic "tip"
+            - generic "tip"
+            - generic "tip"
+            - generic "1 warning. Please check the console." [ref=e105]: ⚠️
+          - generic [ref=e106]:
+            - generic [ref=e107]: Inflation
+            - generic [ref=e109]: Unemployment
+            - generic [ref=e111]: Policy rate
+            - generic [ref=e113]: Credibility
+      - generic [ref=e115]:
+        - button "Advance 1 month" [ref=e116] [cursor=pointer]
+        - button "Advance 3 months" [ref=e117] [cursor=pointer]
+        - button "Advance 12 months" [ref=e118] [cursor=pointer]
+        - button "Advance to next meeting" [ref=e119] [cursor=pointer]
+        - button "Reset" [ref=e120] [cursor=pointer]
+      - generic [ref=e121]:
+        - generic [ref=e122]: "Forward-guidance stance:"
+        - button "Hawkish" [ref=e123] [cursor=pointer]
+        - button "Neutral" [ref=e124] [cursor=pointer]
+        - button "Dovish" [ref=e125] [cursor=pointer]
+  - contentinfo [ref=e126]: "Scenario: scen.1979_stagflation · Seed 42"

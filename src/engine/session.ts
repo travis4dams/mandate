@@ -203,17 +203,21 @@ export class Session {
     // SPEC-INST-1: seed the institutional resource vars from content defaults when a
     // scenario doesn't author them, so the state var, the getters, and hireStaff (which
     // reads state.vars directly) all agree from month 0 — and reset() restores them.
+    // Build a fresh vars copy first: never mutate the caller-provided initialState
+    // (engine purity — the caller's object must be left untouched).
     const instParams = loadInstitutionParams();
-    if (initialState.vars.operating_budget === undefined) {
-      initialState.vars.operating_budget = instParams.initial_operating_budget;
+    const seededVars = { ...initialState.vars };
+    if (seededVars.operating_budget === undefined) {
+      seededVars.operating_budget = instParams.initial_operating_budget;
     }
-    if (initialState.vars.political_capital === undefined) {
-      initialState.vars.political_capital = instParams.initial_political_capital;
+    if (seededVars.political_capital === undefined) {
+      seededVars.political_capital = instParams.initial_political_capital;
     }
-    this._initialState = initialState;
+    const seededInitial: GameState = { ...initialState, vars: seededVars };
+    this._initialState = seededInitial;
     this._seed = seed;
     this._rng = mulberry32(seed);
-    this._state = { ...initialState, vars: { ...initialState.vars }, flags: { ...initialState.flags }, history: [] };
+    this._state = { ...seededInitial, vars: { ...seededVars }, flags: { ...initialState.flags }, history: [] };
 
     const snapshot = Session._snapshotOf(this._state);
     this._trajectoryInternal = [snapshot];

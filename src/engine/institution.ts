@@ -235,6 +235,9 @@ export function hireStaff(state: GameState, division: Division, candidate: Candi
   if (state.flags[staffedFlagKey(division.id)]) {
     throw new DivisionAlreadyStaffedError(division.id);
   }
+  // Absent political_capital defaults to 0 here (a bare state has no budget to spend).
+  // In a live game the Session constructor seeds political_capital from content
+  // (SPEC-INST-1), so this 0-default only applies to direct unit calls on bare state.
   const capital = state.vars.political_capital ?? 0;
   if (capital < division.hire_cost) {
     throw new InsufficientCapitalError(capital, division.hire_cost);
