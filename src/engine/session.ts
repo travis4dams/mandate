@@ -523,6 +523,10 @@ export class Session {
         } else {
           const fragility = (this._state.vars.bank_fragility ?? 0) as number;
           const p = crisisProbability(fragility, crisisParams);
+          // The Bernoulli threshold draw and applyFinancialCrisis's jitter draws INTENTIONALLY
+          // share this one derived stream — the spec does not require them to be independent, and
+          // a single stream keeps the crisis path deterministic. Do NOT split into two derived
+          // seeds "to decouple" them; that would silently change the crisis trajectory.
           const crisisRng = mulberry32(fnv1a32(`${this._seed}|crisis|${this._state.date}`));
           if (crisisRng() < p) {
             this._state = applyFinancialCrisis(this._state, effects.crisisSeverityReduction, crisisParams, crisisRng);

@@ -24,8 +24,10 @@ describe("SPEC-WEB-14: institution-depth UI", () => {
     boot("scen.2008_gfc", 42);
     expect(screen.getByTestId("stat-fragility")).toBeDefined();
     expect(screen.getByTestId("shell-independence")).toBeDefined();
-    // Independence reflects the seeded 2008 value (68).
-    expect(screen.getByTestId("shell-independence").textContent).toContain("68");
+    // Independence reflects the scenario's starting value — derive it from the engine
+    // rather than hardcoding, so a scenario content edit can't silently break this.
+    const twin = Session.fromScenario("scen.2008_gfc", 42, "comm.fomc_1979");
+    expect(screen.getByTestId("shell-independence").textContent).toContain(twin.independence().toFixed(1));
   });
 
   it("candidate cards show the fit computed for that division (hidden disposition is not shown)", () => {
@@ -58,9 +60,14 @@ describe("SPEC-WEB-14: institution-depth UI", () => {
   });
 
   it("a financial crisis surfaces as a banner (seed 99 fires within ~13 months)", () => {
+    // AppShell owns its Session via useSession, so we exercise the real end-to-end path:
+    // boot the high-fragility 2008 scenario and advance until a crisis fires. Seed 99 fires
+    // at month ~13; the 60-month cap is generous headroom. If crisis tuning changes so a crisis
+    // never fires in 60 months this fails LOUDLY (assert appeared===true), flagging the drift —
+    // it is not a silent pass.
     boot("scen.2008_gfc", 99);
     let appeared = false;
-    for (let i = 0; i < 40; i++) {
+    for (let i = 0; i < 60; i++) {
       act(() => {
         fireEvent.click(screen.getByRole("button", { name: "Advance 1 month" }));
       });

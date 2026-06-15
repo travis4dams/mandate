@@ -118,6 +118,8 @@ describe("applyCultureDrift — pure function (SPEC-CULTURE-1)", () => {
     });
     const result = applyCultureDrift(state, catalog, BASE_PARAMS);
     expect(result.vars["culture.policy_lean"]).toBeGreaterThan(0);
+    // SPEC-CULTURE-1: it LAGS — one month does not close the full gap to the target (1.0).
+    expect(result.vars["culture.policy_lean"]).toBeLessThan(1.0);
   });
 
   it("policy_lean moves toward dove (negative) when all staffed directors are doves", () => {

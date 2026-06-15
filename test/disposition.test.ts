@@ -98,7 +98,8 @@ describe("SPEC-STAFF-2: hidden director disposition", () => {
     const dove = divisionEffects(makeState({ ...base, "staff.research.disposition": -1 }, { "staffed.research": true }), catalog, EFFECTS_PARAMS);
     expect(hawk.forecastBias).toBeCloseTo(EFFECTS_PARAMS.disposition_influence);
     expect(dove.forecastBias).toBeCloseTo(-EFFECTS_PARAMS.disposition_influence);
-    expect(Math.abs(hawk.forecastBias)).toBeLessThanOrEqual(EFFECTS_PARAMS.disposition_influence + 1e-9);
+    // Bounded by disposition_influence: at disposition = +1 it lands exactly on the bound.
+    expect(Math.abs(hawk.forecastBias)).toBeCloseTo(EFFECTS_PARAMS.disposition_influence);
   });
 
   it("a hawkish-disposition cohort pulls institutional policy_lean hawkish even at centrist lean", () => {
