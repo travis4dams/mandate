@@ -3,9 +3,9 @@
     "briefings": 3,
     "calibration": 1,
     "committees": 1,
-    "divisions": 5,
+    "divisions": 10,
     "doctrines": 3,
-    "engine": 19,
+    "engine": 25,
     "events": 1,
     "hearings": 1,
     "localization": 1,
@@ -185,11 +185,21 @@
       ]
     },
     {
+      "id": "SPEC-CONGRESS-1",
+      "section": "Federal Reserve finances",
+      "tag": "testable",
+      "tests": [
+        "test/congress.test.ts",
+        "test/session-institution-depth.test.ts"
+      ]
+    },
+    {
       "id": "SPEC-CONTENT-1",
       "section": "Content integrity",
       "tag": "testable",
       "tests": [
-        "test/content.test.ts"
+        "test/content.test.ts",
+        "test/division-effects.test.ts"
       ]
     },
     {
@@ -277,6 +287,41 @@
       ]
     },
     {
+      "id": "SPEC-CRISIS-1",
+      "section": "Banking stability & the financial cycle",
+      "tag": "testable",
+      "tests": [
+        "test/crisis.test.ts",
+        "test/session-institution-depth.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-CULTURE-1",
+      "section": "Director skills, division functions & institutional culture",
+      "tag": "testable",
+      "tests": [
+        "test/culture.test.ts",
+        "test/session-institution-depth.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-DIV-1",
+      "section": "Director skills, division functions & institutional culture",
+      "tag": "testable",
+      "tests": [
+        "test/division-effects.test.ts",
+        "test/session-institution-depth.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-DIV-2",
+      "section": "Director skills, division functions & institutional culture",
+      "tag": "testable",
+      "tests": [
+        "test/staff.test.ts"
+      ]
+    },
+    {
       "id": "SPEC-DOCT-1",
       "section": "Doctrine",
       "tag": "testable",
@@ -303,6 +348,15 @@
       ]
     },
     {
+      "id": "SPEC-FED-1",
+      "section": "Federal Reserve finances",
+      "tag": "testable",
+      "tests": [
+        "test/fed-finances.test.ts",
+        "test/session-institution-depth.test.ts"
+      ]
+    },
+    {
       "id": "SPEC-FOG-1",
       "section": "Data fog",
       "tag": "testable",
@@ -318,6 +372,15 @@
       "tag": "testable",
       "tests": [
         "test/fog.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-FRAG-1",
+      "section": "Banking stability & the financial cycle",
+      "tag": "testable",
+      "tests": [
+        "test/fragility.test.ts",
+        "test/session-institution-depth.test.ts"
       ]
     },
     {
@@ -524,6 +587,8 @@
       "section": "Simulation core",
       "tag": "testable",
       "tests": [
+        "test/division-effects.test.ts",
+        "test/fed-finances.test.ts",
         "test/lags.test.ts",
         "test/replay.test.ts",
         "test/rng.test.ts",
@@ -572,6 +637,22 @@
       "tag": "testable",
       "tests": [
         "test/cadence.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-STAFF-1",
+      "section": "Director skills, division functions & institutional culture",
+      "tag": "testable",
+      "tests": [
+        "test/staff.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-STAFF-2",
+      "section": "Director skills, division functions & institutional culture",
+      "tag": "testable",
+      "tests": [
+        "test/disposition.test.ts"
       ]
     },
     {
@@ -633,6 +714,12 @@
         "web/src/LegacyPanel.test.tsx",
         "web/src/LegacyPanel.tsx"
       ]
+    },
+    {
+      "id": "SPEC-WEB-14",
+      "section": "Legacy & tenure",
+      "tag": "testable",
+      "tests": []
     },
     {
       "id": "SPEC-WEB-2",

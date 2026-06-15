@@ -22,7 +22,8 @@ input in plain mode; only `--enrich` (workflow-only) fills empty cells from git 
 | SPEC-COMM-8 | testable | Committee | `test/committee-spread.test.ts` |  |
 | SPEC-COND-1 | testable | Content language | `test/conditions.test.ts` |  |
 | SPEC-COND-2 | testable | Content language | `test/conditions.test.ts` |  |
-| SPEC-CONTENT-1 | testable | Content integrity | `test/content.test.ts` |  |
+| SPEC-CONGRESS-1 | testable | Federal Reserve finances | `test/congress.test.ts`, `test/session-institution-depth.test.ts` |  |
+| SPEC-CONTENT-1 | testable | Content integrity | `test/content.test.ts`, `test/division-effects.test.ts` |  |
 | SPEC-CONTENT-2 | design | Content integrity | `web/src/loc.ts` |  |
 | SPEC-CONTENT-3 | testable | Content integrity | `test/content-lint.test.ts`, `test/names.test.ts` |  |
 | SPEC-CONTENT-4 | testable | Content integrity | `test/content.test.ts` | #96 |
@@ -32,11 +33,17 @@ input in plain mode; only `--enrich` (workflow-only) fills empty cells from git 
 | SPEC-CRED-4 | testable | Credibility & expectations | `test/calibration-volcker.test.ts`, `test/credibility.test.ts`, `test/dynamics.test.ts`, `test/engine-params-loaders.test.ts`, `test/gen-state.test.ts`, `test/session.test.ts` | #7 |
 | SPEC-CRED-5 | testable | Credibility & expectations | `test/credibility.test.ts`, `test/session.test.ts` | #95 |
 | SPEC-CRED-6 | testable | Credibility & expectations | `test/calibration-volcker.test.ts`, `test/credibility.test.ts`, `test/dynamics.test.ts`, `test/engine-params-loaders.test.ts` |  |
+| SPEC-CRISIS-1 | testable | Banking stability & the financial cycle | `test/crisis.test.ts`, `test/session-institution-depth.test.ts` |  |
+| SPEC-CULTURE-1 | testable | Director skills, division functions & institutional culture | `test/culture.test.ts`, `test/session-institution-depth.test.ts` |  |
+| SPEC-DIV-1 | testable | Director skills, division functions & institutional culture | `test/division-effects.test.ts`, `test/session-institution-depth.test.ts` |  |
+| SPEC-DIV-2 | testable | Director skills, division functions & institutional culture | `test/staff.test.ts` |  |
 | SPEC-DOCT-1 | testable | Doctrine | `test/doctrine.test.ts`, `test/dynamics.test.ts` | #61 |
 | SPEC-DOCT-2 | testable | Doctrine | `test/dot-plot.test.ts`, `test/session.test.ts` | #43 |
 | SPEC-DOCT-3 | testable | Doctrine | `test/doctrines-content.test.ts` | #99 |
+| SPEC-FED-1 | testable | Federal Reserve finances | `test/fed-finances.test.ts`, `test/session-institution-depth.test.ts` |  |
 | SPEC-FOG-1 | testable | Data fog | `test/fog.test.ts`, `test/gen-docs.test.ts`, `test/gen-state.test.ts` | #5 |
 | SPEC-FOG-2 | testable | Data fog | `test/fog.test.ts` | #102 |
+| SPEC-FRAG-1 | testable | Banking stability & the financial cycle | `test/fragility.test.ts`, `test/session-institution-depth.test.ts` |  |
 | SPEC-GOV-1 | design | Institution & governance | — |  |
 | SPEC-GOV-2 | design | Institution & governance | — |  |
 | SPEC-GUIDE-1 | testable | Engine session | `test/guide.test.ts`, `test/session.test.ts` | #19 |
@@ -60,18 +67,21 @@ input in plain mode; only `--enrich` (workflow-only) fills empty cells from git 
 | SPEC-SESSION-1 | testable | Engine session | `test/session.test.ts` | #17 |
 | SPEC-SHOCK-1 | testable | Macro dynamics | `test/session.test.ts`, `test/shocks.test.ts` | #80 |
 | SPEC-SHOCK-2 | testable | Macro dynamics | `test/shocks.test.ts` | #101 |
-| SPEC-SIM-1 | testable | Simulation core | `test/lags.test.ts`, `test/replay.test.ts`, `test/rng.test.ts`, `test/term-structure.test.ts` |  |
+| SPEC-SIM-1 | testable | Simulation core | `test/division-effects.test.ts`, `test/fed-finances.test.ts`, `test/lags.test.ts`, `test/replay.test.ts`, `test/rng.test.ts`, `test/term-structure.test.ts` |  |
 | SPEC-SIM-2 | design | Simulation core | — |  |
 | SPEC-SIM-3 | testable | Simulation core | `test/clock.test.ts`, `test/gen-state.test.ts` | #5 |
 | SPEC-SIM-4 | testable | Simulation core | `test/gen-state.test.ts`, `test/replay.test.ts`, `test/run-replay.ts` | #6 |
 | SPEC-SIM-5 | testable | Macro dynamics | `test/calibration-volcker.test.ts`, `test/dynamics.test.ts`, `test/engine-params-loaders.test.ts`, `test/session.test.ts` | #20 |
 | SPEC-SIM-6 | testable | Simulation core | `test/cadence.test.ts` | #64 |
+| SPEC-STAFF-1 | testable | Director skills, division functions & institutional culture | `test/staff.test.ts` |  |
+| SPEC-STAFF-2 | testable | Director skills, division functions & institutional culture | `test/disposition.test.ts` |  |
 | SPEC-TERM-1 | testable | Macro dynamics | `test/term-structure.test.ts` |  |
 | SPEC-WEB-1 | testable | Web UI | `web/src/App.test.tsx` | #21 |
 | SPEC-WEB-10 | testable | Web UI | `test/scenarios.test.ts`, `test/session.test.ts`, `web/src/App.tsx`, `web/src/AppShell.tsx`, `web/src/StartScreen.test.tsx`, `web/src/StartScreen.tsx` | #128 |
 | SPEC-WEB-11 | testable | Legacy & tenure | `web/src/App.test.tsx`, `web/src/AppShell.test.tsx`, `web/src/AppShell.tsx`, `web/src/Dashboard.tsx`, `web/src/DoctrinePanel.test.tsx`, `web/src/theme.ts` |  |
 | SPEC-WEB-12 | testable | Legacy & tenure | `web/src/InstitutionPanel.test.tsx`, `web/src/InstitutionPanel.tsx` |  |
 | SPEC-WEB-13 | testable | Legacy & tenure | `web/src/LegacyPanel.test.tsx`, `web/src/LegacyPanel.tsx` |  |
+| SPEC-WEB-14 | testable | Legacy & tenure | — |  |
 | SPEC-WEB-2 | testable | Web UI | `web/src/App.test.tsx`, `web/src/App.tsx`, `web/src/Dashboard.tsx`, `web/src/engine-content.test.ts`, `web/src/engine-content.ts`, `web/src/node-stubs.ts`, `web/src/useSession.ts` | #104 |
 | SPEC-WEB-3 | testable | Web UI | `web/src/ChartsPanel.plot-throws.test.tsx`, `web/src/ChartsPanel.test.tsx`, `web/src/ChartsPanel.tsx` | #30 |
 | SPEC-WEB-4 | testable | Web UI | `test/session.test.ts`, `web/src/App.test.tsx`, `web/src/MeetingPanel.tsx` | #28 |

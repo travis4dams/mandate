@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mandate.dev/schemas/fragility.schema.json",
+  "title": "FragilityParams",
+  "description": "Banking-fragility dynamics params. SPEC-FRAG-1.",
+  "type": "object",
+  "required": [
+    "initial_fragility",
+    "base",
+    "loose_policy_weight",
+    "easing_weight",
+    "lax_weight",
+    "supervisory_decay",
+    "natural_decay"
+  ],
+  "properties": {
+    "initial_fragility": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Default bank_fragility when absent from state. ∈ [0,1]."
+    },
+    "base": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Baseline monthly fragility accumulation rate (always positive)."
+    },
+    "loose_policy_weight": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Weight applied to max(0, -realGap): loose policy breeds fragility."
+    },
+    "easing_weight": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Weight applied to max(0, easingSpeed): sustained easing breeds fragility."
+    },
+    "lax_weight": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Weight applied to (1 - supervisoryRigor): lax supervision compounds fragility."
+    },
+    "supervisory_decay": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Fragility decay multiplier for fragilityMitigation input ∈ [0,1]."
+    },
+    "natural_decay": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Unconditional monthly fragility decay (baseline healing rate)."
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,15 @@
+{
+  "id": "oig",
+  "name": "division.oig.name",
+  "desc": "division.oig.desc",
+  "hire_cost": 8,
+  "investment": 0.1,
+  "channel": "oversight",
+  "skill_weights": {
+    "forecasting":   0.1,
+    "markets":       0.05,
+    "supervision":   0.4,
+    "communication": 0.25,
+    "crisis":        0.2
+  }
+}

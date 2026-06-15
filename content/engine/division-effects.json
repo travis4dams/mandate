@@ -1,0 +1,15 @@
+{
+  "competence_floor": 0.3,
+  "disposition_influence": 0.1,
+  "effect_strength": {
+    "fog":                  0.6,
+    "transmission":         0.5,
+    "fragility_visibility": 0.5,
+    "fragility_mitigation": 0.6,
+    "crisis_severity":      0.5,
+    "external_shock":       0.4,
+    "org":                  0.3,
+    "political":            0.3,
+    "oversight":            0.3
+  }
+}

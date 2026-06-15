@@ -39,6 +39,8 @@ const DIVISION: Division = {
   desc: "division.research.desc",
   hire_cost: 10,
   investment: 0.2,
+  channel: "fog",
+  skill_weights: { forecasting: 0.5, markets: 0.2, supervision: 0.05, communication: 0.15, crisis: 0.1 },
 };
 
 beforeEach(() => {
@@ -344,7 +346,7 @@ describe("hireStaff (SPEC-INST-2)", () => {
   it("sets the staffed flag and competence var in returned state", () => {
     // SPEC-INST-2
     const state = makeState({ vars: { political_capital: 50 } });
-    const candidate: Candidate = { name: "Alice Smith", competence: 0.8, lean: "hawk" };
+    const candidate: Candidate = { name: "Alice Smith", competence: 0.8, lean: "hawk", skills: { forecasting: 0.5, markets: 0.5, supervision: 0.5, communication: 0.5, crisis: 0.5 } };
     const result = hireStaff(state, DIVISION, candidate);
     expect(result.flags[staffedFlagKey("research")]).toBe(true);
     expect(result.vars["staff.research.competence"]).toBe(0.8);
@@ -353,7 +355,7 @@ describe("hireStaff (SPEC-INST-2)", () => {
   it("deducts hire_cost from political_capital", () => {
     // SPEC-INST-2
     const state = makeState({ vars: { political_capital: 50 } });
-    const candidate: Candidate = { name: "Alice Smith", competence: 0.8, lean: "hawk" };
+    const candidate: Candidate = { name: "Alice Smith", competence: 0.8, lean: "hawk", skills: { forecasting: 0.5, markets: 0.5, supervision: 0.5, communication: 0.5, crisis: 0.5 } };
     const result = hireStaff(state, DIVISION, candidate);
     expect(result.vars.political_capital).toBeCloseTo(40); // 50 - 10
   });
@@ -361,7 +363,7 @@ describe("hireStaff (SPEC-INST-2)", () => {
   it("throws InsufficientCapitalError when capital would go negative", () => {
     // SPEC-INST-2
     const state = makeState({ vars: { political_capital: 5 } }); // hire_cost=10
-    const candidate: Candidate = { name: "Alice Smith", competence: 0.8, lean: "hawk" };
+    const candidate: Candidate = { name: "Alice Smith", competence: 0.8, lean: "hawk", skills: { forecasting: 0.5, markets: 0.5, supervision: 0.5, communication: 0.5, crisis: 0.5 } };
     expect(() => hireStaff(state, DIVISION, candidate)).toThrow(InsufficientCapitalError);
   });
 
@@ -371,7 +373,7 @@ describe("hireStaff (SPEC-INST-2)", () => {
       vars: { political_capital: 50 },
       flags: { [staffedFlagKey("research")]: true },
     });
-    const candidate: Candidate = { name: "Alice Smith", competence: 0.8, lean: "hawk" };
+    const candidate: Candidate = { name: "Alice Smith", competence: 0.8, lean: "hawk", skills: { forecasting: 0.5, markets: 0.5, supervision: 0.5, communication: 0.5, crisis: 0.5 } };
     expect(() => hireStaff(state, DIVISION, candidate)).toThrow(DivisionAlreadyStaffedError);
   });
 
@@ -380,7 +382,7 @@ describe("hireStaff (SPEC-INST-2)", () => {
     const state = makeState({ vars: { political_capital: 50 } });
     const flagsBefore = { ...state.flags };
     const varsBefore = { ...state.vars };
-    const candidate: Candidate = { name: "Alice Smith", competence: 0.8, lean: "hawk" };
+    const candidate: Candidate = { name: "Alice Smith", competence: 0.8, lean: "hawk", skills: { forecasting: 0.5, markets: 0.5, supervision: 0.5, communication: 0.5, crisis: 0.5 } };
     hireStaff(state, DIVISION, candidate);
     expect(state.flags).toEqual(flagsBefore);
     expect(state.vars).toEqual(varsBefore);
@@ -392,7 +394,7 @@ describe("hireStaff (SPEC-INST-2)", () => {
       vars: { political_capital: 50, inflation: 0.03 },
       flags: { at_war: false },
     });
-    const candidate: Candidate = { name: "Alice Smith", competence: 0.8, lean: "hawk" };
+    const candidate: Candidate = { name: "Alice Smith", competence: 0.8, lean: "hawk", skills: { forecasting: 0.5, markets: 0.5, supervision: 0.5, communication: 0.5, crisis: 0.5 } };
     const result = hireStaff(state, DIVISION, candidate);
     expect(result.vars.inflation).toBe(0.03);
     expect(result.flags.at_war).toBe(false);
@@ -401,7 +403,7 @@ describe("hireStaff (SPEC-INST-2)", () => {
   it("allows hire when political_capital exactly equals hire_cost", () => {
     // SPEC-INST-2: boundary — capital = cost → balance = 0, which is not negative.
     const state = makeState({ vars: { political_capital: 10 } }); // hire_cost=10
-    const candidate: Candidate = { name: "Alice Smith", competence: 0.8, lean: "hawk" };
+    const candidate: Candidate = { name: "Alice Smith", competence: 0.8, lean: "hawk", skills: { forecasting: 0.5, markets: 0.5, supervision: 0.5, communication: 0.5, crisis: 0.5 } };
     const result = hireStaff(state, DIVISION, candidate);
     expect(result.vars.political_capital).toBeCloseTo(0);
     expect(result.flags[staffedFlagKey("research")]).toBe(true);
@@ -414,8 +416,8 @@ describe("hireStaff (SPEC-INST-2)", () => {
 
 describe("institutionInvestment (SPEC-INST-2)", () => {
   const CATALOG: Division[] = [
-    { id: "research", name: "division.research.name", desc: "division.research.desc", hire_cost: 10, investment: 0.2 },
-    { id: "monetary_affairs", name: "division.monetary_affairs.name", desc: "division.monetary_affairs.desc", hire_cost: 12, investment: 0.3 },
+    { id: "research", name: "division.research.name", desc: "division.research.desc", hire_cost: 10, investment: 0.2, channel: "fog", skill_weights: { forecasting: 0.5, markets: 0.2, supervision: 0.05, communication: 0.15, crisis: 0.1 } },
+    { id: "monetary_affairs", name: "division.monetary_affairs.name", desc: "division.monetary_affairs.desc", hire_cost: 12, investment: 0.3, channel: "transmission", skill_weights: { forecasting: 0.2, markets: 0.4, supervision: 0.1, communication: 0.2, crisis: 0.1 } },
   ];
 
   it("returns 0 when no divisions are staffed", () => {

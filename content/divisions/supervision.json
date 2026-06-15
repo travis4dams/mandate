@@ -3,5 +3,13 @@
   "name": "division.supervision.name",
   "desc": "division.supervision.desc",
   "hire_cost": 20,
-  "investment": 0.15
+  "investment": 0.15,
+  "channel": "fragility_mitigation",
+  "skill_weights": {
+    "forecasting":   0.1,
+    "markets":       0.1,
+    "supervision":   0.5,
+    "communication": 0.1,
+    "crisis":        0.2
+  }
 }

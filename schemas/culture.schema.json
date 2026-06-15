@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mandate.dev/schemas/culture.schema.json",
+  "title": "CultureParams",
+  "description": "Institutional culture drift params. SPEC-CULTURE-1.",
+  "type": "object",
+  "required": [
+    "policy_lean_halflife",
+    "supervisory_rigor_halflife",
+    "initial_supervisory_rigor",
+    "disposition_lean_weight"
+  ],
+  "properties": {
+    "policy_lean_halflife": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Half-life in months for EWMA of culture.policy_lean. Alpha = 1 - 2^(-1/halflife)."
+    },
+    "supervisory_rigor_halflife": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "Half-life in months for EWMA of culture.supervisory_rigor. Alpha = 1 - 2^(-1/halflife)."
+    },
+    "initial_supervisory_rigor": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Baseline supervisory_rigor target when neither supervision nor financial_stability is staffed. ∈ [0,1]."
+    },
+    "disposition_lean_weight": {
+      "type": "number",
+      "minimum": 0,
+      "description": "SPEC-STAFF-2: weight on each director's hidden disposition when blending into the policy_lean target."
+    }
+  },
+  "additionalProperties": false
+}

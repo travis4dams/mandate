@@ -1,0 +1,15 @@
+{
+  "id": "rbops",
+  "name": "division.rbops.name",
+  "desc": "division.rbops.desc",
+  "hire_cost": 10,
+  "investment": 0.15,
+  "channel": "crisis_severity",
+  "skill_weights": {
+    "forecasting":   0.1,
+    "markets":       0.15,
+    "supervision":   0.2,
+    "communication": 0.1,
+    "crisis":        0.45
+  }
+}

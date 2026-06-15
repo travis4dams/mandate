@@ -2,10 +2,10 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://mandate.dev/schemas/division.schema.json",
   "title": "Division",
-  "description": "A Federal Reserve division that can be staffed by the Chair. SPEC-INST-2.",
+  "description": "A Federal Reserve division that can be staffed by the Chair. SPEC-INST-2, SPEC-STAFF-1, SPEC-DIV-2.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["id", "name", "desc", "hire_cost", "investment"],
+  "required": ["id", "name", "desc", "hire_cost", "investment", "skill_weights", "channel"],
   "properties": {
     "id": {
       "type": "string",
@@ -31,6 +31,39 @@
       "type": "number",
       "exclusiveMinimum": 0,
       "description": "SPEC-INST-2: abstract investment contribution per unit of staff competence. Feeds SPEC-BRIEF-2 forecast quality."
+    },
+    "skill_weights": {
+      "type": "object",
+      "description": "SPEC-STAFF-1: how much each skill dimension matters for this division's effectiveness.",
+      "additionalProperties": false,
+      "required": ["forecasting", "markets", "supervision", "communication", "crisis"],
+      "properties": {
+        "forecasting":   { "type": "number", "minimum": 0 },
+        "markets":       { "type": "number", "minimum": 0 },
+        "supervision":   { "type": "number", "minimum": 0 },
+        "communication": { "type": "number", "minimum": 0 },
+        "crisis":        { "type": "number", "minimum": 0 }
+      }
+    },
+    "channel": {
+      "type": "string",
+      "description": "SPEC-DIV-2: which economic channel this division's effectiveness feeds.",
+      "enum": [
+        "fog",
+        "transmission",
+        "fragility_visibility",
+        "fragility_mitigation",
+        "crisis_severity",
+        "external_shock",
+        "org",
+        "political",
+        "oversight"
+      ]
+    },
+    "unlocked_by": {
+      "type": "string",
+      "minLength": 1,
+      "description": "SPEC-DIV-2: optional tech id that must be researched before this division becomes available. Omit for always-available."
     }
   }
 }

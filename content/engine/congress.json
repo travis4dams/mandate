@@ -1,0 +1,6 @@
+{
+  "inquiry_threshold": 50,
+  "political_capital_drain": 5,
+  "independence_drain": 2,
+  "initial_independence": 80
+}

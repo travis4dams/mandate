@@ -1,0 +1,14 @@
+{
+  "crisis_base": 0.0,
+  "crisis_slope": 0.8,
+  "crisis_threshold": 0.65,
+  "severity": 0.03,
+  "inflation_drop": 0.008,
+  "credibility_drop": 8,
+  "output_gap_drop": 0.025,
+  "post_crisis_fragility": 0.2,
+  "severity_jitter": 0.005,
+  "cooldown_months": 12,
+  "initial_bank_fragility": 0.1,
+  "initial_output_gap": 0.0
+}
