@@ -1,0 +1,7 @@
+{
+  "id": "international",
+  "name": "division.international.name",
+  "desc": "division.international.desc",
+  "hire_cost": 8,
+  "investment": 0.1
+}

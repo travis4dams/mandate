@@ -14,6 +14,7 @@ const dirChecks = [
   { schema: "schemas/calibration.schema.json", dir: "content/calibration", label: "calibration" },
   { schema: "schemas/doctrine.schema.json", dir: "content/doctrines", label: "doctrines" },
   { schema: "schemas/traits.schema.json", dir: "content/traits", label: "traits" },
+  { schema: "schemas/division.schema.json", dir: "content/divisions", label: "divisions" },
 ];
 
 const fileChecks = [
@@ -34,6 +35,9 @@ const fileChecks = [
   { schema: "schemas/calibration-thresholds.schema.json", file: "content/engine/calibration-thresholds.json", label: "calibration thresholds" },
   { schema: "schemas/productivity.schema.json", file: "content/engine/productivity.json", label: "productivity params" },
   { schema: "schemas/dot-plot-params.schema.json", file: "content/engine/dot-plot.json", label: "dot-plot params" },
+  { schema: "schemas/legacy.schema.json", file: "content/engine/legacy.json", label: "legacy params" },
+  { schema: "schemas/names.schema.json", file: "content/names/pools.json", label: "name pools" },
+  { schema: "schemas/institution.schema.json", file: "content/engine/institution.json", label: "institution params" },
 ];
 
 let failed = false;

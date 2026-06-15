@@ -19,6 +19,24 @@ import { onTarget, loadMandateParams } from "./mandate.js";
 import { adoptDoctrine as _adoptDoctrine, abandonDoctrine as _abandonDoctrine, doctrineFlagKey } from "./doctrine.js";
 import { loadDoctrineCatalog, getDoctrine, HOOK_HANDLERS, type DoctrineEntry } from "../content/doctrines.js";
 import { applySupplyShock, loadShocksParams } from "./shocks.js";
+import {
+  applyInstitutionDynamics,
+  loadInstitutionParams,
+  loadDivisionCatalog,
+  generateCandidates,
+  hireStaff,
+  institutionInvestment,
+  staffedFlagKey,
+  type Division,
+  type Candidate,
+} from "./institution.js";
+import { nameForId, loadNamePools } from "./names.js";
+import {
+  termProgress,
+  evaluateReappointment,
+  computeLegacyScore,
+  loadLegacyParams,
+} from "./legacy.js";
 import { mulberry32, fnv1a32, type SeededRng } from "./rng.js";
 import { observe } from "./fog.js";
 import type { GameState, GameStateSnapshot } from "./state.js";
@@ -182,6 +200,16 @@ export class Session {
   private constructor(initialState: GameState, seed: number, replay: Replay | null, committeeId: string) {
     this._replay = replay;
     this._committeeId = committeeId;
+    // SPEC-INST-1: seed the institutional resource vars from content defaults when a
+    // scenario doesn't author them, so the state var, the getters, and hireStaff (which
+    // reads state.vars directly) all agree from month 0 — and reset() restores them.
+    const instParams = loadInstitutionParams();
+    if (initialState.vars.operating_budget === undefined) {
+      initialState.vars.operating_budget = instParams.initial_operating_budget;
+    }
+    if (initialState.vars.political_capital === undefined) {
+      initialState.vars.political_capital = instParams.initial_political_capital;
+    }
     this._initialState = initialState;
     this._seed = seed;
     this._rng = mulberry32(seed);
@@ -314,6 +342,8 @@ export class Session {
     const termStructureParams = loadTermStructureParams();
     // SPEC-PROD-1: productivity params are a cached singleton; hoisted for the same reason.
     const productivityParams = loadProductivityParams();
+    // SPEC-INST-1: institution params are a cached singleton; hoisted for the same reason.
+    const institutionParams = loadInstitutionParams();
     const effectiveParams = {
       ...dynamicsParams,
       expectations_anchor_pull:
@@ -419,6 +449,10 @@ export class Session {
         // SPEC-PROD-1: drift productivity after macro dynamics each month.
         this._state = applyProductivityDrift(this._state, productivityParams);
 
+        // SPEC-INST-1: evolve institution resources (budget growth, political-capital
+        // mean-reversion) after macro dynamics each month.
+        this._state = applyInstitutionDynamics(this._state, institutionParams);
+
         const snapshot = Session._snapshotOf(this._state);
         this._trajectoryInternal.push(snapshot);
       }
@@ -476,6 +510,100 @@ export class Session {
    */
   mandateOnTarget(): boolean {
     return onTarget(this._state, loadMandateParams());
+  }
+
+  // --- SPEC-NAME-1: NPC names ---
+
+  /**
+   * The deterministic generated display name for an NPC id (committee member,
+   * division head, ...). Seeded by the session seed so a given (seed, npcId)
+   * always yields the same name and distinct ids draw independently. This is the
+   * canonical display-name source — UI code uses it instead of hardcoded
+   * localization name values.
+   */
+  npcName(npcId: string): string {
+    return nameForId(this._seed, npcId, loadNamePools()).full;
+  }
+
+  // --- SPEC-INST-1: institution resources ---
+
+  /** Current operating budget (defaults to the content initial value when absent). */
+  operatingBudget(): number {
+    return this._state.vars.operating_budget ?? loadInstitutionParams().initial_operating_budget;
+  }
+
+  /** Current political capital (defaults to the content initial value when absent). */
+  politicalCapital(): number {
+    return this._state.vars.political_capital ?? loadInstitutionParams().initial_political_capital;
+  }
+
+  // --- SPEC-INST-2: divisions & staffing ---
+
+  /** The full division catalog (content-defined). */
+  divisionCatalog(): readonly Division[] {
+    return loadDivisionCatalog();
+  }
+
+  /**
+   * The deterministic candidate slate for a division, seeded by the session seed.
+   * Stable across calls and play (same seed + division → same slate).
+   */
+  candidatesFor(divisionId: string): readonly Candidate[] {
+    return generateCandidates(divisionId, this._seed, loadNamePools(), loadInstitutionParams());
+  }
+
+  /** Whether a division currently has a staffed head. */
+  isStaffed(divisionId: string): boolean {
+    return this._state.flags[staffedFlagKey(divisionId)] === true;
+  }
+
+  /** Aggregate institutional investment from staffed divisions (feeds forecast quality). */
+  institutionInvestment(): number {
+    return institutionInvestment(this._state, loadDivisionCatalog());
+  }
+
+  /**
+   * Hire the candidate at `candidateIndex` from `divisionId`'s slate.
+   * Deducts the division's hire_cost from political capital and marks it staffed.
+   * Fires listeners on success.
+   * @throws {Error} if divisionId is unknown or candidateIndex is out of range.
+   * @throws {InsufficientCapitalError} if political capital is below the hire cost.
+   * @throws {DivisionAlreadyStaffedError} if the division is already staffed.
+   */
+  hire(divisionId: string, candidateIndex: number): void {
+    const division = loadDivisionCatalog().find((d) => d.id === divisionId);
+    if (division === undefined) {
+      throw new Error(`Session.hire: unknown division "${divisionId}".`);
+    }
+    const slate = this.candidatesFor(divisionId);
+    const candidate = slate[candidateIndex];
+    if (candidate === undefined) {
+      throw new Error(
+        `Session.hire: candidate index ${candidateIndex} out of range [0, ${slate.length - 1}] for division "${divisionId}".`,
+      );
+    }
+    // hireStaff is pure and throws before producing state, so this._state is
+    // unchanged on failure — no checkpoint needed.
+    this._state = hireStaff(this._state, division, candidate);
+    this._rebuildCaches();
+    this._notifyListeners();
+  }
+
+  // --- SPEC-LEGACY-1: tenure & legacy ---
+
+  /** Term-clock progress derived from elapsed months (trajectory length − 1). */
+  termProgress(): ReturnType<typeof termProgress> {
+    return termProgress(this._trajectoryInternal.length - 1, loadLegacyParams());
+  }
+
+  /** Whether current credibility clears the reappointment threshold. */
+  reappointmentOutlook(): ReturnType<typeof evaluateReappointment> {
+    return evaluateReappointment(this._state, loadLegacyParams());
+  }
+
+  /** The Chair's current legacy score. */
+  legacyScore(): number {
+    return computeLegacyScore(this._state, this._trajectoryInternal.length - 1, loadLegacyParams());
   }
 
   /**

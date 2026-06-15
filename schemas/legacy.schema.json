@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mandate.dev/schemas/legacy.schema.json",
+  "title": "LegacyParams",
+  "description": "Tenure and legacy parameters. SPEC-LEGACY-1: term length, reappointment threshold, and legacy score weights.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "term_length_months",
+    "reappointment_credibility_min",
+    "legacy_credibility_weight",
+    "legacy_mandate_bonus",
+    "legacy_anchor_penalty"
+  ],
+  "properties": {
+    "term_length_months": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "SPEC-LEGACY-1: length of a single Chair term in months. A reappointment is due at each term boundary."
+    },
+    "reappointment_credibility_min": {
+      "type": "number",
+      "minimum": 0,
+      "description": "SPEC-LEGACY-1: minimum credibility score required for reappointment. Credibility >= this value means the Chair is reappointed."
+    },
+    "legacy_credibility_weight": {
+      "type": "number",
+      "minimum": 0,
+      "description": "SPEC-LEGACY-1: weight applied to credibility in the legacy score formula."
+    },
+    "legacy_mandate_bonus": {
+      "type": "number",
+      "minimum": 0,
+      "description": "SPEC-LEGACY-1: per-month bonus multiplier awarded when the mandate is on target."
+    },
+    "legacy_anchor_penalty": {
+      "type": "number",
+      "minimum": 0,
+      "description": "SPEC-LEGACY-1: per-month penalty for each month credibility was below the anchor threshold."
+    }
+  }
+}

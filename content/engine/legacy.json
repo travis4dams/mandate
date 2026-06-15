@@ -1,0 +1,7 @@
+{
+  "term_length_months": 48,
+  "reappointment_credibility_min": 50,
+  "legacy_credibility_weight": 1.0,
+  "legacy_mandate_bonus": 2.0,
+  "legacy_anchor_penalty": 0.5
+}

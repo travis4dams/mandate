@@ -1,0 +1,7 @@
+{
+  "id": "financial_stability",
+  "name": "division.financial_stability.name",
+  "desc": "division.financial_stability.desc",
+  "hire_cost": 14,
+  "investment": 0.2
+}

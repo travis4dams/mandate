@@ -1,0 +1,19 @@
+{
+  "honorifics": ["Dr.", "Prof.", ""],
+  "given_names": [
+    "Alice", "Arthur", "Barbara", "Carl", "Clara", "Daniel", "Diana",
+    "Edmund", "Eleanor", "Franklin", "Grace", "Harold", "Harriet", "Irving",
+    "Jane", "Jerome", "Katherine", "Lawrence", "Lillian", "Marcus",
+    "Margaret", "Nathan", "Nora", "Oliver", "Patricia", "Raymond",
+    "Ruth", "Samuel", "Sylvia", "Theodore", "Vera", "Victor",
+    "Walter", "Winifred", "Xavier"
+  ],
+  "surnames": [
+    "Abbott", "Atherton", "Ashford", "Bancroft", "Benson", "Caldwell",
+    "Carver", "Chandler", "Clifton", "Colton", "Crane", "Davenport",
+    "Drayton", "Emerson", "Fairfax", "Fleming", "Forsythe", "Gentry",
+    "Goodwin", "Granger", "Harlow", "Harte", "Hastings", "Holloway",
+    "Ingram", "Kimball", "Langley", "Lawson", "Leland", "Lowell",
+    "Merritt", "Montague", "Norwood", "Ogden", "Pendleton"
+  ]
+}

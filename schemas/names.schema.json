@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mandate.dev/schemas/names.schema.json",
+  "title": "NamePools",
+  "description": "SPEC-NAME-1: NPC name pools for seeded deterministic name generation. Names must not match the SPEC-CONTENT-3 real-person blocklist.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["honorifics", "given_names", "surnames"],
+  "properties": {
+    "honorifics": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1,
+      "description": "Optional honorific prefixes (e.g. 'Dr.', 'Prof.'). Include empty string to represent no honorific."
+    },
+    "given_names": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 30,
+      "description": "Pool of given names. Must not match the SPEC-CONTENT-3 blocklist."
+    },
+    "surnames": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 30,
+      "description": "Pool of surnames. Must not match the SPEC-CONTENT-3 blocklist."
+    }
+  }
+}
