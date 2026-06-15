@@ -590,6 +590,7 @@
         "test/scenarios.test.ts",
         "test/session.test.ts",
         "web/src/App.tsx",
+        "web/src/AppShell.tsx",
         "web/src/StartScreen.test.tsx",
         "web/src/StartScreen.tsx"
       ]
@@ -599,6 +600,11 @@
       "section": "Legacy & tenure",
       "tag": "testable",
       "tests": [
+        "web/src/App.test.tsx",
+        "web/src/AppShell.test.tsx",
+        "web/src/AppShell.tsx",
+        "web/src/Dashboard.tsx",
+        "web/src/DoctrinePanel.test.tsx",
         "web/src/theme.ts"
       ]
     },
@@ -606,13 +612,19 @@
       "id": "SPEC-WEB-12",
       "section": "Legacy & tenure",
       "tag": "testable",
-      "tests": []
+      "tests": [
+        "web/src/InstitutionPanel.test.tsx",
+        "web/src/InstitutionPanel.tsx"
+      ]
     },
     {
       "id": "SPEC-WEB-13",
       "section": "Legacy & tenure",
       "tag": "testable",
-      "tests": []
+      "tests": [
+        "web/src/LegacyPanel.test.tsx",
+        "web/src/LegacyPanel.tsx"
+      ]
     },
     {
       "id": "SPEC-WEB-2",
@@ -635,8 +647,7 @@
       "tests": [
         "web/src/ChartsPanel.plot-throws.test.tsx",
         "web/src/ChartsPanel.test.tsx",
-        "web/src/ChartsPanel.tsx",
-        "web/src/Dashboard.tsx"
+        "web/src/ChartsPanel.tsx"
       ]
     },
     {
@@ -646,7 +657,6 @@
       "tests": [
         "test/session.test.ts",
         "web/src/App.test.tsx",
-        "web/src/Dashboard.tsx",
         "web/src/MeetingPanel.tsx"
       ]
     },
@@ -655,8 +665,7 @@
       "section": "Web UI",
       "tag": "testable",
       "tests": [
-        "web/src/App.test.tsx",
-        "web/src/Dashboard.tsx"
+        "web/src/App.test.tsx"
       ]
     },
     {
@@ -694,8 +703,8 @@
       "tag": "testable",
       "tests": [
         "test/session.test.ts",
-        "web/src/Dashboard.test.tsx",
-        "web/src/Dashboard.tsx"
+        "web/src/AppShell.tsx",
+        "web/src/Dashboard.test.tsx"
       ]
     }
   ]

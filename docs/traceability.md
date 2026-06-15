@@ -67,15 +67,15 @@ input in plain mode; only `--enrich` (workflow-only) fills empty cells from git 
 | SPEC-SIM-6 | testable | Simulation core | `test/cadence.test.ts` | #64 |
 | SPEC-TERM-1 | testable | Macro dynamics | `test/term-structure.test.ts` |  |
 | SPEC-WEB-1 | testable | Web UI | `web/src/App.test.tsx` | #21 |
-| SPEC-WEB-10 | testable | Web UI | `test/scenarios.test.ts`, `test/session.test.ts`, `web/src/App.tsx`, `web/src/StartScreen.test.tsx`, `web/src/StartScreen.tsx` | #128 |
-| SPEC-WEB-11 | testable | Legacy & tenure | `web/src/theme.ts` |  |
-| SPEC-WEB-12 | testable | Legacy & tenure | — |  |
-| SPEC-WEB-13 | testable | Legacy & tenure | — |  |
+| SPEC-WEB-10 | testable | Web UI | `test/scenarios.test.ts`, `test/session.test.ts`, `web/src/App.tsx`, `web/src/AppShell.tsx`, `web/src/StartScreen.test.tsx`, `web/src/StartScreen.tsx` | #128 |
+| SPEC-WEB-11 | testable | Legacy & tenure | `web/src/App.test.tsx`, `web/src/AppShell.test.tsx`, `web/src/AppShell.tsx`, `web/src/Dashboard.tsx`, `web/src/DoctrinePanel.test.tsx`, `web/src/theme.ts` |  |
+| SPEC-WEB-12 | testable | Legacy & tenure | `web/src/InstitutionPanel.test.tsx`, `web/src/InstitutionPanel.tsx` |  |
+| SPEC-WEB-13 | testable | Legacy & tenure | `web/src/LegacyPanel.test.tsx`, `web/src/LegacyPanel.tsx` |  |
 | SPEC-WEB-2 | testable | Web UI | `web/src/App.test.tsx`, `web/src/App.tsx`, `web/src/Dashboard.tsx`, `web/src/engine-content.test.ts`, `web/src/engine-content.ts`, `web/src/node-stubs.ts`, `web/src/useSession.ts` | #104 |
-| SPEC-WEB-3 | testable | Web UI | `web/src/ChartsPanel.plot-throws.test.tsx`, `web/src/ChartsPanel.test.tsx`, `web/src/ChartsPanel.tsx`, `web/src/Dashboard.tsx` | #30 |
-| SPEC-WEB-4 | testable | Web UI | `test/session.test.ts`, `web/src/App.test.tsx`, `web/src/Dashboard.tsx`, `web/src/MeetingPanel.tsx` | #28 |
-| SPEC-WEB-5 | testable | Web UI | `web/src/App.test.tsx`, `web/src/Dashboard.tsx` | #28 |
+| SPEC-WEB-3 | testable | Web UI | `web/src/ChartsPanel.plot-throws.test.tsx`, `web/src/ChartsPanel.test.tsx`, `web/src/ChartsPanel.tsx` | #30 |
+| SPEC-WEB-4 | testable | Web UI | `test/session.test.ts`, `web/src/App.test.tsx`, `web/src/MeetingPanel.tsx` | #28 |
+| SPEC-WEB-5 | testable | Web UI | `web/src/App.test.tsx` | #28 |
 | SPEC-WEB-6 | testable | Web UI | `web/src/PersuasionView.test.tsx`, `web/src/PersuasionView.tsx` | #63 |
 | SPEC-WEB-7 | testable | Web UI | `web/src/DoctrinePanel.test.tsx`, `web/src/DoctrinePanel.tsx` | #122 |
 | SPEC-WEB-8 | testable | Web UI | `web/src/MeetingPanel.test.tsx`, `web/src/MeetingPanel.tsx`, `web/src/PersuasionView.test.tsx`, `web/src/PersuasionView.tsx` | #124 |
-| SPEC-WEB-9 | testable | Web UI | `test/session.test.ts`, `web/src/Dashboard.test.tsx`, `web/src/Dashboard.tsx` | #126 |
+| SPEC-WEB-9 | testable | Web UI | `test/session.test.ts`, `web/src/AppShell.tsx`, `web/src/Dashboard.test.tsx` | #126 |

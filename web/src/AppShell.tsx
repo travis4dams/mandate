@@ -1,0 +1,499 @@
+// SPEC-WEB-11: "Office of the Chair" game shell. Wraps the existing panels in
+// an immersive, tabbed interface styled to the institutional Fed aesthetic.
+// Four tabs: Desk (economy view), Committee (FOMC meeting), Institution, Legacy.
+// The office header shows the Chair's generated name, current date, term progress,
+// and a credibility gauge. All panel components are mounted here; Dashboard.tsx
+// is kept as a pure "Desk content" export that this shell renders in the Desk tab.
+
+import { useState, useMemo } from "react";
+import { useSession } from "./useSession";
+import { t } from "./loc";
+import { MeetingPanel } from "./MeetingPanel";
+import { DoctrinePanel } from "./DoctrinePanel";
+import { InstitutionPanel } from "./InstitutionPanel";
+import { LegacyPanel } from "./LegacyPanel";
+import { ChartsPanel } from "./ChartsPanel";
+import { color, font, space, surface, heading, buttonStyle } from "./theme";
+
+// ---- Stat tile (shared between Desk and header gauge) ----
+
+function Stat(props: { label: string; value: string; testId?: string }): JSX.Element {
+  return (
+    <div
+      style={{
+        ...surface.card,
+        padding: `${space.sm}px ${space.md}px`,
+      }}
+    >
+      <div
+        style={{
+          ...heading.label,
+        }}
+      >
+        {props.label}
+      </div>
+      <div
+        data-testid={props.testId}
+        style={{
+          fontFamily: font.mono,
+          fontSize: 20,
+          fontWeight: 600,
+          marginTop: 4,
+          color: color.navy,
+        }}
+      >
+        {props.value}
+      </div>
+    </div>
+  );
+}
+
+// ---- Tab bar types and helpers ----
+
+type TabId = "desk" | "committee" | "institution" | "legacy";
+
+const TABS: { id: TabId; labelKey: string; testId: string }[] = [
+  { id: "desk", labelKey: "ui.shell.tab.desk", testId: "tab-desk" },
+  { id: "committee", labelKey: "ui.shell.tab.committee", testId: "tab-committee" },
+  { id: "institution", labelKey: "ui.shell.tab.institution", testId: "tab-institution" },
+  { id: "legacy", labelKey: "ui.shell.tab.legacy", testId: "tab-legacy" },
+];
+
+// ---- AppShell props ----
+
+export interface AppShellProps {
+  scenarioId: string;
+  seed: number;
+  briefingId?: string;
+  varDeltas?: Readonly<Record<string, number>>;
+}
+
+const fmtPercent = (n: number | undefined): string =>
+  n === undefined ? "—" : `${(n * 100).toFixed(2)}%`;
+const fmtPlain = (n: number | undefined, digits = 0): string =>
+  n === undefined ? "—" : n.toFixed(digits);
+
+/**
+ * Advance the session to the next FOMC meeting month without mutating state first.
+ * Checks future months by date string before advancing; if no meeting is found
+ * in the next 12 months, this throws without having changed any game state.
+ */
+function advanceToNextMeeting(session: import("../../src/engine/session").Session): void {
+  const parts = session.current.date.split("-");
+  const baseYear = parseInt(parts[0] ?? "1979", 10);
+  const baseMonth = parseInt(parts[1] ?? "01", 10);
+
+  for (let i = 1; i <= 12; i++) {
+    const totalMonthIndex = (baseYear * 12 + (baseMonth - 1)) + i;
+    const futureYear = Math.floor(totalMonthIndex / 12);
+    const futureMonth = (totalMonthIndex % 12) + 1;
+    const futureDate = `${futureYear}-${String(futureMonth).padStart(2, "0")}`;
+
+    if (session.isMeetingMonth(futureDate)) {
+      session.advance(i);
+      return;
+    }
+  }
+
+  throw new Error("advanceToNextMeeting: no meeting month within 12 months");
+}
+
+// ---- Main shell component ----
+
+export function AppShell(props: AppShellProps): JSX.Element {
+  const { scenarioId, seed, briefingId, varDeltas } = props;
+  const [activeTab, setActiveTab] = useState<TabId>("desk");
+  const [btnError, setBtnError] = useState<string | null>(null);
+
+  const { session, current, trajectory } = useSession(
+    scenarioId,
+    seed,
+    "comm.fomc_1979",
+    varDeltas === undefined ? undefined : { varDeltas },
+  );
+
+  function run(action: () => void): void {
+    try {
+      action();
+      setBtnError(null);
+    } catch (e) {
+      setBtnError(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  // SPEC-WEB-9: fogged trajectory — substitutes observed inflation/unemployment
+  // into each point so the chart centers on what was actually seen each month.
+  const foggedTrajectory = useMemo(
+    () =>
+      trajectory.map((snap, i) => ({
+        ...snap,
+        vars: {
+          ...snap.vars,
+          inflation: session.observed("inflation", i),
+          unemployment: session.observed("unemployment", i),
+        },
+      })),
+    [session, trajectory],
+  );
+
+  const mandateOk = session.mandateOnTarget();
+  const termProg = session.termProgress();
+  const credibility = current.vars.credibility;
+  const chairName = session.npcName("member.chair");
+
+  return (
+    <div style={{ ...surface.page, minHeight: "100vh" }}>
+      {/* ---- Office header ---- */}
+      <header
+        style={{
+          background: color.navyDeep,
+          borderBottom: `2px solid ${color.brass}`,
+          padding: `${space.lg}px ${space.xl}px`,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: space.md,
+        }}
+      >
+        {/* Left: title + Chair name */}
+        <div>
+          <div
+            style={{
+              ...heading.label,
+              color: color.brassBright,
+              marginBottom: space.xs,
+            }}
+          >
+            {t("ui.shell.office_title")}
+          </div>
+          <h1
+            data-testid="shell-chair-name"
+            style={{
+              ...heading.display,
+              color: color.onNavy,
+              fontSize: 22,
+              margin: 0,
+            }}
+          >
+            {t("ui.shell.chair_prefix")} {chairName}
+          </h1>
+        </div>
+
+        {/* Center: date */}
+        <div style={{ textAlign: "center" }}>
+          <div
+            style={{
+              ...heading.label,
+              color: color.onNavySoft,
+              marginBottom: space.xs,
+            }}
+          >
+            {t("ui.dashboard.stat.date")}
+          </div>
+          <div
+            data-testid="shell-date"
+            style={{
+              fontFamily: font.mono,
+              fontSize: 20,
+              fontWeight: 700,
+              color: color.onNavy,
+            }}
+          >
+            {current.date}
+          </div>
+        </div>
+
+        {/* Right: term clock + credibility gauge */}
+        <div style={{ display: "flex", gap: space.xl, alignItems: "flex-start" }}>
+          <div>
+            <div
+              style={{
+                ...heading.label,
+                color: color.onNavySoft,
+                marginBottom: space.xs,
+              }}
+            >
+              {t("ui.shell.term_label")}
+            </div>
+            <div
+              data-testid="shell-term-progress"
+              style={{
+                fontFamily: font.mono,
+                fontSize: 14,
+                color: color.onNavy,
+              }}
+            >
+              {termProg.monthsIntoTerm} / {termProg.termLength}
+            </div>
+          </div>
+          <div>
+            <div
+              style={{
+                ...heading.label,
+                color: color.onNavySoft,
+                marginBottom: space.xs,
+              }}
+            >
+              {t("ui.shell.credibility_label")}
+            </div>
+            <div
+              data-testid="shell-credibility"
+              style={{
+                fontFamily: font.mono,
+                fontSize: 14,
+                color: credibility !== undefined && credibility >= 50 ? color.brassBright : color.negative,
+              }}
+            >
+              {fmtPlain(credibility, 1)}
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* ---- Tab bar ---- */}
+      <nav
+        style={{
+          background: color.navy,
+          display: "flex",
+          gap: 0,
+          borderBottom: `1px solid ${color.navyMute}`,
+        }}
+      >
+        {TABS.map((tab) => {
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              data-testid={tab.testId}
+              role="tab"
+              aria-selected={isActive}
+              onClick={() => setActiveTab(tab.id)}
+              style={{
+                fontFamily: font.sans,
+                fontSize: 13,
+                fontWeight: isActive ? 700 : 500,
+                padding: `${space.md}px ${space.xl}px`,
+                background: "transparent",
+                color: isActive ? color.brassBright : color.onNavySoft,
+                border: "none",
+                borderBottom: isActive ? `2px solid ${color.brass}` : "2px solid transparent",
+                cursor: "pointer",
+                transition: "color 120ms ease, border-color 120ms ease",
+                letterSpacing: "0.03em",
+              }}
+            >
+              {t(tab.labelKey)}
+            </button>
+          );
+        })}
+      </nav>
+
+      {/* ---- Tab content ---- */}
+      <main style={{ padding: `${space.xl}px`, maxWidth: 980, margin: "0 auto" }}>
+        {/* ---- Desk tab ---- */}
+        {activeTab === "desk" && (
+          <section>
+            <h2
+              style={{
+                ...heading.display,
+                fontSize: 20,
+                marginBottom: space.lg,
+              }}
+            >
+              {t("ui.shell.desk.economy_heading")}
+            </h2>
+
+            {/* Stat grid — preserves all existing data-testids */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(4, 1fr)",
+                gap: space.md,
+                margin: `${space.md}px 0`,
+              }}
+            >
+              <Stat label={t("ui.dashboard.stat.date")} value={current.date} />
+              <Stat label={t("ui.dashboard.stat.policy_rate")} value={fmtPercent(current.vars.policy_rate)} />
+              <Stat label={t("ui.dashboard.stat.inflation")} value={fmtPercent(session.observed("inflation"))} testId="stat-inflation" />
+              <Stat label={t("ui.dashboard.stat.unemployment")} value={fmtPercent(session.observed("unemployment"))} testId="stat-unemployment" />
+              <Stat label={t("ui.dashboard.stat.credibility")} value={fmtPlain(current.vars.credibility, 1)} />
+              <Stat label={t("ui.dashboard.stat.expectations_anchor")} value={fmtPercent(current.vars.expectations_anchor)} />
+              <Stat label={t("ui.dashboard.stat.months_below_anchor")} value={fmtPlain(current.vars.months_below_anchor, 0)} />
+              <Stat label={t("ui.dashboard.stat.months_elapsed")} value={String(trajectory.length - 1)} />
+              <Stat label={t("ui.dashboard.stat.long_rate")} value={fmtPercent(current.vars.long_rate)} testId="stat-long-rate" />
+              <Stat label={t("ui.dashboard.stat.output_gap")} value={fmtPercent(current.vars.output_gap)} testId="stat-output-gap" />
+              {/* Mandate status tile */}
+              <div
+                data-testid="mandate-status"
+                style={{
+                  ...surface.card,
+                  padding: `${space.sm}px ${space.md}px`,
+                  background: mandateOk ? color.positiveSoft : color.negativeSoft,
+                  borderLeft: `3px solid ${mandateOk ? color.positive : color.negative}`,
+                }}
+              >
+                <div style={{ ...heading.label }}>
+                  {t("ui.mandate.label")}
+                </div>
+                <div
+                  style={{
+                    fontSize: 18,
+                    fontWeight: 600,
+                    marginTop: 4,
+                    color: mandateOk ? color.positive : color.negative,
+                  }}
+                >
+                  {mandateOk ? t("ui.mandate.on") : t("ui.mandate.off")}
+                </div>
+              </div>
+            </div>
+
+            {/* Charts */}
+            <section style={{ margin: `${space.lg}px 0` }}>
+              <h3
+                style={{
+                  ...heading.display,
+                  fontSize: 16,
+                  marginBottom: space.sm,
+                }}
+              >
+                {t("ui.dashboard.trajectory_heading")} ({trajectory.length})
+              </h3>
+              <ChartsPanel trajectory={foggedTrajectory} />
+            </section>
+
+            {/* Time controls */}
+            <section
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: space.sm,
+                margin: `${space.lg}px 0`,
+              }}
+            >
+              <button style={buttonStyle("secondary")} onClick={() => run(() => session.advance(1))}>
+                {t("ui.dashboard.button.advance_1")}
+              </button>
+              <button style={buttonStyle("secondary")} onClick={() => run(() => session.advance(3))}>
+                {t("ui.dashboard.button.advance_3")}
+              </button>
+              <button style={buttonStyle("secondary")} onClick={() => run(() => session.advance(12))}>
+                {t("ui.dashboard.button.advance_12")}
+              </button>
+              <button
+                style={buttonStyle("secondary")}
+                onClick={() =>
+                  run(() => {
+                    try {
+                      advanceToNextMeeting(session);
+                    } catch (e) {
+                      const msg = e instanceof Error ? e.message : String(e);
+                      if (msg.startsWith("advanceToNextMeeting:")) {
+                        throw new Error(t("ui.dashboard.no_meeting_in_12mo"));
+                      }
+                      throw e;
+                    }
+                  })
+                }
+              >
+                {t("ui.dashboard.button.advance_to_meeting")}
+              </button>
+              <button style={buttonStyle("ghost")} onClick={() => run(() => session.reset())}>
+                {t("ui.dashboard.button.reset")}
+              </button>
+            </section>
+
+            {/* Guidance controls */}
+            <section
+              style={{
+                display: "flex",
+                gap: space.sm,
+                alignItems: "center",
+                margin: `${space.md}px 0`,
+              }}
+            >
+              <span
+                style={{
+                  fontSize: 13,
+                  fontFamily: font.sans,
+                  color: color.inkSoft,
+                }}
+              >
+                {t("ui.dashboard.guidance_label")}
+              </span>
+              <button
+                style={buttonStyle("secondary")}
+                onClick={() => run(() => session.setForwardGuidanceStance("hawkish"))}
+              >
+                {t("ui.dashboard.button.hawkish")}
+              </button>
+              <button
+                style={buttonStyle("secondary")}
+                onClick={() => run(() => session.setForwardGuidanceStance("neutral"))}
+              >
+                {t("ui.dashboard.button.neutral")}
+              </button>
+              <button
+                style={buttonStyle("secondary")}
+                onClick={() => run(() => session.setForwardGuidanceStance("dovish"))}
+              >
+                {t("ui.dashboard.button.dovish")}
+              </button>
+            </section>
+
+            {btnError !== null && (
+              <p
+                style={{
+                  color: color.negative,
+                  fontSize: 13,
+                  margin: `${space.xs}px 0 ${space.md}px`,
+                  fontFamily: font.sans,
+                }}
+              >
+                {btnError}
+              </p>
+            )}
+          </section>
+        )}
+
+        {/* ---- Committee tab ---- */}
+        {activeTab === "committee" && (
+          <section>
+            <MeetingPanel session={session} briefingId={briefingId} />
+          </section>
+        )}
+
+        {/* ---- Institution tab ---- */}
+        {activeTab === "institution" && (
+          <InstitutionPanel session={session} current={current} />
+        )}
+
+        {/* ---- Legacy tab ---- */}
+        {activeTab === "legacy" && (
+          <section>
+            <LegacyPanel session={session} />
+            {/* SPEC-WEB-11: doctrine is a long-horizon strategic commitment — it lives
+                with the Chair's legacy, per the spec. */}
+            <DoctrinePanel session={session} current={current} />
+          </section>
+        )}
+      </main>
+
+      {/* ---- Case-file footer: scenario + seed reference (SPEC-WEB-10 id/date visibility) ---- */}
+      <footer
+        style={{
+          borderTop: `1px solid ${color.line}`,
+          padding: `${space.sm}px ${space.xl}px`,
+          fontFamily: font.mono,
+          fontSize: 11,
+          color: color.inkSoft,
+          textAlign: "center",
+          letterSpacing: "0.02em",
+        }}
+      >
+        {t("ui.dashboard.scenario_label")} {scenarioId} · {t("ui.dashboard.seed_label")} {seed}
+      </footer>
+    </div>
+  );
+}

@@ -12,12 +12,16 @@ afterEach(() => {
   cleanup();
 });
 
-// Boot through the start screen into the 1979 scenario at the default seed —
-// the doctrine panel lives on the Dashboard behind the new-game flow.
+// Boot through the start screen into the 1979 scenario at the default seed, then
+// open the Legacy tab where the doctrine panel lives in the Office of the Chair
+// shell (SPEC-WEB-11: doctrine is a long-horizon commitment grouped with legacy).
 function bootGame(): ReturnType<typeof render> {
   const result = render(<App />);
   act(() => {
     fireEvent.click(screen.getByTestId("start-scenario-scen.1979_stagflation"));
+  });
+  act(() => {
+    fireEvent.click(screen.getByTestId("tab-legacy"));
   });
   return result;
 }

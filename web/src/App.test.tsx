@@ -109,6 +109,10 @@ describe("App", () => {
       fireEvent.click(screen.getByRole("button", { name: "Advance 1 month" }));
     });
     expect(container.textContent).toContain("1979-10");
+    // SPEC-WEB-11: the meeting flow lives on the Committee tab in the shell.
+    act(() => {
+      fireEvent.click(screen.getByTestId("tab-committee"));
+    });
     const proposeBtn = screen.getByTestId("propose-rate-btn");
     expect((proposeBtn as HTMLButtonElement).disabled).toBe(true);
   });
@@ -117,7 +121,10 @@ describe("App", () => {
   it("Propose rate button is enabled in a meeting month (1979-08 = August)", () => {
     // SPEC-WEB-4
     bootGame();
-    // Initial date is 1979-08 — a meeting month.
+    // Initial date is 1979-08 — a meeting month. Open the Committee tab (SPEC-WEB-11).
+    act(() => {
+      fireEvent.click(screen.getByTestId("tab-committee"));
+    });
     const proposeBtn = screen.getByTestId("propose-rate-btn");
     expect((proposeBtn as HTMLButtonElement).disabled).toBe(false);
   });

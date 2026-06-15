@@ -7,6 +7,7 @@ import { useState } from "react";
 import { t } from "./loc";
 import { loadScenarioCatalog, type Scenario } from "../../src/content/scenarios";
 import { loadHearing, resolveHearing, type HearingEntry } from "../../src/content/hearings";
+import { color, font, space, radius, shadow, surface, heading, buttonStyle } from "./theme";
 
 export interface StartConfig {
   scenarioId: string;
@@ -63,74 +64,319 @@ export function StartScreen(props: { onStart: (config: StartConfig) => void }): 
   const hearing = hearingMode ? loadHearing(HEARING_ID) : null;
 
   return (
-    <div style={{ fontFamily: "system-ui, sans-serif", maxWidth: 720, margin: "0 auto", padding: "24px" }}>
-      <h1 style={{ margin: 0 }}>{t("ui.start.title")}</h1>
-      <p style={{ color: "#666", marginTop: 4 }}>{t("ui.start.subtitle")}</p>
+    <div
+      style={{
+        ...surface.page,
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "flex-start",
+        padding: `${space.xxl * 2}px ${space.xl}px`,
+      }}
+    >
+      {/* ── Title block ── */}
+      <div style={{ textAlign: "center", marginBottom: space.xxl, maxWidth: 560 }}>
+        <div
+          style={{
+            display: "inline-block",
+            padding: `${space.xs}px ${space.lg}px`,
+            border: `1px solid ${color.brass}`,
+            borderRadius: radius.sm,
+            marginBottom: space.lg,
+          }}
+        >
+          <span style={{ ...heading.label, color: color.brass }}>
+            Federal Reserve — Office of the Chair
+          </span>
+        </div>
+        <h1
+          style={{
+            fontFamily: font.display,
+            fontSize: 42,
+            color: color.navy,
+            margin: `0 0 ${space.sm}px`,
+            letterSpacing: "-0.01em",
+            lineHeight: 1.15,
+          }}
+        >
+          {t("ui.start.title")}
+        </h1>
+        <p
+          style={{
+            fontFamily: font.sans,
+            color: color.inkSoft,
+            fontSize: 16,
+            margin: 0,
+            lineHeight: 1.6,
+          }}
+        >
+          {t("ui.start.subtitle")}
+        </p>
+      </div>
 
-      <div style={{ display: "flex", gap: 8, alignItems: "center", margin: "12px 0" }}>
-        <label style={{ fontSize: 13 }} htmlFor="seed-input">{t("ui.start.seed_label")}</label>
+      {/* ── Seed row ── */}
+      <div
+        style={{
+          display: "flex",
+          gap: space.sm,
+          alignItems: "center",
+          marginBottom: space.xl,
+        }}
+      >
+        <label
+          style={{ fontSize: 13, fontFamily: font.sans, color: color.inkSoft }}
+          htmlFor="seed-input"
+        >
+          {t("ui.start.seed_label")}
+        </label>
         <input
           id="seed-input"
           type="number"
           value={seedInput}
           onChange={(e) => setSeedInput(e.target.value)}
           data-testid="seed-input"
-          style={{ width: 100, padding: "4px 6px", fontFamily: "monospace" }}
+          style={{
+            width: 100,
+            padding: `${space.xs}px ${space.sm}px`,
+            fontFamily: font.mono,
+            fontSize: 13,
+            border: `1px solid ${color.line}`,
+            borderRadius: radius.sm,
+            background: color.parchmentRaised,
+            color: color.ink,
+          }}
         />
       </div>
 
       {!hearingMode && (
-        <>
-          <h2 style={{ fontSize: 16, marginBottom: 8 }}>{t("ui.start.scenarios_heading")}</h2>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+        <div style={{ width: "100%", maxWidth: 800 }}>
+          {/* ── Confirmation Hearing — marquee path ── */}
+          <div
+            style={{
+              background: color.navy,
+              borderRadius: radius.lg,
+              padding: `${space.xxl}px ${space.xl}px`,
+              marginBottom: space.xxl,
+              boxShadow: shadow.raised,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              textAlign: "center",
+              gap: space.md,
+            }}
+          >
+            <div
+              style={{
+                display: "inline-block",
+                padding: `${space.xs}px ${space.lg}px`,
+                border: `1px solid ${color.brass}`,
+                borderRadius: radius.sm,
+              }}
+            >
+              <span style={{ ...heading.label, color: color.brass }}>
+                Recommended
+              </span>
+            </div>
+            <h2
+              style={{
+                fontFamily: font.display,
+                fontSize: 26,
+                color: color.onNavy,
+                margin: 0,
+                letterSpacing: "0.01em",
+              }}
+            >
+              Confirmation Hearing
+            </h2>
+            <p
+              style={{
+                fontFamily: font.sans,
+                color: color.onNavySoft,
+                fontSize: 14,
+                margin: 0,
+                maxWidth: 420,
+                lineHeight: 1.6,
+              }}
+            >
+              Answer questions before the Senate Banking Committee. Your responses determine your
+              starting mandate, credibility, and the economic conditions you inherit.
+            </p>
+            <button
+              data-testid="start-hearing-mode"
+              style={{
+                ...buttonStyle("primary"),
+                fontSize: 14,
+                padding: `${space.sm}px ${space.xl}px`,
+                background: color.brass,
+                marginTop: space.xs,
+              }}
+              onClick={() => setHearingMode(true)}
+            >
+              {t("ui.start.hearing.enter")}
+            </button>
+          </div>
+
+          {/* ── Scenario quick-start grid ── */}
+          <h2
+            style={{
+              ...heading.display,
+              fontSize: 16,
+              marginBottom: space.md,
+            }}
+          >
+            {t("ui.start.scenarios_heading")}
+          </h2>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: space.md }}>
             {playable.map((s) => (
               <div
                 key={s.id}
-                style={{ border: "1px solid #ddd", borderRadius: 6, padding: "10px 12px", background: "#fafafa" }}
+                style={{
+                  ...surface.card,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: space.xs,
+                }}
               >
-                <strong>{t(s.name)}</strong>
-                <p style={{ fontSize: 12, color: "#666", margin: "6px 0" }}>{t(s.desc)}</p>
-                <p style={{ fontSize: 12, color: "#999", margin: "6px 0" }}>{s.date}</p>
-                <button data-testid={`start-scenario-${s.id}`} onClick={() => startScenario(s)}>
+                <strong
+                  style={{
+                    fontFamily: font.display,
+                    fontSize: 15,
+                    color: color.navy,
+                    letterSpacing: "0.01em",
+                  }}
+                >
+                  {t(s.name)}
+                </strong>
+                <p
+                  style={{
+                    fontSize: 12,
+                    color: color.inkSoft,
+                    margin: 0,
+                    fontFamily: font.sans,
+                    lineHeight: 1.5,
+                    flexGrow: 1,
+                  }}
+                >
+                  {t(s.desc)}
+                </p>
+                <p
+                  style={{
+                    fontSize: 11,
+                    margin: `0 0 ${space.xs}px`,
+                    fontFamily: font.mono,
+                    color: color.brass,
+                  }}
+                >
+                  {s.date}
+                </p>
+                <button
+                  data-testid={`start-scenario-${s.id}`}
+                  style={buttonStyle("secondary")}
+                  onClick={() => startScenario(s)}
+                >
                   {t("ui.start.begin")}
                 </button>
               </div>
             ))}
           </div>
-          <div style={{ marginTop: 16 }}>
-            <button data-testid="start-hearing-mode" onClick={() => setHearingMode(true)}>
-              {t("ui.start.hearing.enter")}
-            </button>
-          </div>
-        </>
+        </div>
       )}
 
       {hearing !== null && (
-        <div>
-          <h2 style={{ fontSize: 16, marginBottom: 4 }}>{t(hearing.name)}</h2>
-          <p style={{ fontSize: 13, color: "#666", marginTop: 0 }}>{t(hearing.desc)}</p>
+        <div
+          style={{
+            width: "100%",
+            maxWidth: 680,
+          }}
+        >
+          <div style={{ marginBottom: space.xl }}>
+            <h2
+              style={{
+                ...heading.display,
+                fontSize: 22,
+                marginBottom: space.xs,
+              }}
+            >
+              {t(hearing.name)}
+            </h2>
+            <p
+              style={{
+                fontSize: 13,
+                color: color.inkSoft,
+                margin: 0,
+                fontFamily: font.sans,
+                lineHeight: 1.6,
+              }}
+            >
+              {t(hearing.desc)}
+            </p>
+          </div>
           {hearing.questions.map((q) => (
-            <fieldset key={q.id} style={{ border: "1px solid #ddd", borderRadius: 6, margin: "10px 0", padding: "8px 12px" }}>
-              <legend style={{ fontSize: 13, fontWeight: 600 }}>{t(q.text)}</legend>
+            <fieldset
+              key={q.id}
+              style={{
+                border: `1px solid ${color.line}`,
+                borderRadius: radius.md,
+                margin: `0 0 ${space.md}px`,
+                padding: `${space.sm}px ${space.md}px`,
+                background: color.parchmentRaised,
+              }}
+            >
+              <legend
+                style={{
+                  fontSize: 13,
+                  fontWeight: 600,
+                  fontFamily: font.sans,
+                  color: color.navy,
+                  padding: `0 ${space.xs}px`,
+                }}
+              >
+                {t(q.text)}
+              </legend>
               {q.answers.map((a) => (
-                <label key={a.id} style={{ display: "block", fontSize: 13, margin: "6px 0" }}>
+                <label
+                  key={a.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: space.sm,
+                    fontSize: 13,
+                    margin: `${space.sm}px 0`,
+                    fontFamily: font.sans,
+                    color: answers[q.id] === a.id ? color.navy : color.ink,
+                    cursor: "pointer",
+                  }}
+                >
                   <input
                     type="radio"
                     name={q.id}
                     checked={answers[q.id] === a.id}
                     onChange={() => setAnswers((prev) => ({ ...prev, [q.id]: a.id }))}
                     data-testid={`answer-${a.id}`}
+                    style={{ accentColor: color.brass, marginTop: 2 }}
                   />{" "}
                   {t(a.text)}
                 </label>
               ))}
             </fieldset>
           ))}
-          <div style={{ display: "flex", gap: 8 }}>
-            <button data-testid="hearing-begin" onClick={() => startHearing(hearing)}>
+          <div style={{ display: "flex", gap: space.sm }}>
+            <button
+              data-testid="hearing-begin"
+              style={{
+                ...buttonStyle("primary"),
+                fontSize: 14,
+                padding: `${space.sm}px ${space.xl}px`,
+              }}
+              onClick={() => startHearing(hearing)}
+            >
               {t("ui.start.hearing.begin")}
             </button>
-            <button onClick={() => { setHearingMode(false); setError(null); }}>
+            <button
+              style={buttonStyle("ghost")}
+              onClick={() => { setHearingMode(false); setError(null); }}
+            >
               {t("ui.start.hearing.back")}
             </button>
           </div>
@@ -138,7 +384,16 @@ export function StartScreen(props: { onStart: (config: StartConfig) => void }): 
       )}
 
       {error !== null && (
-        <p style={{ color: "#c92a2a", fontSize: 13, marginTop: 8 }}>{error}</p>
+        <p
+          style={{
+            color: color.negative,
+            fontSize: 13,
+            marginTop: space.sm,
+            fontFamily: font.sans,
+          }}
+        >
+          {error}
+        </p>
       )}
     </div>
   );

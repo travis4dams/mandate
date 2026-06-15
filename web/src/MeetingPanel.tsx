@@ -11,6 +11,7 @@ import { type FomcVote, type MemberVotePreview } from "../../src/engine/fomc";
 import { loadChairCapitalParams } from "../../src/engine/chair-capital";
 import { t } from "./loc";
 import { PersuasionView } from "./PersuasionView";
+import { color, font, space, radius, surface, heading, buttonStyle, chipStyle } from "./theme";
 
 export function MeetingPanel(props: { session: Session; briefingId?: string }): JSX.Element {
   const { session, briefingId } = props;
@@ -100,38 +101,59 @@ export function MeetingPanel(props: { session: Session; briefingId?: string }): 
   return (
     <section
       style={{
-        border: "1px solid #ddd",
-        borderRadius: 6,
-        padding: "12px 14px",
-        background: isMeeting ? "#f6fff7" : "#fafafa",
-        margin: "16px 0",
+        ...surface.card,
+        margin: `${space.xl}px 0`,
+        background: isMeeting ? color.parchmentRaised : color.parchment,
+        borderLeft: isMeeting ? `3px solid ${color.brass}` : `3px solid ${color.line}`,
       }}
     >
-      <h2 style={{ fontSize: 16, margin: 0 }}>
-        {t("ui.meeting_panel.heading")} — {currentDate}
-        <span style={{ marginLeft: 8, fontSize: 12, color: isMeeting ? "#2f9e44" : "#999" }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: space.md, marginBottom: space.md }}>
+        <h2 style={{ ...heading.display, fontSize: 18 }}>
+          {t("ui.meeting_panel.heading")} — {currentDate}
+        </h2>
+        <span style={chipStyle(isMeeting ? "positive" : "neutral")}>
           {isMeeting ? t("ui.meeting_panel.meeting_month") : t("ui.meeting_panel.no_meeting")}
         </span>
-      </h2>
+      </div>
 
-      <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 10 }}>
-        <label style={{ fontSize: 13 }}>{t("ui.meeting_panel.rate_label")}</label>
+      <div style={{ display: "flex", gap: space.sm, alignItems: "center", marginTop: space.sm }}>
+        <label style={{ fontSize: 13, fontFamily: font.sans, color: color.inkSoft }}>
+          {t("ui.meeting_panel.rate_label")}
+        </label>
         <input
           type="number"
           step="0.0025"
           min="0"
           value={rateInput}
           onChange={(e) => setRateInput(e.target.value)}
-          style={{ width: 100, padding: "4px 6px", fontFamily: "monospace" }}
+          style={{
+            width: 100,
+            padding: `${space.xs}px ${space.sm}px`,
+            fontFamily: font.mono,
+            fontSize: 13,
+            border: `1px solid ${color.line}`,
+            borderRadius: radius.sm,
+            background: color.parchmentRaised,
+            color: color.ink,
+          }}
           aria-label={t("ui.meeting_panel.rate_aria_label")}
         />
-        <button onClick={onPropose} disabled={!isMeeting} data-testid="propose-rate-btn">
+        <button
+          onClick={onPropose}
+          disabled={!isMeeting}
+          data-testid="propose-rate-btn"
+          style={{
+            ...buttonStyle("primary"),
+            opacity: isMeeting ? 1 : 0.45,
+            cursor: isMeeting ? "pointer" : "not-allowed",
+          }}
+        >
           {t("ui.meeting_panel.propose_button")}
         </button>
       </div>
 
       {briefingError !== null && (
-        <p style={{ color: "#c92a2a", fontSize: 13, marginTop: 8 }}>{briefingError}</p>
+        <p style={{ color: color.negative, fontSize: 13, marginTop: space.sm }}>{briefingError}</p>
       )}
 
       {briefing !== null && (
@@ -157,18 +179,38 @@ export function MeetingPanel(props: { session: Session; briefingId?: string }): 
       )}
 
       {error !== null && (
-        <p style={{ color: "#c92a2a", fontSize: 13, marginTop: 8 }}>{error}</p>
+        <p style={{ color: color.negative, fontSize: 13, marginTop: space.sm }}>{error}</p>
       )}
 
       {lastVote !== null && (
-        <div style={{ marginTop: 10, fontSize: 13 }}>
+        <div
+          style={{
+            marginTop: space.md,
+            padding: `${space.sm}px ${space.md}px`,
+            background: color.parchment,
+            borderRadius: radius.sm,
+            border: `1px solid ${color.line}`,
+            fontSize: 13,
+            fontFamily: font.sans,
+            color: color.ink,
+          }}
+        >
           <strong>{t("ui.meeting_panel.last_vote_label")}</strong>{" "}
-          {t("ui.meeting_panel.decided_rate")} {(lastVote.decided * 100).toFixed(2)}% ·{" "}
-          {t("ui.meeting_panel.dissents_label")} {lastVote.dissents}
+          {t("ui.meeting_panel.decided_rate")}{" "}
+          <span style={{ fontFamily: font.mono, color: color.navy }}>
+            {(lastVote.decided * 100).toFixed(2)}%
+          </span>{" "}
+          · {t("ui.meeting_panel.dissents_label")}{" "}
+          <span style={chipStyle(lastVote.dissents > 0 ? "caution" : "positive")}>
+            {lastVote.dissents}
+          </span>
           {credibilityDelta !== null && (
             <>
-              {" "}· {t("ui.meeting_panel.credibility_label")} {credibilityDelta >= 0 ? "+" : ""}
-              {credibilityDelta.toFixed(2)}
+              {" "}· {t("ui.meeting_panel.credibility_label")}{" "}
+              <span style={chipStyle(credibilityDelta >= 0 ? "positive" : "negative")}>
+                {credibilityDelta >= 0 ? "+" : ""}
+                {credibilityDelta.toFixed(2)}
+              </span>
             </>
           )}
         </div>
@@ -188,48 +230,111 @@ function CommitteeBriefing(props: {
   const dissents = props.previews.filter((p) => p.wouldDissent).length;
   const fmtPct = (n: number): string => `${(n * 100).toFixed(2)}%`;
   return (
-    <div style={{ marginTop: 12 }}>
-      <div style={{ fontSize: 12, color: "#666", marginBottom: 4 }}>
+    <div style={{ marginTop: space.md }}>
+      <div
+        style={{
+          fontSize: 12,
+          color: color.inkSoft,
+          marginBottom: space.sm,
+          fontFamily: font.sans,
+        }}
+      >
         {t("ui.meeting_panel.briefing.inflation_gap_label")}{" "}
-        {(props.gapInflation * 100).toFixed(2)}{t("ui.meeting_panel.briefing.pp_suffix")}{" "}
+        <span style={{ fontFamily: font.mono }}>
+          {(props.gapInflation * 100).toFixed(2)}{t("ui.meeting_panel.briefing.pp_suffix")}
+        </span>{" "}
         {t("ui.meeting_panel.briefing.target_prefix")}{fmtPct(props.inflationTarget)}{t("ui.meeting_panel.briefing.target_suffix")} ·{" "}
         {t("ui.meeting_panel.briefing.unemployment_gap_label")}{" "}
-        {(props.gapUnemployment * 100).toFixed(2)}{t("ui.meeting_panel.briefing.pp_suffix")}{" "}
+        <span style={{ fontFamily: font.mono }}>
+          {(props.gapUnemployment * 100).toFixed(2)}{t("ui.meeting_panel.briefing.pp_suffix")}
+        </span>{" "}
         {t("ui.meeting_panel.briefing.target_prefix")}{fmtPct(props.unemploymentTarget)}{t("ui.meeting_panel.briefing.target_suffix")}
       </div>
-      <table style={{ width: "100%", fontSize: 13, borderCollapse: "collapse" }}>
+      <table
+        style={{
+          width: "100%",
+          fontSize: 13,
+          borderCollapse: "collapse",
+          fontFamily: font.sans,
+        }}
+      >
         <thead>
-          <tr style={{ background: "#f0f0f0", textAlign: "left" }}>
-            <th style={{ padding: "4px 6px" }}>{t("ui.meeting_panel.briefing.col_member")}</th>
-            <th style={{ padding: "4px 6px", textAlign: "right" }}>{t("ui.meeting_panel.briefing.col_preferred_rate")}</th>
-            <th style={{ padding: "4px 6px", textAlign: "right" }}>{t("ui.meeting_panel.briefing.col_delta")}</th>
-            <th style={{ padding: "4px 6px" }}>{t("ui.meeting_panel.briefing.col_vote")}</th>
+          <tr
+            style={{
+              background: color.navy,
+              color: color.onNavy,
+              textAlign: "left",
+            }}
+          >
+            <th style={{ padding: `${space.xs}px ${space.sm}px`, fontWeight: 600, letterSpacing: "0.04em" }}>
+              {t("ui.meeting_panel.briefing.col_member")}
+            </th>
+            <th style={{ padding: `${space.xs}px ${space.sm}px`, textAlign: "right", fontWeight: 600 }}>
+              {t("ui.meeting_panel.briefing.col_preferred_rate")}
+            </th>
+            <th style={{ padding: `${space.xs}px ${space.sm}px`, textAlign: "right", fontWeight: 600 }}>
+              {t("ui.meeting_panel.briefing.col_delta")}
+            </th>
+            <th style={{ padding: `${space.xs}px ${space.sm}px`, fontWeight: 600 }}>
+              {t("ui.meeting_panel.briefing.col_vote")}
+            </th>
           </tr>
         </thead>
         <tbody>
           {props.previews.map((p) => {
             const delta = p.preferred - props.proposed;
             return (
-              <tr key={p.memberId} style={{ borderTop: "1px solid #eee" }}>
-                <td style={{ padding: "4px 6px" }}>{t(p.nameKey)}</td>
-                <td style={{ padding: "4px 6px", textAlign: "right", fontFamily: "monospace" }}>
+              <tr
+                key={p.memberId}
+                style={{
+                  borderTop: `1px solid ${color.line}`,
+                  background: p.wouldDissent ? color.negativeSoft : "transparent",
+                }}
+              >
+                <td style={{ padding: `${space.xs}px ${space.sm}px`, color: color.ink }}>
+                  {t(p.nameKey)}
+                </td>
+                <td
+                  style={{
+                    padding: `${space.xs}px ${space.sm}px`,
+                    textAlign: "right",
+                    fontFamily: font.mono,
+                    color: color.navy,
+                  }}
+                >
                   {(p.preferred * 100).toFixed(2)}%
                 </td>
-                <td style={{ padding: "4px 6px", textAlign: "right", fontFamily: "monospace" }}>
+                <td
+                  style={{
+                    padding: `${space.xs}px ${space.sm}px`,
+                    textAlign: "right",
+                    fontFamily: font.mono,
+                    color: delta > 0 ? color.caution : delta < 0 ? color.negative : color.inkSoft,
+                  }}
+                >
                   {delta >= 0 ? "+" : ""}
                   {(delta * 100).toFixed(2)}{t("ui.meeting_panel.briefing.pp_suffix")}
                 </td>
-                <td style={{ padding: "4px 6px", color: p.wouldDissent ? "#c92a2a" : "#2f9e44" }}>
-                  {p.wouldDissent ? t("ui.meeting_panel.dissent") : t("ui.meeting_panel.approve")}
+                <td style={{ padding: `${space.xs}px ${space.sm}px` }}>
+                  <span style={chipStyle(p.wouldDissent ? "negative" : "positive")}>
+                    {p.wouldDissent ? t("ui.meeting_panel.dissent") : t("ui.meeting_panel.approve")}
+                  </span>
                 </td>
               </tr>
             );
           })}
         </tbody>
       </table>
-      <div style={{ marginTop: 6, fontSize: 12, color: "#666" }}>
+      <div
+        style={{
+          marginTop: space.sm,
+          fontSize: 12,
+          color: color.inkSoft,
+          fontFamily: font.sans,
+        }}
+      >
         {t("ui.meeting_panel.briefing.at_proposed_rate")}{" "}
-        <strong>{dissents}</strong>{" "}
+        <strong style={{ color: dissents > 0 ? color.negative : color.positive }}>{dissents}</strong>{" "}
         {t("ui.meeting_panel.briefing.dissents_of")}{" "}
         {props.previews.length}{" "}
         {dissents === 1
