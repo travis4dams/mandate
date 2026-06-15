@@ -161,6 +161,14 @@
       ]
     },
     {
+      "id": "SPEC-COMM-8",
+      "section": "Committee",
+      "tag": "testable",
+      "tests": [
+        "test/committee-spread.test.ts"
+      ]
+    },
+    {
       "id": "SPEC-COND-1",
       "section": "Content language",
       "tag": "testable",
