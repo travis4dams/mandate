@@ -689,7 +689,8 @@
       "tests": [
         "test/institution.test.ts",
         "test/session-institution.test.ts",
-        "test/staff-economy.test.ts"
+        "test/staff-economy.test.ts",
+        "web/src/InstitutionPanel.test.tsx"
       ]
     },
     {
@@ -766,7 +767,13 @@
       "id": "SPEC-WEB-15",
       "section": "Legacy & tenure",
       "tag": "testable",
-      "tests": []
+      "tests": [
+        "web/src/AppShell.tsx",
+        "web/src/EscalationsPanel.tsx",
+        "web/src/InstitutionPanel.tsx",
+        "web/src/LivingInstitution.test.tsx",
+        "web/src/PersuasionView.tsx"
+      ]
     },
     {
       "id": "SPEC-WEB-2",

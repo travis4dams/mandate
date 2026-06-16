@@ -4,23 +4,46 @@
   "title": "evt.bank_lobby.title",
   "desc": "evt.bank_lobby.desc",
   "fires_once": false,
-  "trigger": { "var": "culture.supervisory_rigor", "op": ">=", "value": 0.5 },
+  "trigger": {
+    "var": "culture.supervisory_rigor",
+    "op": ">=",
+    "value": 0.5
+  },
   "options": [
     {
       "id": "hold_firm",
       "name": "evt.bank_lobby.opt.hold_firm",
       "effects": [
-        { "op": "sub", "target": "bank_fragility", "value": 0.03 },
-        { "op": "sub", "target": "political_capital", "value": 5 }
+        {
+          "op": "sub",
+          "target": "bank_fragility",
+          "value": 0.03
+        },
+        {
+          "op": "sub",
+          "target": "political_capital",
+          "value": 5
+        }
       ]
     },
     {
       "id": "ease",
       "name": "evt.bank_lobby.opt.ease",
       "effects": [
-        { "op": "add", "target": "political_capital", "value": 5 },
-        { "op": "add", "target": "bank_fragility", "value": 0.05 }
+        {
+          "op": "add",
+          "target": "political_capital",
+          "value": 5
+        },
+        {
+          "op": "add",
+          "target": "bank_fragility",
+          "value": 0.05
+        }
       ]
     }
-  ]
+  ],
+  "mean_time_to_happen": {
+    "base_days": 540
+  }
 }

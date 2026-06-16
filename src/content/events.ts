@@ -1,5 +1,4 @@
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
 import { loadValidated } from "./loader.js";
 import type { Condition } from "./conditions.js";
 import type { Effect } from "./effects.js";
@@ -42,13 +41,13 @@ export interface GameEvent {
 }
 
 const _schemaPath = join(
-  fileURLToPath(import.meta.url),
-  "../../../schemas/event.schema.json"
+  new URL(".", import.meta.url).pathname,
+  "../../schemas/event.schema.json"
 );
 
 const _contentDir = join(
-  fileURLToPath(import.meta.url),
-  "../../../content/events"
+  new URL(".", import.meta.url).pathname,
+  "../../content/events"
 );
 
 /** Loads, validates, and flattens all events from content/events/*.json.

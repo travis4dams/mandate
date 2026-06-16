@@ -66,11 +66,15 @@ describe("InstitutionPanel", () => {
     }
   });
 
-  // SPEC-WEB-12: a successful hire marks the division staffed and reduces the
-  // political-capital readout by the division's hire_cost.
-  it("hiring a division marks it staffed and reduces political capital", () => {
+  // SPEC-WEB-12 / SPEC-STAFF-3: a successful hire marks the division staffed and
+  // reduces the operating-budget readout (not political capital) by the division's
+  // hire_cost. The political-capital readout must remain unchanged.
+  it("hiring a division marks it staffed and reduces operating budget (not political capital)", () => {
     renderPanel();
-    // Read capital before hire.
+    // Read budget and capital before hire.
+    const budgetBefore = parseFloat(
+      screen.getByTestId("institution-operating-budget").textContent ?? "",
+    );
     const capitalBefore = parseFloat(
       screen.getByTestId("institution-political-capital").textContent ?? "",
     );
@@ -84,24 +88,31 @@ describe("InstitutionPanel", () => {
     const divisionCard = screen.getByTestId("division-research");
     expect(divisionCard.textContent).toContain("Staffed");
 
-    // Capital must have decreased (hire_cost > 0).
+    // Operating budget must have decreased (hire_cost > 0).
+    const budgetAfter = parseFloat(
+      screen.getByTestId("institution-operating-budget").textContent ?? "",
+    );
+    expect(budgetAfter).toBeLessThan(budgetBefore);
+
+    // Political capital must remain unchanged.
     const capitalAfter = parseFloat(
       screen.getByTestId("institution-political-capital").textContent ?? "",
     );
-    expect(capitalAfter).toBeLessThan(capitalBefore);
+    expect(capitalAfter).toBe(capitalBefore);
 
     // No error message.
     expect(screen.queryByTestId("institution-error")).toBeNull();
   });
 
-  // SPEC-WEB-12: when political capital is exhausted an InsufficientCapitalError
-  // surfaces in the institution-error element and the division stays unstaffed.
-  it("shows institution-error when capital is insufficient and division stays unstaffed", () => {
+  // SPEC-WEB-12 / SPEC-STAFF-3: when operating budget is exhausted an
+  // InsufficientBudgetError surfaces in the institution-error element and the
+  // division stays unstaffed.
+  it("shows institution-error when operating budget is insufficient and division stays unstaffed", () => {
     renderPanel();
 
-    // political_capital starts at 80 (content default). Hire enough divisions
+    // operating_budget starts at 1000 (content default). Hire enough divisions
     // to drain it below the cost of the last one. We hire 4 divisions to
-    // deplete capital, then the 5th should fail.
+    // deplete budget, then the 5th should fail.
     const divisionIds = [
       "research",
       "monetary_affairs",
@@ -118,15 +129,15 @@ describe("InstitutionPanel", () => {
       });
     }
 
-    // Now try to hire "international" — should fail if capital is too low.
-    const capitalAfterFour = parseFloat(
-      screen.getByTestId("institution-political-capital").textContent ?? "",
+    // Now try to hire "international" — should fail if budget is too low.
+    const budgetAfterFour = parseFloat(
+      screen.getByTestId("institution-operating-budget").textContent ?? "",
     );
 
-    // Only attempt the failing hire if we've actually exhausted capital below
+    // Only attempt the failing hire if we've actually exhausted budget below
     // the hire_cost. If by content values there's still enough, skip this
     // particular branch (the test structure is still correct per the contract).
-    if (capitalAfterFour < 8) {
+    if (budgetAfterFour < 8) {
       act(() => {
         fireEvent.click(screen.getByTestId("hire-international-0"));
       });
@@ -135,8 +146,8 @@ describe("InstitutionPanel", () => {
       const intlCard = screen.getByTestId("division-international");
       expect(intlCard.textContent).toContain("Vacant");
     } else {
-      // Capital was sufficient — just verify the panel is still stable.
-      expect(screen.getByTestId("institution-political-capital")).toBeDefined();
+      // Budget was sufficient — just verify the panel is still stable.
+      expect(screen.getByTestId("institution-operating-budget")).toBeDefined();
     }
   });
 });

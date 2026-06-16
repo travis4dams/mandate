@@ -10,6 +10,7 @@ import { useSession } from "./useSession";
 import { t } from "./loc";
 import { MeetingPanel } from "./MeetingPanel";
 import { DoctrinePanel } from "./DoctrinePanel";
+import { EscalationsPanel } from "./EscalationsPanel";
 import { InstitutionPanel } from "./InstitutionPanel";
 import { LegacyPanel } from "./LegacyPanel";
 import { ChartsPanel } from "./ChartsPanel";
@@ -337,6 +338,9 @@ export function AppShell(props: AppShellProps): JSX.Element {
         {/* ---- Desk tab ---- */}
         {activeTab === "desk" && (
           <section>
+            {/* SPEC-WEB-15: escalations in-tray sits above the economy on The Desk. */}
+            <EscalationsPanel session={session} />
+
             <h2
               style={{
                 ...heading.display,

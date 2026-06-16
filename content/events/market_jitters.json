@@ -5,9 +5,16 @@
   "desc": "evt.market_jitters.desc",
   "fires_once": false,
   "mean_time_to_happen": {
-    "base_days": 730,
+    "base_days": 365,
     "modifiers": [
-      { "condition": { "var": "bank_fragility", "op": ">=", "value": 0.4 }, "factor": 0.6 }
+      {
+        "condition": {
+          "var": "bank_fragility",
+          "op": ">=",
+          "value": 0.4
+        },
+        "factor": 0.6
+      }
     ]
   },
   "options": [
@@ -15,7 +22,11 @@
       "id": "reassure",
       "name": "evt.market_jitters.opt.reassure",
       "effects": [
-        { "op": "add", "target": "credibility", "value": 0.03 }
+        {
+          "op": "add",
+          "target": "credibility",
+          "value": 0.03
+        }
       ]
     },
     {

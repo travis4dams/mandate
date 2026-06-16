@@ -4,23 +4,56 @@
   "title": "evt.congressional_letter.title",
   "desc": "evt.congressional_letter.desc",
   "fires_once": false,
-  "trigger": { "var": "inflation", "op": ">=", "value": 0.05 },
+  "trigger": {
+    "var": "inflation",
+    "op": ">=",
+    "value": 0.05
+  },
   "options": [
     {
       "id": "defend",
       "name": "evt.congressional_letter.opt.defend",
       "effects": [
-        { "op": "add", "target": "independence", "value": 0.05 },
-        { "op": "sub", "target": "political_capital", "value": 5 }
+        {
+          "op": "add",
+          "target": "independence",
+          "value": 0.05
+        },
+        {
+          "op": "sub",
+          "target": "political_capital",
+          "value": 5
+        }
       ]
     },
     {
       "id": "accommodate",
       "name": "evt.congressional_letter.opt.accommodate",
       "effects": [
-        { "op": "add", "target": "political_capital", "value": 5 },
-        { "op": "sub", "target": "independence", "value": 0.05 }
+        {
+          "op": "add",
+          "target": "political_capital",
+          "value": 5
+        },
+        {
+          "op": "sub",
+          "target": "independence",
+          "value": 0.05
+        }
       ]
     }
-  ]
+  ],
+  "mean_time_to_happen": {
+    "base_days": 365,
+    "modifiers": [
+      {
+        "condition": {
+          "var": "inflation",
+          "op": ">=",
+          "value": 0.1
+        },
+        "factor": 0.5
+      }
+    ]
+  }
 }
