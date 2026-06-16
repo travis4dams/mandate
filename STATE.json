@@ -362,7 +362,8 @@
       "tag": "testable",
       "tests": [
         "test/event-engine.test.ts",
-        "test/session-events.test.ts"
+        "test/session-events.test.ts",
+        "web/src/engine-content.test.ts"
       ]
     },
     {

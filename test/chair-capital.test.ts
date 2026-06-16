@@ -3,6 +3,7 @@ import {
   computeChairCapital,
   computeEffectiveBands,
   loadChairCapitalParams,
+  updateConsensusCapital,
   _resetChairCapitalParamsCache,
   type ChairCapitalParams,
 } from "../src/engine/chair-capital";
@@ -415,6 +416,31 @@ describe("Session.committeeBriefing with capitalSpend", () => {
 // ---------------------------------------------------------------------------
 // SPEC-COMM-9: consensus_capital term in computeChairCapital
 // ---------------------------------------------------------------------------
+
+describe("updateConsensusCapital (SPEC-COMM-9)", () => {
+  it("rises by consensus_gain after a zero-dissent meeting", () => {
+    // SPEC-COMM-9
+    expect(updateConsensusCapital(5, 0, PARAMS)).toBe(5 + PARAMS.consensus_gain);
+  });
+
+  it("falls by consensus_penalty after a high-dissent meeting", () => {
+    // SPEC-COMM-9: dissents above the threshold lower it
+    const before = 5;
+    const after = updateConsensusCapital(before, PARAMS.dissent_penalty_threshold + 1, PARAMS);
+    expect(after).toBe(before - PARAMS.consensus_penalty);
+    expect(after).toBeLessThan(before);
+  });
+
+  it("clamps at zero — a high-dissent meeting from 0 stays at 0, never negative", () => {
+    // SPEC-COMM-9
+    expect(updateConsensusCapital(0, PARAMS.dissent_penalty_threshold + 1, PARAMS)).toBe(0);
+  });
+
+  it("is unchanged for a low-but-nonzero dissent count (within tolerance)", () => {
+    // SPEC-COMM-9: at-or-below threshold (and nonzero) neither rewards nor penalizes
+    expect(updateConsensusCapital(5, PARAMS.dissent_penalty_threshold, PARAMS)).toBe(5);
+  });
+});
 
 describe("computeChairCapital consensus term (SPEC-COMM-9)", () => {
   it("omitting consensusCapital defaults to 0 (backward compatibility)", () => {

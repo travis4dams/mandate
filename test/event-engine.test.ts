@@ -56,31 +56,27 @@ describe("eligibleEvents", () => {
     expect(ids).not.toContain("evt.regional_bank_distress");
   });
 
-  // SPEC-EVENT-1: fires_once respected
-  it("excludes fires_once events that are already in firedOnce set", () => {
-    const state = makeState({
-      vars: { bank_fragility: 0.6, inflation: 0.06, deferred_asset: 2 },
-      flags: { "staffed.research": true },
-    });
-    const catalog = loadEventCatalog();
-    // Grab a fires_once event id if one exists, else use deferred_asset_press
-    const firesOnceEvt = catalog.find((e) => e.fires_once);
-    if (firesOnceEvt) {
-      const withFired = new Set([firesOnceEvt.id]);
-      const eligible = eligibleEvents(state, catalog, withFired);
-      expect(eligible.map((e) => e.id)).not.toContain(firesOnceEvt.id);
-    }
+  // SPEC-EVENT-1: fires_once respected. evt.deferred_asset_press is the shipped
+  // fires_once event (trigger deferred_asset >= 1); reference it by id with an
+  // unconditional assertion so the coverage can't be silently hollowed out.
+  it("the shipped fires_once event is genuinely marked fires_once", () => {
+    const dap = loadEventCatalog().find((e) => e.id === "evt.deferred_asset_press");
+    expect(dap).toBeDefined();
+    expect(dap?.fires_once).toBe(true);
   });
 
-  it("includes fires_once events not yet in firedOnce set", () => {
-    // deferred_asset_press requires deferred_asset >= 1
+  it("excludes a fires_once event already in the firedOnce set", () => {
     const state = makeState({ vars: { deferred_asset: 2 } });
     const catalog = loadEventCatalog();
-    const firesOnceEvt = catalog.find((e) => e.id === "evt.deferred_asset_press");
-    if (firesOnceEvt?.fires_once) {
-      const eligible = eligibleEvents(state, catalog, new Set());
-      expect(eligible.map((e) => e.id)).toContain("evt.deferred_asset_press");
-    }
+    const eligible = eligibleEvents(state, catalog, new Set(["evt.deferred_asset_press"]));
+    expect(eligible.map((e) => e.id)).not.toContain("evt.deferred_asset_press");
+  });
+
+  it("includes a fires_once event not yet in the firedOnce set", () => {
+    const state = makeState({ vars: { deferred_asset: 2 } });
+    const catalog = loadEventCatalog();
+    const eligible = eligibleEvents(state, catalog, new Set());
+    expect(eligible.map((e) => e.id)).toContain("evt.deferred_asset_press");
   });
 
   it("includes exogenous events with no trigger condition", () => {

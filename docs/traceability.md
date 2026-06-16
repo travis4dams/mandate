@@ -41,7 +41,7 @@ input in plain mode; only `--enrich` (workflow-only) fills empty cells from git 
 | SPEC-DOCT-1 | testable | Doctrine | `test/doctrine.test.ts`, `test/dynamics.test.ts` | #61 |
 | SPEC-DOCT-2 | testable | Doctrine | `test/dot-plot.test.ts`, `test/session.test.ts` | #43 |
 | SPEC-DOCT-3 | testable | Doctrine | `test/doctrines-content.test.ts` | #99 |
-| SPEC-EVENT-1 | testable | Staffing economy & the living organization | `test/event-engine.test.ts`, `test/session-events.test.ts` |  |
+| SPEC-EVENT-1 | testable | Staffing economy & the living organization | `test/event-engine.test.ts`, `test/session-events.test.ts`, `web/src/engine-content.test.ts` |  |
 | SPEC-EVENT-2 | testable | Staffing economy & the living organization | `test/event-engine.test.ts`, `test/session-events.test.ts` |  |
 | SPEC-FED-1 | testable | Federal Reserve finances | `test/fed-finances.test.ts`, `test/session-institution-depth.test.ts` |  |
 | SPEC-FOG-1 | testable | Data fog | `test/fog.test.ts`, `test/gen-docs.test.ts`, `test/gen-state.test.ts` | #5 |

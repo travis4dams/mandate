@@ -2,7 +2,7 @@
 // capital, and institutional investment readouts, then lists every division
 // from the catalog. Unstaffed divisions show a candidate slate with Hire
 // buttons; staffed divisions show the hired head and their competence.
-// Engine errors (InsufficientCapitalError, DivisionAlreadyStaffedError) are
+// Engine errors (InsufficientBudgetError, DivisionAlreadyStaffedError) are
 // caught into a local useState and displayed inline — no crash.
 
 import { useState } from "react";

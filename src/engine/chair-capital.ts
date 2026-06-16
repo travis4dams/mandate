@@ -53,6 +53,24 @@ export function computeChairCapital(
 }
 
 /**
+ * SPEC-COMM-9: evolve the stored consensus_capital from a meeting's dissent count.
+ * Zero dissents → rise by `consensus_gain`; more than `dissent_penalty_threshold`
+ * dissents → fall by `consensus_penalty` (clamped ≥ 0); otherwise unchanged.
+ * Pure: no side effects, no randomness.
+ */
+export function updateConsensusCapital(
+  prev: number,
+  dissents: number,
+  params: ChairCapitalParams,
+): number {
+  if (dissents === 0) return prev + params.consensus_gain;
+  if (dissents > params.dissent_penalty_threshold) {
+    return Math.max(0, prev - params.consensus_penalty);
+  }
+  return prev;
+}
+
+/**
  * Compute per-member effective compromise bands after applying capital spend.
  * Returns only the members who received positive spend (callers merge with the member's
  * trait-computed effective band via the fallback in `previewVote`/`vote`).

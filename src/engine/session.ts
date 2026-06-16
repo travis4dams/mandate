@@ -5,7 +5,7 @@ import { loadCommittee } from "../content/committees.js";
 import { loadValidatedFile } from "../content/loader.js";
 import { tick } from "./clock.js";
 import { previewVote, loadCommitteeParams } from "./fomc.js";
-import { computeChairCapital, computeEffectiveBands, loadChairCapitalParams } from "./chair-capital.js";
+import { computeChairCapital, computeEffectiveBands, loadChairCapitalParams, updateConsensusCapital } from "./chair-capital.js";
 import type { CapitalSpend } from "./chair-capital.js";
 import { applyIntermeetingDrift } from "./stance.js";
 import { loadTraitCatalog } from "../content/traits.js";
@@ -684,7 +684,7 @@ export class Session {
    * Deducts the division's hire_cost from political capital and marks it staffed.
    * Fires listeners on success.
    * @throws {Error} if divisionId is unknown or candidateIndex is out of range.
-   * @throws {InsufficientCapitalError} if political capital is below the hire cost.
+   * @throws {InsufficientBudgetError} if the operating budget is below the hire cost.
    * @throws {DivisionAlreadyStaffedError} if the division is already staffed.
    */
   hire(divisionId: string, candidateIndex: number): void {
@@ -937,12 +937,7 @@ export class Session {
     // Zero dissents → add consensus_gain; above threshold dissents → subtract consensus_penalty (clamped ≥ 0).
     const ccParams = loadChairCapitalParams();
     const prevConsensusCap = (this._state.vars.consensus_capital ?? 0) as number;
-    let nextConsensusCap = prevConsensusCap;
-    if (fomcVote.dissents === 0) {
-      nextConsensusCap = prevConsensusCap + ccParams.consensus_gain;
-    } else if (fomcVote.dissents > ccParams.dissent_penalty_threshold) {
-      nextConsensusCap = Math.max(0, prevConsensusCap - ccParams.consensus_penalty);
-    }
+    const nextConsensusCap = updateConsensusCapital(prevConsensusCap, fomcVote.dissents, ccParams);
 
     // Vote outcome committed before the hook loop so a hook error never rolls back
     // the player's rate decision — only hook effects are restored on failure.
@@ -1121,7 +1116,7 @@ export class Session {
         errors.push(err);
       }
     }
-    if (errors.length === 1) throw errors[0];
+    if (errors.length === 1) throw errors[0]!;
     if (errors.length > 1) throw new AggregateError(errors, "Session: one or more listeners threw during notification.");
   }
 
