@@ -76,7 +76,7 @@
                     "properties": {
                       "target": {
                         "type": "string",
-                        "enum": ["credibility", "policy_rate", "inflation", "unemployment", "expectations_anchor"],
+                        "enum": ["credibility", "policy_rate", "inflation", "unemployment", "expectations_anchor", "bank_fragility", "independence"],
                         "description": "The state var to modify."
                       },
                       "delta": {

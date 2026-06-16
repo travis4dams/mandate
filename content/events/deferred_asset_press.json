@@ -1,0 +1,24 @@
+{
+  "id": "evt.deferred_asset_press",
+  "category": "endogenous",
+  "title": "evt.deferred_asset_press.title",
+  "desc": "evt.deferred_asset_press.desc",
+  "fires_once": true,
+  "trigger": { "var": "deferred_asset", "op": ">=", "value": 1 },
+  "options": [
+    {
+      "id": "explain",
+      "name": "evt.deferred_asset_press.opt.explain",
+      "effects": [
+        { "op": "add", "target": "credibility", "value": 0.03 }
+      ]
+    },
+    {
+      "id": "deflect",
+      "name": "evt.deferred_asset_press.opt.deflect",
+      "effects": [
+        { "op": "sub", "target": "credibility", "value": 0.03 }
+      ]
+    }
+  ]
+}

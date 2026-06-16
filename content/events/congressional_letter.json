@@ -1,0 +1,26 @@
+{
+  "id": "evt.congressional_letter",
+  "category": "fiscal_political",
+  "title": "evt.congressional_letter.title",
+  "desc": "evt.congressional_letter.desc",
+  "fires_once": false,
+  "trigger": { "var": "inflation", "op": ">=", "value": 0.05 },
+  "options": [
+    {
+      "id": "defend",
+      "name": "evt.congressional_letter.opt.defend",
+      "effects": [
+        { "op": "add", "target": "independence", "value": 0.05 },
+        { "op": "sub", "target": "political_capital", "value": 5 }
+      ]
+    },
+    {
+      "id": "accommodate",
+      "name": "evt.congressional_letter.opt.accommodate",
+      "effects": [
+        { "op": "add", "target": "political_capital", "value": 5 },
+        { "op": "sub", "target": "independence", "value": 0.05 }
+      ]
+    }
+  ]
+}

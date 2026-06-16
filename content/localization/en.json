@@ -288,5 +288,12 @@
   "evt.deferred_asset_press.title": "The press smells a loss",
   "evt.deferred_asset_press.desc": "Reporters have noticed the Fed is remitting nothing to Treasury and are framing it as a taxpayer cost.",
   "evt.deferred_asset_press.opt.explain": "Explain the accounting plainly and own it",
-  "evt.deferred_asset_press.opt.deflect": "Decline to engage with the framing"
+  "evt.deferred_asset_press.opt.deflect": "Decline to engage with the framing",
+  "hearing.q.supervision_philosophy.text": "Chair-designate, you would also oversee the safety and soundness of the banking system. How would you describe your supervisory philosophy?",
+  "hearing.a.supervision_tough.text": "Vigilant and forward-looking. I would rather be accused of excess caution than preside over the next crisis. Capital and stress tests come first.",
+  "hearing.a.supervision_riskbased.text": "Risk-based and proportionate. Scrutiny should follow systemic importance — heavy where the stakes are high, light where they are not.",
+  "hearing.a.supervision_light.text": "Restrained. Markets discipline themselves better than examiners do, and over-regulation drives activity into the shadows.",
+  "hearing.q.transparency.text": "How do you view the Federal Reserve's communication with the public and markets?",
+  "hearing.a.transparency_open.text": "Radical transparency. Clear, frequent communication anchors expectations and earns trust — I would explain every decision in plain terms.",
+  "hearing.a.transparency_guarded.text": "Measured. A degree of constructive ambiguity preserves flexibility; over-communication can box the committee in."
 }

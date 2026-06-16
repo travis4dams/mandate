@@ -5,7 +5,7 @@
   "description": "SPEC-COMM-7: Chair capital persuasion parameters. The per-meeting budget is computed from the Chair's credibility standing and refreshed each meeting (no banking). Spending capital on a member widens their compromise band for that meeting only.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["base_capital", "credibility_weight", "band_widen_per_unit", "max_spend_per_member"],
+  "required": ["base_capital", "credibility_weight", "band_widen_per_unit", "max_spend_per_member", "consensus_gain", "consensus_penalty", "consensus_weight", "dissent_penalty_threshold"],
   "properties": {
     "base_capital": {
       "type": "integer",
@@ -27,6 +27,26 @@
       "type": "integer",
       "minimum": 0,
       "description": "Maximum capital units spendable on a single member per meeting (caps over-concentration)."
+    },
+    "consensus_gain": {
+      "type": "number",
+      "minimum": 0,
+      "description": "SPEC-COMM-9: amount added to consensus_capital after a zero-dissent meeting."
+    },
+    "consensus_penalty": {
+      "type": "number",
+      "minimum": 0,
+      "description": "SPEC-COMM-9: amount subtracted from consensus_capital after a high-dissent meeting (clamped >= 0)."
+    },
+    "consensus_weight": {
+      "type": "number",
+      "minimum": 0,
+      "description": "SPEC-COMM-9: weight applied to consensus_capital in the budget formula (floored)."
+    },
+    "dissent_penalty_threshold": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "SPEC-COMM-9: dissent count above which the consensus_penalty applies."
     }
   }
 }

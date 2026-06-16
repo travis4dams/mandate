@@ -1,0 +1,25 @@
+{
+  "id": "evt.regional_bank_distress",
+  "category": "endogenous",
+  "title": "evt.regional_bank_distress.title",
+  "desc": "evt.regional_bank_distress.desc",
+  "fires_once": false,
+  "trigger": { "var": "bank_fragility", "op": ">=", "value": 0.5 },
+  "options": [
+    {
+      "id": "intervene",
+      "name": "evt.regional_bank_distress.opt.intervene",
+      "effects": [
+        { "op": "sub", "target": "bank_fragility", "value": 0.1 },
+        { "op": "sub", "target": "operating_budget", "value": 50 }
+      ]
+    },
+    {
+      "id": "monitor",
+      "name": "evt.regional_bank_distress.opt.monitor",
+      "effects": [
+        { "op": "add", "target": "bank_fragility", "value": 0.05 }
+      ]
+    }
+  ]
+}

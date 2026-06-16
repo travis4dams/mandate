@@ -22,16 +22,34 @@ export interface ChairCapitalParams {
   readonly band_widen_per_unit: number;
   /** Maximum capital units spendable on a single member per meeting. */
   readonly max_spend_per_member: number;
+  /** SPEC-COMM-9: amount added to consensus_capital after a zero-dissent meeting. */
+  readonly consensus_gain: number;
+  /** SPEC-COMM-9: amount subtracted from consensus_capital after a high-dissent meeting (clamped ≥ 0). */
+  readonly consensus_penalty: number;
+  /** SPEC-COMM-9: weight applied to consensus_capital in the budget formula (floored). */
+  readonly consensus_weight: number;
+  /** SPEC-COMM-9: dissent count above which the consensus_penalty applies. */
+  readonly dissent_penalty_threshold: number;
 }
 
 /**
  * Compute the Chair's persuasion budget for the current meeting.
+ * SPEC-COMM-9: budget = base_capital + floor(credibility_weight * credibility) + floor(consensus_weight * consensusCapital)
  * Pure: no side effects, no randomness.
  * @param credibility — current credibility score in [0, 100].
  * @param params — content-loaded ChairCapitalParams (base_capital, credibility_weight, …).
+ * @param consensusCapital — accumulated consensus score (default 0; omitting preserves old behaviour).
  */
-export function computeChairCapital(credibility: number, params: ChairCapitalParams): number {
-  return params.base_capital + Math.floor(params.credibility_weight * credibility);
+export function computeChairCapital(
+  credibility: number,
+  params: ChairCapitalParams,
+  consensusCapital = 0,
+): number {
+  return (
+    params.base_capital +
+    Math.floor(params.credibility_weight * credibility) +
+    Math.floor(params.consensus_weight * consensusCapital)
+  );
 }
 
 /**

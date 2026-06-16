@@ -1,0 +1,29 @@
+{
+  "id": "evt.fiscal_stimulus",
+  "category": "fiscal_political",
+  "title": "evt.fiscal_stimulus.title",
+  "desc": "evt.fiscal_stimulus.desc",
+  "fires_once": false,
+  "mean_time_to_happen": {
+    "base_days": 1095,
+    "modifiers": [
+      { "condition": { "var": "unemployment", "op": ">=", "value": 0.07 }, "factor": 0.5 }
+    ]
+  },
+  "options": [
+    {
+      "id": "lean_against",
+      "name": "evt.fiscal_stimulus.opt.lean_against",
+      "effects": [
+        { "op": "add", "target": "credibility", "value": 0.04 }
+      ]
+    },
+    {
+      "id": "accommodate",
+      "name": "evt.fiscal_stimulus.opt.accommodate",
+      "effects": [
+        { "op": "add", "target": "political_capital", "value": 5 }
+      ]
+    }
+  ]
+}

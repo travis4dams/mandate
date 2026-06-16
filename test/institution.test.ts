@@ -9,6 +9,7 @@ import {
   hireStaff,
   institutionInvestment,
   InsufficientCapitalError,
+  InsufficientBudgetError,
   DivisionAlreadyStaffedError,
   _resetInstitutionParamsCache,
   _resetDivisionCatalogCache,
@@ -345,32 +346,32 @@ describe("generateCandidates (SPEC-INST-2)", () => {
 describe("hireStaff (SPEC-INST-2)", () => {
   it("sets the staffed flag and competence var in returned state", () => {
     // SPEC-INST-2
-    const state = makeState({ vars: { political_capital: 50 } });
+    const state = makeState({ vars: { operating_budget: 50 } });
     const candidate: Candidate = { name: "Alice Smith", competence: 0.8, lean: "hawk", skills: { forecasting: 0.5, markets: 0.5, supervision: 0.5, communication: 0.5, crisis: 0.5 } };
     const result = hireStaff(state, DIVISION, candidate);
     expect(result.flags[staffedFlagKey("research")]).toBe(true);
     expect(result.vars["staff.research.competence"]).toBe(0.8);
   });
 
-  it("deducts hire_cost from political_capital", () => {
-    // SPEC-INST-2
-    const state = makeState({ vars: { political_capital: 50 } });
+  it("deducts hire_cost from operating_budget (SPEC-STAFF-3)", () => {
+    // SPEC-INST-2 / SPEC-STAFF-3: hire is funded by operating_budget
+    const state = makeState({ vars: { operating_budget: 50 } });
     const candidate: Candidate = { name: "Alice Smith", competence: 0.8, lean: "hawk", skills: { forecasting: 0.5, markets: 0.5, supervision: 0.5, communication: 0.5, crisis: 0.5 } };
     const result = hireStaff(state, DIVISION, candidate);
-    expect(result.vars.political_capital).toBeCloseTo(40); // 50 - 10
+    expect(result.vars.operating_budget).toBeCloseTo(40); // 50 - 10
   });
 
-  it("throws InsufficientCapitalError when capital would go negative", () => {
-    // SPEC-INST-2
-    const state = makeState({ vars: { political_capital: 5 } }); // hire_cost=10
+  it("throws InsufficientBudgetError when budget would go negative (SPEC-STAFF-3)", () => {
+    // SPEC-INST-2 / SPEC-STAFF-3: InsufficientBudgetError replaces InsufficientCapitalError
+    const state = makeState({ vars: { operating_budget: 5 } }); // hire_cost=10
     const candidate: Candidate = { name: "Alice Smith", competence: 0.8, lean: "hawk", skills: { forecasting: 0.5, markets: 0.5, supervision: 0.5, communication: 0.5, crisis: 0.5 } };
-    expect(() => hireStaff(state, DIVISION, candidate)).toThrow(InsufficientCapitalError);
+    expect(() => hireStaff(state, DIVISION, candidate)).toThrow(InsufficientBudgetError);
   });
 
   it("throws DivisionAlreadyStaffedError when division already staffed", () => {
     // SPEC-INST-2
     const state = makeState({
-      vars: { political_capital: 50 },
+      vars: { operating_budget: 50 },
       flags: { [staffedFlagKey("research")]: true },
     });
     const candidate: Candidate = { name: "Alice Smith", competence: 0.8, lean: "hawk", skills: { forecasting: 0.5, markets: 0.5, supervision: 0.5, communication: 0.5, crisis: 0.5 } };
@@ -379,7 +380,7 @@ describe("hireStaff (SPEC-INST-2)", () => {
 
   it("is a pure function — input state is not mutated", () => {
     // SPEC-INST-2
-    const state = makeState({ vars: { political_capital: 50 } });
+    const state = makeState({ vars: { operating_budget: 50 } });
     const flagsBefore = { ...state.flags };
     const varsBefore = { ...state.vars };
     const candidate: Candidate = { name: "Alice Smith", competence: 0.8, lean: "hawk", skills: { forecasting: 0.5, markets: 0.5, supervision: 0.5, communication: 0.5, crisis: 0.5 } };
@@ -391,7 +392,7 @@ describe("hireStaff (SPEC-INST-2)", () => {
   it("preserves other vars and flags unchanged", () => {
     // SPEC-INST-2
     const state = makeState({
-      vars: { political_capital: 50, inflation: 0.03 },
+      vars: { operating_budget: 50, inflation: 0.03 },
       flags: { at_war: false },
     });
     const candidate: Candidate = { name: "Alice Smith", competence: 0.8, lean: "hawk", skills: { forecasting: 0.5, markets: 0.5, supervision: 0.5, communication: 0.5, crisis: 0.5 } };
@@ -400,12 +401,12 @@ describe("hireStaff (SPEC-INST-2)", () => {
     expect(result.flags.at_war).toBe(false);
   });
 
-  it("allows hire when political_capital exactly equals hire_cost", () => {
-    // SPEC-INST-2: boundary — capital = cost → balance = 0, which is not negative.
-    const state = makeState({ vars: { political_capital: 10 } }); // hire_cost=10
+  it("allows hire when operating_budget exactly equals hire_cost", () => {
+    // SPEC-INST-2 / SPEC-STAFF-3: boundary — budget = cost → balance = 0, which is not negative.
+    const state = makeState({ vars: { operating_budget: 10 } }); // hire_cost=10
     const candidate: Candidate = { name: "Alice Smith", competence: 0.8, lean: "hawk", skills: { forecasting: 0.5, markets: 0.5, supervision: 0.5, communication: 0.5, crisis: 0.5 } };
     const result = hireStaff(state, DIVISION, candidate);
-    expect(result.vars.political_capital).toBeCloseTo(0);
+    expect(result.vars.operating_budget).toBeCloseTo(0);
     expect(result.flags[staffedFlagKey("research")]).toBe(true);
   });
 });

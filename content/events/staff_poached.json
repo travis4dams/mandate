@@ -1,0 +1,30 @@
+{
+  "id": "evt.staff_poached",
+  "category": "endogenous",
+  "title": "evt.staff_poached.title",
+  "desc": "evt.staff_poached.desc",
+  "fires_once": false,
+  "trigger": { "any": [
+    { "flag": "staffed.research" },
+    { "flag": "staffed.supervision" },
+    { "flag": "staffed.payments" },
+    { "flag": "staffed.community" },
+    { "flag": "staffed.markets" }
+  ]},
+  "options": [
+    {
+      "id": "counter",
+      "name": "evt.staff_poached.opt.counter",
+      "effects": [
+        { "op": "sub", "target": "operating_budget", "value": 30 }
+      ]
+    },
+    {
+      "id": "let_go",
+      "name": "evt.staff_poached.opt.let_go",
+      "effects": [
+        { "op": "add", "target": "political_capital", "value": 2 }
+      ]
+    }
+  ]
+}

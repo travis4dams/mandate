@@ -76,7 +76,7 @@ describe("SPEC-STAFF-2: hidden director disposition", () => {
 
   it("hireStaff stores staff.<id>.disposition", () => {
     const candidate = { name: "X", competence: 0.6, lean: "centrist" as const, skills: SKILLS, disposition: 0.7 };
-    const state = makeState({ political_capital: 50 });
+    const state = makeState({ operating_budget: 50 });
     const result = hireStaff(state, div("supervision", "fragility_mitigation"), candidate);
     expect(result.vars["staff.supervision.disposition"]).toBeCloseTo(0.7);
   });
