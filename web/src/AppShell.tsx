@@ -20,6 +20,40 @@ import { color, font, space, surface, heading, buttonStyle } from "./theme";
 
 // ---- Stat tile (shared between Desk and header gauge) ----
 
+// An engraved institutional seal — pure SVG, no assets. Gives the header instant gravitas.
+function Seal(): JSX.Element {
+  const star = Array.from({ length: 10 }, (_, i) => {
+    const a = -Math.PI / 2 + (i * Math.PI) / 5;
+    const r = i % 2 === 0 ? 15 : 6;
+    return `${(50 + r * Math.cos(a)).toFixed(2)},${(50 + r * Math.sin(a)).toFixed(2)}`;
+  }).join(" ");
+  return (
+    <svg width={50} height={50} viewBox="0 0 100 100" aria-hidden="true" data-testid="office-seal" style={{ flexShrink: 0 }}>
+      <circle cx="50" cy="50" r="47" fill="none" stroke={color.brass} strokeWidth="2.5" />
+      <circle cx="50" cy="50" r="42" fill="none" stroke={color.brassBright} strokeWidth="0.75" />
+      <circle cx="50" cy="50" r="29" fill={color.navyMute} stroke={color.brass} strokeWidth="1.5" />
+      {Array.from({ length: 36 }).map((_, i) => {
+        const a = (i / 36) * Math.PI * 2;
+        const r1 = 37;
+        const r2 = 42;
+        return (
+          <line
+            key={i}
+            x1={(50 + r1 * Math.cos(a)).toFixed(2)}
+            y1={(50 + r1 * Math.sin(a)).toFixed(2)}
+            x2={(50 + r2 * Math.cos(a)).toFixed(2)}
+            y2={(50 + r2 * Math.sin(a)).toFixed(2)}
+            stroke={color.brass}
+            strokeWidth="0.9"
+            opacity="0.65"
+          />
+        );
+      })}
+      <polygon points={star} fill={color.brassBright} />
+    </svg>
+  );
+}
+
 function Stat(props: { label: string; value: string; testId?: string }): JSX.Element {
   return (
     <div
@@ -164,8 +198,10 @@ export function AppShell(props: AppShellProps): JSX.Element {
           gap: space.md,
         }}
       >
-        {/* Left: title + Chair name */}
-        <div>
+        {/* Left: seal + title + Chair name */}
+        <div style={{ display: "flex", alignItems: "center", gap: space.md }}>
+          <Seal />
+          <div>
           <div
             style={{
               ...heading.label,
@@ -186,6 +222,7 @@ export function AppShell(props: AppShellProps): JSX.Element {
           >
             {t("ui.shell.chair_prefix")} {chairName}
           </h1>
+          </div>
         </div>
 
         {/* Center: date */}
@@ -403,7 +440,7 @@ export function AppShell(props: AppShellProps): JSX.Element {
       </div>
 
       {/* ---- Tab content ---- */}
-      <main style={{ padding: `${space.xl}px`, maxWidth: 980, margin: "0 auto" }}>
+      <main key={activeTab} className="mnd-rise" style={{ padding: `${space.xl}px`, maxWidth: 980, margin: "0 auto" }}>
         {/* ---- Desk tab ---- */}
         {activeTab === "desk" && (
           <section>

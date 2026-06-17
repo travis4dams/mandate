@@ -143,6 +143,16 @@ describe("SPEC-WEB-17: generated committee names + chart panels", () => {
     expect(raiseRate.textContent).toContain("13.25%"); // 1979 raise target_rate
   });
 
+  it("the office seal and clock controls render in the shell (SPEC-WEB-18)", () => {
+    render(<App />);
+    act(() => {
+      fireEvent.click(screen.getByTestId("start-scenario-scen.1979_stagflation"));
+    });
+    expect(screen.getByTestId("office-seal")).toBeDefined();
+    expect(screen.getByTestId("clock-toggle")).toBeDefined();
+    expect(screen.getByTestId("clock-speed-normal")).toBeDefined();
+  });
+
   it("ChartsPanel renders a credibility panel alongside the rate series (two svgs)", () => {
     const trajectory = [
       { date: "1979-08", vars: { inflation: 0.11, unemployment: 0.06, policy_rate: 0.1075, credibility: 25 } },

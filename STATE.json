@@ -822,6 +822,14 @@
       ]
     },
     {
+      "id": "SPEC-WEB-18",
+      "section": "Legacy & tenure",
+      "tag": "testable",
+      "tests": [
+        "web/src/character.test.tsx"
+      ]
+    },
+    {
       "id": "SPEC-WEB-2",
       "section": "Web UI",
       "tag": "testable",
