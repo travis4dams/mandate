@@ -6,6 +6,7 @@ import { useGameClock, SPEED_MS } from "./useGameClock";
 import { ChartsPanel } from "./ChartsPanel";
 import { App } from "./App";
 import { Session } from "../../src/engine/session";
+import { loadBriefing } from "../../src/content/briefings";
 import { t } from "./loc";
 
 afterEach(() => {
@@ -138,11 +139,14 @@ describe("SPEC-WEB-17: generated committee names + chart panels", () => {
     act(() => {
       fireEvent.click(screen.getByTestId("tab-committee"));
     });
+    // Derive the expected rate from content so a calibration edit can't silently break this.
+    const raise = loadBriefing("brief.1979_q3_stagflation").scenarios.find((s) => s.scenario_type === "raise");
+    const expected = `${((raise?.target_rate ?? 0) * 100).toFixed(2)}%`;
     const raiseRate = screen.getByTestId("scenario-target-rate-raise");
-    expect(raiseRate).toBeDefined();
-    expect(raiseRate.textContent).toContain("13.25%"); // 1979 raise target_rate
+    expect(raiseRate.textContent).toContain(expected);
   });
 
+  // SPEC-WEB-18
   it("the office seal and clock controls render in the shell (SPEC-WEB-18)", () => {
     render(<App />);
     act(() => {
