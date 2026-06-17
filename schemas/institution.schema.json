@@ -11,7 +11,8 @@
     "initial_political_capital",
     "political_capital_baseline",
     "political_capital_recovery",
-    "candidate_slate_size"
+    "candidate_slate_size",
+    "candidate_refresh_months"
   ],
   "properties": {
     "initial_operating_budget": {
@@ -45,6 +46,11 @@
       "type": "integer",
       "minimum": 1,
       "description": "SPEC-INST-2: number of candidates generated per division per hire cycle."
+    },
+    "candidate_refresh_months": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "SPEC-INST-5: months between automatic talent-market refreshes of candidate slates."
     }
   }
 }

@@ -63,49 +63,70 @@ export function ChartsPanel(props: { trajectory: readonly Snapshot[] }): JSX.Ele
     if (!el) return;
     try {
       const data = buildChartData(trajectory);
+      const width = el.offsetWidth || 880;
 
-      const marks: Plot.Markish[] = [];
-      for (const cfg of SERIES_CONFIG) {
+      // Two stacked panels so credibility (0–100) doesn't flatten the rate series
+      // (inflation / unemployment / policy_rate, ~0–0.20). Each panel auto-scales
+      // to its own series, so all four are readable.
+      const rateSeries = SERIES_CONFIG.filter((c) => c.key !== "credibility");
+
+      const rateMarks: Plot.Markish[] = [Plot.ruleY([0], { stroke: color.line })];
+      for (const cfg of rateSeries) {
         const pts = data[cfg.key];
         const hw = fogHalfWidth(cfg.key);
         if (hw > 0) {
-          marks.push(
+          rateMarks.push(
             Plot.areaY(pts, {
               x: "date",
               y1: (d: DataPoint) => d.value - hw,
               y2: (d: DataPoint) => d.value + hw,
-              fill: color.inkSoft,
-              fillOpacity: 0.10,
+              fill: cfg.color,
+              fillOpacity: 0.08,
             }),
           );
         }
-        marks.push(
-          Plot.line(pts, {
-            x: "date",
-            y: "value",
-            stroke: cfg.color,
-            strokeWidth: 1.5,
-            tip: true,
-          }),
+        rateMarks.push(
+          Plot.line(pts, { x: "date", y: "value", stroke: cfg.color, strokeWidth: 2, tip: true }),
         );
       }
 
-      const plot = Plot.plot({
-        marks,
+      const sharedStyle = {
+        background: "transparent",
+        fontFamily: font.mono,
+        fontSize: "11px",
+        color: color.inkSoft,
+      } as const;
+
+      const ratePlot = Plot.plot({
+        marks: rateMarks,
         x: { label: null },
-        y: { label: null },
-        color: { legend: false },
-        width: el.offsetWidth || 880,
-        height: 200,
-        style: {
-          background: "transparent",
-          fontFamily: font.mono,
-          fontSize: "11px",
-          color: color.inkSoft,
-        },
+        y: { label: null, tickFormat: (d: number) => `${(d * 100).toFixed(0)}%`, grid: true },
+        width,
+        height: 180,
+        marginLeft: 44,
+        style: sharedStyle,
       });
 
-      el.replaceChildren(plot);
+      const credPlot = Plot.plot({
+        marks: [
+          Plot.ruleY([0], { stroke: color.line }),
+          Plot.areaY(data.credibility, { x: "date", y: "value", fill: color.brass, fillOpacity: 0.10 }),
+          Plot.line(data.credibility, { x: "date", y: "value", stroke: color.brass, strokeWidth: 2, tip: true }),
+        ],
+        x: { label: null },
+        y: { label: null, domain: [0, 100], grid: true },
+        width,
+        height: 90,
+        marginLeft: 44,
+        style: sharedStyle,
+      });
+
+      const wrap = document.createElement("div");
+      const credHeading = document.createElement("div");
+      credHeading.textContent = t("ui.dashboard.chart.legend.credibility");
+      credHeading.style.cssText = `font-family:${font.sans};font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:${color.inkSoft};margin-top:${space.sm}px`;
+      wrap.append(ratePlot, credHeading, credPlot);
+      el.replaceChildren(wrap);
     } catch (err) {
       console.error("[ChartsPanel] Plot.plot() failed:", err);
       const msg = document.createElement("p");

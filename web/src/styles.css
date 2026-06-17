@@ -1,0 +1,102 @@
+/*
+ * MANDATE — "Engraved Treasury" global styling.
+ * Gives the inline-styled React shell its tactile, institutional character without
+ * touching component markup: paper grain, tactile button/focus motion, an engraved
+ * scrollbar, a measured page-load reveal. Palette mirrors web/src/theme.ts.
+ * Respects prefers-reduced-motion.
+ */
+
+:root {
+  --mnd-navy: #0f2742;
+  --mnd-navy-deep: #0a1c30;
+  --mnd-brass: #b08d4f;
+  --mnd-brass-bright: #d4b06a;
+  --mnd-parchment: #f6f1e7;
+  --mnd-ink: #23262b;
+  --mnd-line: #d8cfbd;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  margin: 0;
+  background: var(--mnd-parchment);
+}
+
+/* A faint engraved paper grain laid over the whole page — depth without noise files. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.5;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(15, 39, 66, 0.014) 0, rgba(15, 39, 66, 0.014) 1px, transparent 1px, transparent 3px),
+    repeating-linear-gradient(90deg, rgba(15, 39, 66, 0.012) 0, rgba(15, 39, 66, 0.012) 1px, transparent 1px, transparent 3px);
+}
+
+/* Text selection in brass — a small signature. */
+::selection {
+  background: var(--mnd-brass);
+  color: #fffdf8;
+}
+
+/* Tactile buttons everywhere: a slight lift + brighten on hover, press on active. */
+button {
+  transition: transform 110ms ease, filter 110ms ease, box-shadow 110ms ease, background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+button:not(:disabled):hover {
+  transform: translateY(-1px);
+  filter: brightness(1.04);
+}
+button:not(:disabled):active {
+  transform: translateY(0);
+  filter: brightness(0.98);
+}
+
+/* Visible, on-brand keyboard focus. */
+:focus-visible {
+  outline: 2px solid var(--mnd-brass);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* Engraved scrollbars (WebKit). */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--mnd-brass) transparent;
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--mnd-brass);
+  border: 2px solid var(--mnd-parchment);
+  border-radius: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* A measured page-load reveal — gravitas, not flash. */
+@keyframes mnd-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.mnd-rise {
+  animation: mnd-rise 420ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+  button:not(:disabled):hover { transform: none; }
+}

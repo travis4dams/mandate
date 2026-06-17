@@ -15,6 +15,9 @@ export interface BriefingScenario {
   scenario_type: "raise" | "hold" | "lower";
   name: string;
   forecast: BriefingForecast;
+  /** SPEC-BRIEF-4: the analyzed policy rate this branch assumes; the forecast is the
+   *  one-year-ahead outlook conditional on it. */
+  target_rate?: number;
 }
 
 export interface Briefing {

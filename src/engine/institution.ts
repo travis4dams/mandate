@@ -21,6 +21,8 @@ export interface InstitutionParams {
   political_capital_recovery: number;
   /** SPEC-INST-2: number of candidates generated per division hire cycle. */
   candidate_slate_size: number;
+  /** SPEC-INST-5: months between automatic talent-market refreshes of candidate slates. */
+  candidate_refresh_months: number;
 }
 
 /** SPEC-STAFF-1: the five skill dimensions every director candidate carries. */
@@ -279,10 +281,13 @@ export function generateCandidates(
   seed: number,
   pools: NamePools,
   params: InstitutionParams & { candidate_slate_size: number },
+  refreshIndex = 0,
 ): Candidate[] {
   const candidates: Candidate[] = [];
   for (let index = 0; index < params.candidate_slate_size; index++) {
-    const subSeed = fnv1a32(`${seed}|${divisionId}|${index}`);
+    // SPEC-INST-5: refreshIndex folds into the seed so the talent market turns over
+    // (a fresh slate after a dismissal and as time passes) — deterministic per index.
+    const subSeed = fnv1a32(`${seed}|${divisionId}|${refreshIndex}|${index}`);
     const rng = mulberry32(subSeed);
     const generated: GeneratedName = generateName(rng, pools);
     const competence = rng();

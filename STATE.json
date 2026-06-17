@@ -69,6 +69,15 @@
       ]
     },
     {
+      "id": "SPEC-BRIEF-4",
+      "section": "Briefings",
+      "tag": "testable",
+      "tests": [
+        "test/briefing-target-rate.test.ts",
+        "web/src/character.test.tsx"
+      ]
+    },
+    {
       "id": "SPEC-CAL-1",
       "section": "Calibration",
       "tag": "testable",
@@ -385,6 +394,17 @@
       ]
     },
     {
+      "id": "SPEC-FEED-1",
+      "section": "Staffing economy & the living organization",
+      "tag": "testable",
+      "tests": [
+        "test/refresh-and-feed.test.ts",
+        "web/src/ActivityFeed.tsx",
+        "web/src/AppShell.tsx",
+        "web/src/character.test.tsx"
+      ]
+    },
+    {
       "id": "SPEC-FOG-1",
       "section": "Data fog",
       "tag": "testable",
@@ -474,6 +494,14 @@
         "test/session-institution.test.ts",
         "web/src/engine-content.test.ts",
         "web/src/engine-content.ts"
+      ]
+    },
+    {
+      "id": "SPEC-INST-5",
+      "section": "Staffing economy & the living organization",
+      "tag": "testable",
+      "tests": [
+        "test/refresh-and-feed.test.ts"
       ]
     },
     {
@@ -773,7 +801,32 @@
         "web/src/EscalationsPanel.tsx",
         "web/src/InstitutionPanel.tsx",
         "web/src/LivingInstitution.test.tsx",
+        "web/src/MeetingPanel.tsx",
         "web/src/PersuasionView.tsx"
+      ]
+    },
+    {
+      "id": "SPEC-WEB-16",
+      "section": "Legacy & tenure",
+      "tag": "testable",
+      "tests": [
+        "web/src/character.test.tsx"
+      ]
+    },
+    {
+      "id": "SPEC-WEB-17",
+      "section": "Legacy & tenure",
+      "tag": "testable",
+      "tests": [
+        "web/src/character.test.tsx"
+      ]
+    },
+    {
+      "id": "SPEC-WEB-18",
+      "section": "Legacy & tenure",
+      "tag": "testable",
+      "tests": [
+        "web/src/character.test.tsx"
       ]
     },
     {

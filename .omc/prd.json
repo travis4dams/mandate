@@ -1,0 +1,85 @@
+{
+  "title": "MANDATE — character & life: make it engaging enough to finish a term",
+  "stories": [
+    {
+      "id": "US-01",
+      "title": "Merge PRs #130/#131/#132 into main",
+      "passes": false,
+      "acceptanceCriteria": [
+        "PRs #130, #131, #132 are merged/closed and main contains the living-institution work",
+        "npm run check is green on main after merge"
+      ]
+    },
+    {
+      "id": "US-02",
+      "title": "Homepage chart shows all four economic series, readably",
+      "passes": false,
+      "acceptanceCriteria": [
+        "ChartsPanel renders inflation, unemployment, policy_rate, AND credibility as distinct visible series (credibility on its own scale so the rate series are not flattened)",
+        "A web test asserts all four series are present in the chart data and credibility uses a separate axis/panel",
+        "Verified in-browser: all four lines are visible after advancing several months"
+      ]
+    },
+    {
+      "id": "US-03",
+      "title": "Committee member names are generated per-seed (vary every game)",
+      "passes": false,
+      "acceptanceCriteria": [
+        "MeetingPanel + PersuasionView display committee member names via session.npcName(member.id), not the static localization name keys",
+        "Two sessions with different seeds show different committee member names",
+        "A web/node test asserts committee display names differ across seeds"
+      ]
+    },
+    {
+      "id": "US-04",
+      "title": "Candidate slates refresh (after firing and over time)",
+      "passes": false,
+      "acceptanceCriteria": [
+        "generateCandidates varies by a refresh dimension so a division's slate is not frozen forever",
+        "After firing a director and a refresh, candidatesFor returns a different slate than before",
+        "A node test asserts a refreshed slate differs from the prior one; determinism preserved for a fixed refresh index"
+      ]
+    },
+    {
+      "id": "US-05",
+      "title": "Events have visible, felt consequences + an activity feed",
+      "passes": false,
+      "acceptanceCriteria": [
+        "Resolving an escalation records what changed (which vars moved and by how much) into a session activity log",
+        "An activity-feed UI shows recent events and their effects on The Desk",
+        "A test asserts resolving an escalation adds a feed entry describing the effect"
+      ]
+    },
+    {
+      "id": "US-06",
+      "title": "Continuous real-time-with-pause time controls",
+      "passes": false,
+      "acceptanceCriteria": [
+        "A clock control offers Pause + Play with speed settings (slow/normal/fast) that advance time continuously via a timer",
+        "Time advances at weekly granularity (sub-monthly cadence) so it feels continuous, not turn-based",
+        "Pausing stops advancement; a meeting month pauses automatically for the decision",
+        "A web test asserts play advances the date over time and pause halts it"
+      ]
+    },
+    {
+      "id": "US-07",
+      "title": "Briefings specify the analyzed target rate + projection horizon",
+      "passes": false,
+      "acceptanceCriteria": [
+        "Each briefing scenario branch states the analyzed target policy rate and labels the projection horizon (e.g. one-year-ahead outlook)",
+        "Content + localization updated; npm run validate green",
+        "The persuasion/briefing UI shows the target rate and horizon label"
+      ]
+    },
+    {
+      "id": "US-08",
+      "title": "Frontend-design polish — distinctive character, not generic",
+      "passes": false,
+      "acceptanceCriteria": [
+        "Apply the frontend-design skill to give the shell genuine visual character (typography, depth, motion/feedback, an editorial Fed aesthetic)",
+        "The full web suite stays green and the build succeeds",
+        "Verified in-browser: the UI reads as a crafted product, not a default inspector"
+      ]
+    }
+  ]
+}
