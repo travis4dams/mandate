@@ -33,11 +33,13 @@ export function buildDotPlotData(
 function DotPlot(props: {
   dots: readonly MemberVotePreview[];
   proposed: number;
+  nameOf?: (memberId: string) => string;
 }): JSX.Element {
   const { dots, proposed, rateMin, rateMax, dissentCount } = buildDotPlotData(
     props.dots,
     props.proposed,
   );
+  const nameOf = props.nameOf;
   // SPEC-WEB-15: above/below label for each member row is derived from their
   // preferred rate relative to the proposed rate.
   const positionLabel = (preferred: number): string =>
@@ -138,7 +140,7 @@ function DotPlot(props: {
             data-testid={`member-position-${d.memberId}`}
             style={{ fontSize: 11, fontFamily: font.sans, color: color.inkSoft }}
           >
-            <span style={{ fontWeight: 600, color: color.ink }}>{t(d.nameKey)}</span>
+            <span style={{ fontWeight: 600, color: color.ink }}>{nameOf ? nameOf(d.memberId) : t(d.nameKey)}</span>
             {" — "}
             <span style={{ fontFamily: font.mono, color: color.navy }}>{(d.preferred * 100).toFixed(2)}%</span>
             {" "}
@@ -221,8 +223,9 @@ function SpendCapitalControl(props: {
   capitalSpend?: Readonly<Record<string, number>>;
   maxSpendPerMember?: number;
   onSpendChange?: (memberId: string, value: number) => void;
+  nameOf?: (memberId: string) => string;
 }): JSX.Element {
-  const { previews, chairCapital, capitalSpend, maxSpendPerMember, onSpendChange } = props;
+  const { previews, chairCapital, capitalSpend, maxSpendPerMember, onSpendChange, nameOf } = props;
   if (chairCapital === undefined) {
     return (
       <div style={{ marginTop: space.sm, fontSize: 13, color: color.inkSoft, fontFamily: font.sans }}>
@@ -273,7 +276,7 @@ function SpendCapitalControl(props: {
               color: color.inkSoft,
             }}
           >
-            {t(p.nameKey)}
+            {nameOf ? nameOf(p.memberId) : t(p.nameKey)}
             <input
               type="number"
               min={0}
@@ -315,13 +318,15 @@ export interface PersuasionViewProps {
   capitalSpend?: Readonly<Record<string, number>>;
   maxSpendPerMember?: number;
   onSpendChange?: (memberId: string, value: number) => void;
+  /** Resolve a member id to a display name (e.g. session.npcName). Falls back to the loc key. */
+  nameOf?: (memberId: string) => string;
 }
 
 export function PersuasionView(props: PersuasionViewProps): JSX.Element {
-  const { previews, proposed, briefingId, chairCapital, capitalSpend, maxSpendPerMember, onSpendChange } = props;
+  const { previews, proposed, briefingId, chairCapital, capitalSpend, maxSpendPerMember, onSpendChange, nameOf } = props;
   return (
     <div style={{ marginTop: space.md }}>
-      <DotPlot dots={previews} proposed={proposed} />
+      <DotPlot dots={previews} proposed={proposed} nameOf={nameOf} />
       {/* SPEC-WEB-15: committee legend caption explaining the reaction-function logic. */}
       <p
         data-testid="committee-legend"
@@ -342,6 +347,7 @@ export function PersuasionView(props: PersuasionViewProps): JSX.Element {
         capitalSpend={capitalSpend}
         maxSpendPerMember={maxSpendPerMember}
         onSpendChange={onSpendChange}
+        nameOf={nameOf}
       />
     </div>
   );

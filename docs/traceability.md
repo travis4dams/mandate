@@ -86,7 +86,9 @@ input in plain mode; only `--enrich` (workflow-only) fills empty cells from git 
 | SPEC-WEB-12 | testable | Legacy & tenure | `web/src/InstitutionPanel.test.tsx`, `web/src/InstitutionPanel.tsx` |  |
 | SPEC-WEB-13 | testable | Legacy & tenure | `web/src/LegacyPanel.test.tsx`, `web/src/LegacyPanel.tsx` |  |
 | SPEC-WEB-14 | testable | Legacy & tenure | `web/src/AppShell.tsx`, `web/src/InstitutionDepth.test.tsx`, `web/src/InstitutionPanel.tsx` |  |
-| SPEC-WEB-15 | testable | Legacy & tenure | `web/src/AppShell.tsx`, `web/src/EscalationsPanel.tsx`, `web/src/InstitutionPanel.tsx`, `web/src/LivingInstitution.test.tsx`, `web/src/PersuasionView.tsx` |  |
+| SPEC-WEB-15 | testable | Legacy & tenure | `web/src/AppShell.tsx`, `web/src/EscalationsPanel.tsx`, `web/src/InstitutionPanel.tsx`, `web/src/LivingInstitution.test.tsx`, `web/src/MeetingPanel.tsx`, `web/src/PersuasionView.tsx` |  |
+| SPEC-WEB-16 | testable | Legacy & tenure | `web/src/character.test.tsx` |  |
+| SPEC-WEB-17 | testable | Legacy & tenure | `web/src/character.test.tsx` |  |
 | SPEC-WEB-2 | testable | Web UI | `web/src/App.test.tsx`, `web/src/App.tsx`, `web/src/Dashboard.tsx`, `web/src/engine-content.test.ts`, `web/src/engine-content.ts`, `web/src/node-stubs.ts`, `web/src/useSession.ts` | #104 |
 | SPEC-WEB-3 | testable | Web UI | `web/src/ChartsPanel.plot-throws.test.tsx`, `web/src/ChartsPanel.test.tsx`, `web/src/ChartsPanel.tsx` | #30 |
 | SPEC-WEB-4 | testable | Web UI | `test/session.test.ts`, `web/src/App.test.tsx`, `web/src/MeetingPanel.tsx` | #28 |

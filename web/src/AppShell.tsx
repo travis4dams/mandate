@@ -14,6 +14,7 @@ import { EscalationsPanel } from "./EscalationsPanel";
 import { InstitutionPanel } from "./InstitutionPanel";
 import { LegacyPanel } from "./LegacyPanel";
 import { ChartsPanel } from "./ChartsPanel";
+import { useGameClock, type ClockSpeed } from "./useGameClock";
 import { color, font, space, surface, heading, buttonStyle } from "./theme";
 
 // ---- Stat tile (shared between Desk and header gauge) ----
@@ -137,6 +138,7 @@ export function AppShell(props: AppShellProps): JSX.Element {
     [session, trajectory],
   );
 
+  const clock = useGameClock(session);
   const mandateOk = session.mandateOnTarget();
   const termProg = session.termProgress();
   const credibility = current.vars.credibility;
@@ -332,6 +334,72 @@ export function AppShell(props: AppShellProps): JSX.Element {
           );
         })}
       </nav>
+
+      {/* ---- Clock strip: real-time-with-pause controls (always visible) ---- */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: space.md,
+          padding: `${space.sm}px ${space.xl}px`,
+          background: color.navyMute,
+          color: color.onNavy,
+          borderBottom: `1px solid ${color.navyDeep}`,
+          flexWrap: "wrap",
+        }}
+      >
+        <button
+          data-testid="clock-toggle"
+          onClick={clock.toggle}
+          disabled={clock.blockedByEscalation && !clock.playing}
+          style={{
+            ...buttonStyle("primary"),
+            fontSize: 13,
+            opacity: clock.blockedByEscalation && !clock.playing ? 0.5 : 1,
+            cursor: clock.blockedByEscalation && !clock.playing ? "not-allowed" : "pointer",
+          }}
+        >
+          {clock.playing ? `⏸ ${t("ui.clock.pause")}` : `▶ ${t("ui.clock.play")}`}
+        </button>
+        <div style={{ display: "flex", gap: 2 }}>
+          {(["slow", "normal", "fast"] as ClockSpeed[]).map((s) => (
+            <button
+              key={s}
+              data-testid={`clock-speed-${s}`}
+              onClick={() => clock.setSpeed(s)}
+              style={{
+                fontFamily: font.sans,
+                fontSize: 12,
+                fontWeight: clock.speed === s ? 700 : 500,
+                padding: `4px ${space.sm}px`,
+                background: clock.speed === s ? color.brass : "transparent",
+                color: clock.speed === s ? "#fffdf8" : color.onNavySoft,
+                border: `1px solid ${clock.speed === s ? color.brass : color.navyDeep}`,
+                borderRadius: 4,
+                cursor: "pointer",
+              }}
+            >
+              {t(`ui.clock.speed_${s}`)}
+            </button>
+          ))}
+        </div>
+        <span
+          data-testid="clock-status"
+          style={{
+            fontSize: 12,
+            fontFamily: font.sans,
+            color: clock.blockedByEscalation ? color.brassBright : color.onNavySoft,
+          }}
+        >
+          {clock.blockedByEscalation
+            ? t("ui.clock.blocked")
+            : session.isMeetingMonth()
+              ? t("ui.clock.meeting_pause")
+              : clock.playing
+                ? t("ui.clock.running")
+                : t("ui.clock.paused")}
+        </span>
+      </div>
 
       {/* ---- Tab content ---- */}
       <main style={{ padding: `${space.xl}px`, maxWidth: 980, margin: "0 auto" }}>

@@ -18,6 +18,9 @@ export function MeetingPanel(props: { session: Session; briefingId?: string }): 
   // Derive current date from session so it stays in sync with external advances.
   const currentDate = session.current.date;
   const isMeeting = session.isMeetingMonth();
+  // SPEC-WEB-15 / per-seed names: committee members are shown with their generated
+  // names (vary every game), not the static localization keys.
+  const nameOf = (memberId: string): string => session.npcName(memberId);
 
   const initialRate = session.current.vars.policy_rate ?? 0.05;
   const [rateInput, setRateInput] = useState<string>(initialRate.toFixed(4));
@@ -165,6 +168,7 @@ export function MeetingPanel(props: { session: Session; briefingId?: string }): 
             inflationTarget={briefing.inflationTarget}
             unemploymentTarget={briefing.unemploymentTarget}
             proposed={parsedRate}
+            nameOf={nameOf}
           />
           <PersuasionView
             previews={briefing.previews}
@@ -174,6 +178,7 @@ export function MeetingPanel(props: { session: Session; briefingId?: string }): 
             capitalSpend={capitalSpend}
             maxSpendPerMember={maxSpendPerMember}
             onSpendChange={onSpendChange}
+            nameOf={nameOf}
           />
         </>
       )}
@@ -226,6 +231,7 @@ function CommitteeBriefing(props: {
   inflationTarget: number;
   unemploymentTarget: number;
   proposed: number;
+  nameOf: (memberId: string) => string;
 }): JSX.Element {
   const dissents = props.previews.filter((p) => p.wouldDissent).length;
   const fmtPct = (n: number): string => `${(n * 100).toFixed(2)}%`;
@@ -292,7 +298,7 @@ function CommitteeBriefing(props: {
                 }}
               >
                 <td style={{ padding: `${space.xs}px ${space.sm}px`, color: color.ink }}>
-                  {t(p.nameKey)}
+                  {props.nameOf(p.memberId)}
                 </td>
                 <td
                   style={{

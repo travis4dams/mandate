@@ -773,7 +773,24 @@
         "web/src/EscalationsPanel.tsx",
         "web/src/InstitutionPanel.tsx",
         "web/src/LivingInstitution.test.tsx",
+        "web/src/MeetingPanel.tsx",
         "web/src/PersuasionView.tsx"
+      ]
+    },
+    {
+      "id": "SPEC-WEB-16",
+      "section": "Legacy & tenure",
+      "tag": "testable",
+      "tests": [
+        "web/src/character.test.tsx"
+      ]
+    },
+    {
+      "id": "SPEC-WEB-17",
+      "section": "Legacy & tenure",
+      "tag": "testable",
+      "tests": [
+        "web/src/character.test.tsx"
       ]
     },
     {
