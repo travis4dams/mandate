@@ -129,6 +129,20 @@ describe("SPEC-WEB-17: generated committee names + chart panels", () => {
     expect(feed.querySelectorAll('[data-testid="activity-entry"]').length).toBeGreaterThan(0);
   });
 
+  it("briefing scenario cards show the analyzed target rate (SPEC-BRIEF-4)", () => {
+    render(<App />);
+    fireEvent.change(screen.getByTestId("seed-input"), { target: { value: "42" } });
+    act(() => {
+      fireEvent.click(screen.getByTestId("start-scenario-scen.1979_stagflation"));
+    });
+    act(() => {
+      fireEvent.click(screen.getByTestId("tab-committee"));
+    });
+    const raiseRate = screen.getByTestId("scenario-target-rate-raise");
+    expect(raiseRate).toBeDefined();
+    expect(raiseRate.textContent).toContain("13.25%"); // 1979 raise target_rate
+  });
+
   it("ChartsPanel renders a credibility panel alongside the rate series (two svgs)", () => {
     const trajectory = [
       { date: "1979-08", vars: { inflation: 0.11, unemployment: 0.06, policy_rate: 0.1075, credibility: 25 } },

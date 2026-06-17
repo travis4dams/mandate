@@ -167,7 +167,10 @@ function ScenarioBriefingPanel(props: { briefingId: string }): JSX.Element | nul
 
   return (
     <div style={{ marginTop: space.md }}>
-      <p style={{ ...heading.label, marginBottom: space.sm }}>{t("ui.persuasion.briefing.heading")}</p>
+      <p style={{ ...heading.label, marginBottom: 2 }}>{t("ui.persuasion.briefing.heading")}</p>
+      <p style={{ fontSize: 11, color: color.inkSoft, fontFamily: font.sans, fontStyle: "italic", margin: `0 0 ${space.sm}px` }}>
+        {t("ui.persuasion.briefing.horizon_label")}
+      </p>
       <div style={{ display: "flex", gap: space.sm, marginTop: space.xs }}>
         {briefing.scenarios.map((s) => (
           <div
@@ -187,6 +190,15 @@ function ScenarioBriefingPanel(props: { briefingId: string }): JSX.Element | nul
             >
               {t(s.name)}
             </div>
+            {s.target_rate !== undefined && (
+              <div
+                data-testid={`scenario-target-rate-${s.scenario_type}`}
+                style={{ fontSize: 12, fontFamily: font.sans, color: color.brass, fontWeight: 600, marginBottom: space.xs }}
+              >
+                {t("ui.persuasion.briefing.target_rate_label")}{" "}
+                <span style={{ fontFamily: font.mono }}>{(s.target_rate * 100).toFixed(2)}%</span>
+              </div>
+            )}
             <div style={{ fontSize: 12, fontFamily: font.sans, color: color.inkSoft }}>
               {t("ui.persuasion.briefing.inflation_label")}:{" "}
               <span style={{ fontFamily: font.mono, color: color.ink }}>

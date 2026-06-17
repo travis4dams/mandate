@@ -7,10 +7,11 @@
       "scenario_type": "raise",
       "name": "brief.1979_q3_stagflation.raise.name",
       "forecast": {
-        "inflation_outlook": 0.10,
+        "inflation_outlook": 0.1,
         "unemployment_outlook": 0.072,
         "growth_outlook": -0.01
-      }
+      },
+      "target_rate": 0.1325
     },
     {
       "scenario_type": "hold",
@@ -19,7 +20,8 @@
         "inflation_outlook": 0.115,
         "unemployment_outlook": 0.062,
         "growth_outlook": 0.005
-      }
+      },
+      "target_rate": 0.1075
     },
     {
       "scenario_type": "lower",
@@ -28,7 +30,8 @@
         "inflation_outlook": 0.13,
         "unemployment_outlook": 0.058,
         "growth_outlook": 0.015
-      }
+      },
+      "target_rate": 0.0825
     }
   ]
 }

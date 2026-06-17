@@ -10,7 +10,8 @@
         "inflation_outlook": 0.025,
         "unemployment_outlook": 0.085,
         "growth_outlook": -0.035
-      }
+      },
+      "target_rate": 0.03
     },
     {
       "scenario_type": "hold",
@@ -19,7 +20,8 @@
         "inflation_outlook": 0.032,
         "unemployment_outlook": 0.078,
         "growth_outlook": -0.025
-      }
+      },
+      "target_rate": 0.02
     },
     {
       "scenario_type": "lower",
@@ -28,7 +30,8 @@
         "inflation_outlook": 0.04,
         "unemployment_outlook": 0.07,
         "growth_outlook": -0.015
-      }
+      },
+      "target_rate": 0.005
     }
   ]
 }

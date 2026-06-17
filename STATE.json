@@ -69,6 +69,15 @@
       ]
     },
     {
+      "id": "SPEC-BRIEF-4",
+      "section": "Briefings",
+      "tag": "testable",
+      "tests": [
+        "test/briefing-target-rate.test.ts",
+        "web/src/character.test.tsx"
+      ]
+    },
+    {
       "id": "SPEC-CAL-1",
       "section": "Calibration",
       "tag": "testable",

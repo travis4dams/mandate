@@ -75,6 +75,11 @@
         },
         "forecast": {
           "$ref": "#/$defs/Forecast"
+        },
+        "target_rate": {
+          "type": "number",
+          "minimum": 0,
+          "description": "The analyzed policy rate this branch assumes (e.g. 0.13 = 13%). The forecast is the one-year-ahead outlook conditional on this rate."
         }
       }
     },

@@ -9,6 +9,7 @@ input in plain mode; only `--enrich` (workflow-only) fills empty cells from git 
 | SPEC-BRIEF-1 | testable | Briefings | `test/briefings.test.ts` |  |
 | SPEC-BRIEF-2 | testable | Briefings | `test/forecast-quality.test.ts` | #59 |
 | SPEC-BRIEF-3 | testable | Briefings | `test/briefings-content.test.ts` | #97 |
+| SPEC-BRIEF-4 | testable | Briefings | `test/briefing-target-rate.test.ts`, `web/src/character.test.tsx` |  |
 | SPEC-CAL-1 | testable | Calibration | `test/calibration.test.ts` | #12 |
 | SPEC-CAL-2 | testable | Calibration | `test/calibration-volcker.test.ts` |  |
 | SPEC-CAL-3 | testable | Calibration | `test/calibration-thresholds.test.ts` |  |
