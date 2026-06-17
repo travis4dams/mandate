@@ -9,7 +9,10 @@
     "credibility": 25,
     "expectations_anchor": 0.09,
     "policy_rate": 0.1075,
-    "months_below_anchor": 6
+    "months_below_anchor": 6,
+    "balance_sheet": 0.08,
+    "bank_fragility": 0.3,
+    "independence": 78
   },
   "flags": {},
   "playable": true,

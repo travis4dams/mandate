@@ -1,0 +1,9 @@
+{
+  "initial_fragility": 0.1,
+  "base": 0.001,
+  "loose_policy_weight": 0.3,
+  "easing_weight": 0.04,
+  "lax_weight": 0.006,
+  "supervisory_decay": 0.05,
+  "natural_decay": 0.006
+}

@@ -15,6 +15,12 @@ import { loadClockCadenceParams, scaleParamsForTick } from "./cadence.js";
 import { applyRateToOutputGap, loadLagParams } from "./lags.js";
 import { applyTermStructure, loadTermStructureParams } from "./term-structure.js";
 import { applyProductivityDrift, loadProductivityParams } from "./productivity.js";
+import { applyFedFinances, loadFedFinancesParams } from "./fed-finances.js";
+import { applyFragilityDynamics, loadFragilityParams } from "./fragility.js";
+import { crisisProbability, applyFinancialCrisis, loadCrisisParams } from "./crisis.js";
+import { applyCongressionalPressure, loadCongressParams } from "./congress.js";
+import { divisionEffects, loadDivisionEffectsParams, type DivisionEffects } from "./division-effects.js";
+import { applyCultureDrift, loadCultureParams } from "./culture.js";
 import { onTarget, loadMandateParams } from "./mandate.js";
 import { adoptDoctrine as _adoptDoctrine, abandonDoctrine as _abandonDoctrine, doctrineFlagKey } from "./doctrine.js";
 import { loadDoctrineCatalog, getDoctrine, HOOK_HANDLERS, type DoctrineEntry } from "../content/doctrines.js";
@@ -346,8 +352,17 @@ export class Session {
     const termStructureParams = loadTermStructureParams();
     // SPEC-PROD-1: productivity params are a cached singleton; hoisted for the same reason.
     const productivityParams = loadProductivityParams();
+    // SPEC-FED-1: fed-finances params are a cached singleton; hoisted for the same reason.
+    const fedFinancesParams = loadFedFinancesParams();
     // SPEC-INST-1: institution params are a cached singleton; hoisted for the same reason.
     const institutionParams = loadInstitutionParams();
+    // PR A: institution-depth params + the division catalog are loop-invariant.
+    const fragilityParams = loadFragilityParams();
+    const crisisParams = loadCrisisParams();
+    const congressParams = loadCongressParams();
+    const divisionEffectsParams = loadDivisionEffectsParams();
+    const cultureParams = loadCultureParams();
+    const divisionCatalog = loadDivisionCatalog();
     const effectiveParams = {
       ...dynamicsParams,
       expectations_anchor_pull:
@@ -377,6 +392,11 @@ export class Session {
         }
 
         this._state = tick(this._state, 1);
+
+        // SPEC-DIV-1: resolve what the staffed divisions are doing this month (stable
+        // within the month — staffing only changes via hire()). Used to damp external
+        // shocks now and to mitigate fragility later in the step.
+        const effects: DivisionEffects = divisionEffects(this._state, divisionCatalog, divisionEffectsParams);
 
         // SPEC-LAG-1: update output_gap from trajectory before applying macro dynamics.
         // Ordering invariant: applyRateToOutputGap reads _trajectoryInternal BEFORE the new
@@ -433,7 +453,13 @@ export class Session {
         }
 
         // SPEC-SHOCK-1: apply seeded supply shock after macro dynamics each month.
-        this._state = applySupplyShock(this._state, this._rng, shocksParams);
+        // SPEC-DIV-1: a staffed International Finance division dampens the supply-shock
+        // sigma (externalShockDamp ∈ (0,1]) — fewer/smaller imported shocks.
+        const scaledShocks = {
+          ...shocksParams,
+          supply_shock_sigma: shocksParams.supply_shock_sigma * effects.externalShockDamp,
+        };
+        this._state = applySupplyShock(this._state, this._rng, scaledShocks);
 
         // SPEC-COMM-6: evolve per-member stances toward Taylor target each month.
         const prevStateRef = this._state;
@@ -450,12 +476,73 @@ export class Session {
         // SPEC-TERM-1: update long_rate via EWMA toward policy_rate, after macro dynamics.
         this._state = applyTermStructure(this._state, termStructureParams);
 
+        // SPEC-FED-1: update portfolio yield, net income, and deferred asset after term structure.
+        this._state = applyFedFinances(this._state, fedFinancesParams);
+
         // SPEC-PROD-1: drift productivity after macro dynamics each month.
         this._state = applyProductivityDrift(this._state, productivityParams);
 
         // SPEC-INST-1: evolve institution resources (budget growth, political-capital
         // mean-reversion) after macro dynamics each month.
         this._state = applyInstitutionDynamics(this._state, institutionParams);
+
+        // SPEC-CULTURE-1: drift institutional culture toward the staffed cohort (lags + persists).
+        this._state = applyCultureDrift(this._state, divisionCatalog, cultureParams);
+
+        // SPEC-FRAG-1: evolve banking fragility. Loose policy + a lax supervisory culture
+        // build it; a well-staffed Supervision + Financial Stability shop mitigates it.
+        const currRate = this._state.vars.policy_rate as number;
+        const expAnchor = (this._state.vars.expectations_anchor ?? 0) as number;
+        const realGap = currRate - expAnchor - dynamicsParams.real_neutral_rate;
+        const prevSnap = this._trajectoryInternal[this._trajectoryInternal.length - 1];
+        const prevRate = (prevSnap?.vars.policy_rate ?? currRate) as number;
+        const easingSpeed = prevRate - currRate; // positive when the rate is being cut
+        const supervisoryRigor = (this._state.vars["culture.supervisory_rigor"] ?? 0) as number;
+        this._state = applyFragilityDynamics(
+          this._state,
+          {
+            realGap,
+            easingSpeed,
+            supervisoryRigor,
+            // Supervision mitigates directly; Financial Stability mitigates via early detection.
+            fragilityMitigation: effects.fragilityMitigation + effects.fragilityVisibility,
+          },
+          fragilityParams,
+        );
+
+        // SPEC-CRISIS-1: a seeded Bernoulli draw on fragility can erupt into a crisis.
+        // The crisis stream is DERIVED (fnv1a32 over seed+date), not the session supply-shock
+        // RNG, so adding crises never perturbs the supply-shock sequence (SPEC-CAL-2 stability).
+        const cooldown = (this._state.vars.crisis_cooldown ?? 0) as number;
+        if (cooldown > 0) {
+          this._state = {
+            ...this._state,
+            vars: { ...this._state.vars, crisis_cooldown: cooldown - 1 },
+            flags: { ...this._state.flags, crisis: false },
+          };
+        } else {
+          const fragility = (this._state.vars.bank_fragility ?? 0) as number;
+          const p = crisisProbability(fragility, crisisParams);
+          // The Bernoulli threshold draw and applyFinancialCrisis's jitter draws INTENTIONALLY
+          // share this one derived stream — the spec does not require them to be independent, and
+          // a single stream keeps the crisis path deterministic. Do NOT split into two derived
+          // seeds "to decouple" them; that would silently change the crisis trajectory.
+          const crisisRng = mulberry32(fnv1a32(`${this._seed}|crisis|${this._state.date}`));
+          if (crisisRng() < p) {
+            this._state = applyFinancialCrisis(this._state, effects.crisisSeverityReduction, crisisParams, crisisRng);
+            this._state = {
+              ...this._state,
+              vars: { ...this._state.vars, crisis_cooldown: crisisParams.cooldown_months },
+              flags: { ...this._state.flags, crisis: true },
+            };
+          } else {
+            this._state = { ...this._state, flags: { ...this._state.flags, crisis: false } };
+          }
+        }
+
+        // SPEC-CONGRESS-1: a sustained Fed loss (deferred asset) draws Congressional
+        // pressure on political capital and independence.
+        this._state = applyCongressionalPressure(this._state, congressParams);
 
         const snapshot = Session._snapshotOf(this._state);
         this._trajectoryInternal.push(snapshot);
@@ -608,6 +695,47 @@ export class Session {
   /** The Chair's current legacy score. */
   legacyScore(): number {
     return computeLegacyScore(this._state, this._trajectoryInternal.length - 1, loadLegacyParams());
+  }
+
+  // --- PR A: banking stability, Fed finances, independence, division effects, culture ---
+
+  /** SPEC-FRAG-1: current banking-fragility composite ∈ [0,1] (defaults from content). */
+  bankFragility(): number {
+    return this._state.vars.bank_fragility ?? loadFragilityParams().initial_fragility;
+  }
+
+  /** SPEC-FED-1: current SOMA balance-sheet size (defaults from content). */
+  balanceSheet(): number {
+    return this._state.vars.balance_sheet ?? loadFedFinancesParams().initial_balance_sheet;
+  }
+
+  /** SPEC-FED-1: latest monthly net income (carry on the balance sheet). */
+  netIncome(): number {
+    return this._state.vars.net_income ?? 0;
+  }
+
+  /** SPEC-FED-1: outstanding deferred asset (cumulative unremitted loss). */
+  deferredAsset(): number {
+    return this._state.vars.deferred_asset ?? loadFedFinancesParams().initial_deferred_asset;
+  }
+
+  /** SPEC-CONGRESS-1: institutional independence ∈ [0,100] (the fiscal-dominance axis). */
+  independence(): number {
+    return this._state.vars.independence ?? loadCongressParams().initial_independence;
+  }
+
+  /** SPEC-DIV-1: the live economic channel contributions of the staffed divisions. */
+  divisionEffects(): DivisionEffects {
+    return divisionEffects(this._state, loadDivisionCatalog(), loadDivisionEffectsParams());
+  }
+
+  /** SPEC-CULTURE-1: the institution's accreted culture. */
+  culture(): { policyLean: number; supervisoryRigor: number } {
+    return {
+      policyLean: this._state.vars["culture.policy_lean"] ?? 0,
+      supervisoryRigor:
+        this._state.vars["culture.supervisory_rigor"] ?? loadCultureParams().initial_supervisory_rigor,
+    };
   }
 
   /**

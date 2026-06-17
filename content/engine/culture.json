@@ -1,0 +1,6 @@
+{
+  "policy_lean_halflife": 24,
+  "supervisory_rigor_halflife": 18,
+  "initial_supervisory_rigor": 0.4,
+  "disposition_lean_weight": 0.5
+}

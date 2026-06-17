@@ -1,0 +1,15 @@
+{
+  "id": "consumer_community",
+  "name": "division.consumer_community.name",
+  "desc": "division.consumer_community.desc",
+  "hire_cost": 8,
+  "investment": 0.1,
+  "channel": "political",
+  "skill_weights": {
+    "forecasting":   0.05,
+    "markets":       0.05,
+    "supervision":   0.2,
+    "communication": 0.5,
+    "crisis":        0.2
+  }
+}

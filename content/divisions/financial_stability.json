@@ -3,5 +3,13 @@
   "name": "division.financial_stability.name",
   "desc": "division.financial_stability.desc",
   "hire_cost": 14,
-  "investment": 0.2
+  "investment": 0.2,
+  "channel": "fragility_visibility",
+  "skill_weights": {
+    "forecasting":   0.3,
+    "markets":       0.25,
+    "supervision":   0.25,
+    "communication": 0.1,
+    "crisis":        0.1
+  }
 }

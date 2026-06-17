@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mandate.dev/schemas/crisis.schema.json",
+  "title": "CrisisParams",
+  "description": "Parameters governing the endogenous banking crisis channel. SPEC-CRISIS-1.",
+  "type": "object",
+  "required": [
+    "crisis_base",
+    "crisis_slope",
+    "crisis_threshold",
+    "severity",
+    "inflation_drop",
+    "credibility_drop",
+    "output_gap_drop",
+    "post_crisis_fragility",
+    "severity_jitter",
+    "cooldown_months",
+    "initial_bank_fragility",
+    "initial_output_gap"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "crisis_base": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Base crisis probability at the threshold (before slope contribution)."
+    },
+    "crisis_slope": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Slope: additional probability per unit of fragility above crisis_threshold."
+    },
+    "crisis_threshold": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Fragility level at which crisis probability begins to rise above crisis_base."
+    },
+    "severity": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Base unemployment increase from a crisis hit (before severityReduction and jitter)."
+    },
+    "inflation_drop": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Absolute drop in inflation when a crisis hits."
+    },
+    "credibility_drop": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Points of credibility lost when a crisis hits."
+    },
+    "output_gap_drop": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Absolute drop in output_gap when a crisis hits."
+    },
+    "post_crisis_fragility": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "bank_fragility is reset to this value after a crisis (the cleansing effect)."
+    },
+    "severity_jitter": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Std deviation of the stochastic jitter added to the unemployment impact (drawn from seeded rng)."
+    },
+    "cooldown_months": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Months of cooldown after a crisis during which another crisis cannot occur."
+    },
+    "initial_bank_fragility": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Default value for state.vars.bank_fragility when absent from state (SPEC-PROD-1 pattern)."
+    },
+    "initial_output_gap": {
+      "type": "number",
+      "description": "Default value for state.vars.output_gap when absent from state (SPEC-PROD-1 pattern)."
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "id": "legal",
+  "name": "division.legal.name",
+  "desc": "division.legal.desc",
+  "hire_cost": 10,
+  "investment": 0.1,
+  "channel": "political",
+  "skill_weights": {
+    "forecasting":   0.1,
+    "markets":       0.1,
+    "supervision":   0.25,
+    "communication": 0.4,
+    "crisis":        0.15
+  }
+}

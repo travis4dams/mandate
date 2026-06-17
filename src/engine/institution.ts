@@ -23,23 +23,60 @@ export interface InstitutionParams {
   candidate_slate_size: number;
 }
 
-/** SPEC-INST-2: a single division from content/divisions/. */
+/** SPEC-STAFF-1: the five skill dimensions every director candidate carries. */
+export interface DirectorSkills {
+  forecasting: number;
+  markets: number;
+  supervision: number;
+  communication: number;
+  crisis: number;
+}
+
+/** SPEC-DIV-2: the economic channel a division's effectiveness feeds. */
+export type DivisionChannel =
+  | "fog"
+  | "transmission"
+  | "fragility_visibility"
+  | "fragility_mitigation"
+  | "crisis_severity"
+  | "external_shock"
+  | "org"
+  | "political"
+  | "oversight";
+
+/** SPEC-INST-2 + SPEC-STAFF-1 + SPEC-DIV-2: a single division from content/divisions/. */
 export interface Division {
   id: string;
   name: string;
   desc: string;
   hire_cost: number;
   investment: number;
+  /** SPEC-STAFF-1: importance weights for each skill dimension (all five required). */
+  skill_weights: DirectorSkills;
+  /** SPEC-DIV-2: which economic channel this division's effectiveness feeds. */
+  channel: DivisionChannel;
+  /** SPEC-DIV-2: optional tech id that must be researched before hire is available. */
+  unlocked_by?: string;
 }
 
 /** SPEC-INST-2: policy orientation of a division head candidate. */
 export type Lean = "hawk" | "dove" | "centrist";
 
-/** SPEC-INST-2: a candidate for a division head position. */
+/** SPEC-INST-2 + SPEC-STAFF-1 + SPEC-STAFF-2: a candidate for a division head position. */
 export interface Candidate {
   name: string;
   competence: number;
   lean: Lean;
+  /** SPEC-STAFF-1: per-dimension skill scores in [0,1]. */
+  skills: DirectorSkills;
+  /**
+   * SPEC-STAFF-2: a HIDDEN hawkish(+)/dovish(−) disposition in [-1,1], distinct
+   * from and uncorrelated with the visible `lean`. It slightly colors the
+   * division's work and is NOT surfaced on the candidate card — the player infers
+   * it over time from how the division behaves. Optional on the type (defaults to
+   * a neutral 0 on hire) but always populated by generateCandidates.
+   */
+  disposition?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -182,6 +219,37 @@ export function staffedFlagKey(divisionId: string): string {
   return `staffed.${divisionId}`;
 }
 
+// ---------------------------------------------------------------------------
+// SPEC-STAFF-1: director effectiveness
+// ---------------------------------------------------------------------------
+
+/** The ordered skill keys — used to iterate DirectorSkills without index tricks. */
+const SKILL_KEYS: ReadonlyArray<keyof DirectorSkills> = [
+  "forecasting",
+  "markets",
+  "supervision",
+  "communication",
+  "crisis",
+];
+
+/**
+ * Compute a director's weighted effectiveness against a division's skill demands.
+ *
+ * Returns Σ(weights[s] * skills[s]) / Σ(weights[s]) ∈ [0, 1].
+ * If all weights are zero the result is 0 (safe default).
+ * Pure; no randomness (SPEC-SIM-1).
+ */
+export function directorEffectiveness(skills: DirectorSkills, weights: DirectorSkills): number {
+  let numerator = 0;
+  let denominator = 0;
+  for (const key of SKILL_KEYS) {
+    const w = weights[key];
+    numerator += w * skills[key];
+    denominator += w;
+  }
+  return denominator === 0 ? 0 : numerator / denominator;
+}
+
 // The lean values in draw order — determined by rng draw in thirds.
 const LEANS: Lean[] = ["hawk", "dove", "centrist"];
 
@@ -193,9 +261,10 @@ const LEANS: Lean[] = ["hawk", "dove", "centrist"];
  * order (SPEC-SIM-1).
  *
  * Per candidate:
- *   - name: drawn via nameForId-equivalent seeding into generateName
+ *   - name: drawn via generateName from the candidate's seeded stream
  *   - competence: rng() → [0, 1)
  *   - lean: rng() binned into thirds → hawk / dove / centrist
+ *   - skills: five rng() draws → each skill ∈ [0, 1) (SPEC-STAFF-1)
  */
 export function generateCandidates(
   divisionId: string,
@@ -213,7 +282,18 @@ export function generateCandidates(
     const leanIndex = Math.floor(leanRaw * LEANS.length);
     // Guard for noUncheckedIndexedAccess — leanIndex is always 0, 1, or 2.
     const lean: Lean = LEANS[leanIndex] ?? "centrist";
-    candidates.push({ name: generated.full, competence, lean });
+    // SPEC-STAFF-1: draw each skill from the same per-candidate seeded stream.
+    const skills: DirectorSkills = {
+      forecasting:   rng(),
+      markets:       rng(),
+      supervision:   rng(),
+      communication: rng(),
+      crisis:        rng(),
+    };
+    // SPEC-STAFF-2: hidden disposition ∈ [-1,1), drawn from the same seeded stream
+    // (a separate draw from `lean`, so the two are independent).
+    const disposition = rng() * 2 - 1;
+    candidates.push({ name: generated.full, competence, lean, skills, disposition });
   }
   return candidates;
 }
@@ -224,6 +304,8 @@ export function generateCandidates(
  * Records the hire in the returned state:
  *   flags[staffedFlagKey(divisionId)] = true
  *   vars["staff.<divisionId>.competence"] = candidate.competence
+ *   vars["staff.<divisionId>.eff"]        = directorEffectiveness(candidate.skills, division.skill_weights)  (SPEC-STAFF-1)
+ *   vars["staff.<divisionId>.lean"]       = hawk→+1, dove→-1, centrist→0                                     (SPEC-STAFF-1)
  *   vars.political_capital -= division.hire_cost
  *
  * Throws InsufficientCapitalError if political_capital < hire_cost.
@@ -242,12 +324,20 @@ export function hireStaff(state: GameState, division: Division, candidate: Candi
   if (capital < division.hire_cost) {
     throw new InsufficientCapitalError(capital, division.hire_cost);
   }
+  // SPEC-STAFF-1: numeric lean stored as +1 / 0 / -1 so other modules can read it
+  // without importing institution.ts (state-convention contract).
+  const leanValue = candidate.lean === "hawk" ? 1 : candidate.lean === "dove" ? -1 : 0;
+  const eff = directorEffectiveness(candidate.skills, division.skill_weights);
   return {
     ...state,
     vars: {
       ...state.vars,
       political_capital: capital - division.hire_cost,
       [`staff.${division.id}.competence`]: candidate.competence,
+      [`staff.${division.id}.eff`]:        eff,
+      [`staff.${division.id}.lean`]:       leanValue,
+      // SPEC-STAFF-2: persist the hidden disposition so divisionEffects + culture can read it.
+      [`staff.${division.id}.disposition`]: candidate.disposition ?? 0,
     },
     flags: {
       ...state.flags,

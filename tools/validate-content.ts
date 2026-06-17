@@ -38,6 +38,12 @@ const fileChecks = [
   { schema: "schemas/legacy.schema.json", file: "content/engine/legacy.json", label: "legacy params" },
   { schema: "schemas/names.schema.json", file: "content/names/pools.json", label: "name pools" },
   { schema: "schemas/institution.schema.json", file: "content/engine/institution.json", label: "institution params" },
+  { schema: "schemas/fed-finances.schema.json", file: "content/engine/fed-finances.json", label: "fed finances params" },
+  { schema: "schemas/fragility.schema.json", file: "content/engine/fragility.json", label: "fragility params" },
+  { schema: "schemas/crisis.schema.json", file: "content/engine/crisis.json", label: "crisis params" },
+  { schema: "schemas/congress.schema.json", file: "content/engine/congress.json", label: "congress params" },
+  { schema: "schemas/division-effects.schema.json", file: "content/engine/division-effects.json", label: "division-effects params" },
+  { schema: "schemas/culture.schema.json", file: "content/engine/culture.json", label: "culture params" },
 ];
 
 let failed = false;

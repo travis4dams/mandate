@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mandate.dev/schemas/congress.schema.json",
+  "title": "CongressParams",
+  "description": "Congressional-pressure params. SPEC-CONGRESS-1.",
+  "type": "object",
+  "required": ["inquiry_threshold", "political_capital_drain", "independence_drain", "initial_independence"],
+  "properties": {
+    "inquiry_threshold": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Deferred-asset level above which Congress opens an inquiry (same units as deferred_asset)."
+    },
+    "political_capital_drain": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Political capital deducted each month the deferred asset exceeds the threshold."
+    },
+    "independence_drain": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Independence points deducted each month above threshold (clamped to [0,100])."
+    },
+    "initial_independence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100,
+      "description": "Default independence when absent from state (fiscal-dominance axis, in [0,100])."
+    }
+  },
+  "additionalProperties": false
+}

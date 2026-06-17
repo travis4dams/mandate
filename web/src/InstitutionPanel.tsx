@@ -10,6 +10,14 @@ import { t } from "./loc";
 import { color, space, radius, font, surface, heading, buttonStyle, chipStyle } from "./theme";
 import type { Session } from "../../src/engine/session";
 import type { GameStateSnapshot } from "../../src/engine/state";
+import { directorEffectiveness } from "../../src/engine/institution";
+
+// SPEC-WEB-14: localize the institution's policy-lean readout from a numeric tilt.
+function leanLabel(lean: number): string {
+  if (lean > 0.15) return t("ui.institution.lean.hawk");
+  if (lean < -0.15) return t("ui.institution.lean.dove");
+  return t("ui.institution.lean.centrist");
+}
 
 export function InstitutionPanel(props: {
   session: Session;
@@ -31,6 +39,22 @@ export function InstitutionPanel(props: {
   const budget = session.operatingBudget();
   const capital = session.politicalCapital();
   const investment = session.institutionInvestment();
+  const effects = session.divisionEffects();
+  const culture = session.culture();
+  const balanceSheet = session.balanceSheet();
+  const netIncome = session.netIncome();
+  const deferredAsset = session.deferredAsset();
+  const inDeferredAsset = deferredAsset > 0;
+
+  // SPEC-WEB-14: the channels a staffed institution is actively contributing.
+  const effectRows: { key: string; label: string; value: string }[] = [
+    { key: "fog", label: t("ui.institution.effect.fog"), value: `${((1 - effects.fogFactor) * 100).toFixed(0)}%` },
+    { key: "transmission", label: t("ui.institution.effect.transmission"), value: effects.transmission.toFixed(2) },
+    { key: "fragility_visibility", label: t("ui.institution.effect.fragility_visibility"), value: effects.fragilityVisibility.toFixed(2) },
+    { key: "fragility_mitigation", label: t("ui.institution.effect.fragility_mitigation"), value: effects.fragilityMitigation.toFixed(2) },
+    { key: "crisis_severity", label: t("ui.institution.effect.crisis_severity"), value: effects.crisisSeverityReduction.toFixed(2) },
+    { key: "external_shock", label: t("ui.institution.effect.external_shock"), value: `${((1 - effects.externalShockDamp) * 100).toFixed(0)}%` },
+  ];
 
   return (
     <section style={{ margin: `${space.lg}px 0` }}>
@@ -79,6 +103,58 @@ export function InstitutionPanel(props: {
           >
             {investment.toFixed(2)}
           </div>
+        </div>
+      </div>
+
+      {/* --- Fed finances --- */}
+      <div
+        data-testid="fed-finances"
+        style={{
+          ...surface.card,
+          marginBottom: space.lg,
+          borderLeft: inDeferredAsset ? `4px solid ${color.negative}` : `4px solid ${color.line}`,
+        }}
+      >
+        <div style={{ ...heading.label, marginBottom: space.sm }}>{t("ui.institution.finances_heading")}</div>
+        <div style={{ display: "flex", gap: space.xl, flexWrap: "wrap" }}>
+          <FinanceStat label={t("ui.institution.balance_sheet")} value={balanceSheet.toFixed(2)} />
+          <FinanceStat
+            label={t("ui.institution.net_income")}
+            value={netIncome.toFixed(3)}
+            tone={netIncome < 0 ? color.negative : color.positive}
+          />
+          <FinanceStat
+            label={t("ui.institution.deferred_asset")}
+            value={deferredAsset.toFixed(2)}
+            tone={inDeferredAsset ? color.negative : color.ink}
+            testId="fed-deferred-asset"
+          />
+        </div>
+        {inDeferredAsset && (
+          <p style={{ color: color.negative, fontSize: 12, margin: `${space.sm}px 0 0` }}>
+            {t("ui.institution.deferred_asset_warning")}
+          </p>
+        )}
+      </div>
+
+      {/* --- Institutional culture --- */}
+      <div style={{ ...surface.card, marginBottom: space.lg }}>
+        <div style={{ ...heading.label, marginBottom: space.sm }}>{t("ui.institution.culture_heading")}</div>
+        <div style={{ display: "flex", gap: space.xl, flexWrap: "wrap" }}>
+          <FinanceStat label={t("ui.institution.culture.policy_lean")} value={leanLabel(culture.policyLean)} />
+          <FinanceStat label={t("ui.institution.culture.supervisory_rigor")} value={`${(culture.supervisoryRigor * 100).toFixed(0)}%`} />
+        </div>
+      </div>
+
+      {/* --- What your divisions are doing (SPEC-DIV-1 channels) --- */}
+      <div style={{ ...surface.card, marginBottom: space.xl }}>
+        <div style={{ ...heading.label, marginBottom: space.sm }}>{t("ui.institution.effects_heading")}</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: space.sm }}>
+          {effectRows.map((r) => (
+            <div key={r.key} style={{ fontSize: 12, color: color.inkSoft }}>
+              {r.label}: <span style={{ fontFamily: font.mono, color: color.navy }}>{r.value}</span>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -186,13 +262,30 @@ export function InstitutionPanel(props: {
                           <div style={{ fontWeight: 600, fontSize: 13, color: color.ink }}>
                             {candidate.name}
                           </div>
-                          <div style={{ fontSize: 12, color: color.inkSoft, display: "flex", gap: space.md, marginTop: 2 }}>
+                          <div style={{ fontSize: 12, color: color.inkSoft, display: "flex", gap: space.md, marginTop: 2, flexWrap: "wrap" }}>
                             <span>
                               {t("ui.institution.competence_label")}: {(candidate.competence * 100).toFixed(0)}%
                             </span>
                             <span>
                               {t("ui.institution.lean_label")}: {t(`ui.institution.lean.${candidate.lean}`)}
                             </span>
+                            {/* SPEC-WEB-14: the fit computed for THIS division — a poor match is
+                                visible before hiring. The hidden disposition is deliberately NOT shown. */}
+                            <span
+                              data-testid={`candidate-fit-${division.id}-${index}`}
+                              style={{ color: color.brass, fontWeight: 600 }}
+                            >
+                              {t("ui.institution.fit_label")}: {(directorEffectiveness(candidate.skills, division.skill_weights) * 100).toFixed(0)}%
+                            </span>
+                          </div>
+                          {/* SPEC-WEB-14: the skill vector (no disposition). */}
+                          <div style={{ fontSize: 11, color: color.inkSoft, marginTop: 2 }}>
+                            {t("ui.institution.skills_label")}:{" "}
+                            {t("ui.institution.skill.forecasting")} {(candidate.skills.forecasting * 100).toFixed(0)} ·{" "}
+                            {t("ui.institution.skill.markets")} {(candidate.skills.markets * 100).toFixed(0)} ·{" "}
+                            {t("ui.institution.skill.supervision")} {(candidate.skills.supervision * 100).toFixed(0)} ·{" "}
+                            {t("ui.institution.skill.communication")} {(candidate.skills.communication * 100).toFixed(0)} ·{" "}
+                            {t("ui.institution.skill.crisis")} {(candidate.skills.crisis * 100).toFixed(0)}
                           </div>
                         </div>
                         <button
@@ -222,5 +315,19 @@ export function InstitutionPanel(props: {
         </p>
       )}
     </section>
+  );
+}
+
+function FinanceStat(props: { label: string; value: string; tone?: string; testId?: string }): JSX.Element {
+  return (
+    <div>
+      <div style={{ ...heading.label }}>{props.label}</div>
+      <div
+        data-testid={props.testId}
+        style={{ fontFamily: font.mono, fontSize: 16, color: props.tone ?? color.navy, marginTop: 2 }}
+      >
+        {props.value}
+      </div>
+    </div>
   );
 }

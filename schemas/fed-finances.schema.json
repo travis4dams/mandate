@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mandate.dev/schemas/fed-finances.schema.json",
+  "title": "FedFinancesParams",
+  "description": "Parameters for the Fed balance-sheet income model. SPEC-FED-1.",
+  "type": "object",
+  "required": [
+    "portfolio_half_life_months",
+    "initial_balance_sheet",
+    "initial_portfolio_yield",
+    "initial_deferred_asset",
+    "initial_operating_budget"
+  ],
+  "properties": {
+    "portfolio_half_life_months": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "EWMA half-life in months for portfolio_yield convergence toward long_rate."
+    },
+    "initial_balance_sheet": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Default SOMA size (normalized) when absent from state."
+    },
+    "initial_portfolio_yield": {
+      "type": "number",
+      "description": "Default book yield of the portfolio when absent from state."
+    },
+    "initial_deferred_asset": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Default deferred-asset balance when absent from state."
+    },
+    "initial_operating_budget": {
+      "type": "number",
+      "description": "Default operating budget when absent from state."
+    }
+  },
+  "additionalProperties": false
+}

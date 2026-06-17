@@ -3,5 +3,13 @@
   "name": "division.research.name",
   "desc": "division.research.desc",
   "hire_cost": 12,
-  "investment": 0.25
+  "investment": 0.25,
+  "channel": "fog",
+  "skill_weights": {
+    "forecasting":   0.5,
+    "markets":       0.2,
+    "supervision":   0.05,
+    "communication": 0.15,
+    "crisis":        0.1
+  }
 }

@@ -3,5 +3,13 @@
   "name": "division.international.name",
   "desc": "division.international.desc",
   "hire_cost": 8,
-  "investment": 0.1
+  "investment": 0.1,
+  "channel": "external_shock",
+  "skill_weights": {
+    "forecasting":   0.25,
+    "markets":       0.35,
+    "supervision":   0.05,
+    "communication": 0.25,
+    "crisis":        0.1
+  }
 }

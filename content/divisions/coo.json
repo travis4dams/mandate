@@ -1,0 +1,15 @@
+{
+  "id": "coo",
+  "name": "division.coo.name",
+  "desc": "division.coo.desc",
+  "hire_cost": 12,
+  "investment": 0.2,
+  "channel": "org",
+  "skill_weights": {
+    "forecasting":   0.1,
+    "markets":       0.1,
+    "supervision":   0.2,
+    "communication": 0.3,
+    "crisis":        0.3
+  }
+}

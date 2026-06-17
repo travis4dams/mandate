@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mandate.dev/schemas/division-effects.schema.json",
+  "title": "DivisionEffectsParams",
+  "description": "Parameters governing how staffed division effectiveness maps to economic channel outputs. SPEC-DIV-1.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "effect_strength",
+    "competence_floor",
+    "disposition_influence"
+  ],
+  "properties": {
+    "effect_strength": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Maximum contribution per channel when a division is staffed with eff=1.0.",
+      "required": [
+        "fog",
+        "transmission",
+        "fragility_visibility",
+        "fragility_mitigation",
+        "crisis_severity",
+        "external_shock",
+        "org",
+        "political",
+        "oversight"
+      ],
+      "properties": {
+        "fog":                  { "type": "number", "exclusiveMinimum": 0, "description": "Max fog-reduction contribution (subtracted from fogFactor's 1.0 baseline)." },
+        "transmission":        { "type": "number", "exclusiveMinimum": 0, "description": "Max transmission-softening contribution." },
+        "fragility_visibility": { "type": "number", "exclusiveMinimum": 0, "description": "Max fragility-visibility contribution." },
+        "fragility_mitigation": { "type": "number", "exclusiveMinimum": 0, "description": "Max fragility-mitigation contribution." },
+        "crisis_severity":     { "type": "number", "exclusiveMinimum": 0, "description": "Max crisis-severity-reduction contribution." },
+        "external_shock":      { "type": "number", "exclusiveMinimum": 0, "description": "Max external-shock-dampening contribution (subtracted from externalShockDamp's 1.0 baseline)." },
+        "org":                 { "type": "number", "exclusiveMinimum": 0, "description": "Max org-efficiency contribution (currently informational)." },
+        "political":           { "type": "number", "exclusiveMinimum": 0, "description": "Max political-capital contribution (currently informational)." },
+        "oversight":           { "type": "number", "exclusiveMinimum": 0, "description": "Max oversight contribution (currently informational)." }
+      }
+    },
+    "competence_floor": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Eff below this threshold underperforms: contribution = effect_strength * (eff - competence_floor), which may be slightly negative."
+    },
+    "disposition_influence": {
+      "type": "number",
+      "minimum": 0,
+      "description": "SPEC-STAFF-2: bound on how much a director's hidden disposition colors their channel (adjustment = disposition_influence * disposition, disposition in [-1,1])."
+    }
+  }
+}
