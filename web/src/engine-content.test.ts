@@ -5,6 +5,7 @@ import { loadDoctrineCatalog } from "../../src/content/doctrines";
 import { loadHearing } from "../../src/content/hearings";
 import { loadNamePools } from "../../src/engine/names";
 import { loadDivisionCatalog } from "../../src/engine/institution";
+import { loadEventCatalog } from "../../src/content/events";
 
 // SPEC-WEB-2: every content type the engine loads at runtime must be pre-registered
 // in the browser content registry. Session's meeting flow loads the trait catalog
@@ -35,5 +36,10 @@ describe("SPEC-WEB-2: registry covers all engine-loaded content", () => {
   // SPEC-INST-2: the institution layer reads content/divisions/*.json at runtime.
   it("division catalog loads from the registry", () => {
     expect(loadDivisionCatalog().length).toBeGreaterThan(0);
+  });
+
+  // SPEC-EVENT-1: Session.advance() loads the event catalog from content/events/*.json.
+  it("event catalog loads from the registry", () => {
+    expect(loadEventCatalog().length).toBeGreaterThan(0);
   });
 });

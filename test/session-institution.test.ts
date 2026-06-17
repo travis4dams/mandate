@@ -50,10 +50,11 @@ describe("Session institution + legacy + npc-name wiring", () => {
     expect(s.isStaffed("research")).toBe(false);
     expect(s.institutionInvestment()).toBe(0);
 
-    const before = s.politicalCapital();
+    const beforeBudget = s.operatingBudget();
     s.hire("research", 0);
     expect(s.isStaffed("research")).toBe(true);
-    expect(s.politicalCapital()).toBeCloseTo(before - (research?.hire_cost ?? 0), 6);
+    // SPEC-STAFF-3: hire deducts from operating_budget, not political_capital
+    expect(s.operatingBudget()).toBeCloseTo(beforeBudget - (research?.hire_cost ?? 0), 6);
     expect(s.institutionInvestment()).toBeGreaterThan(0);
   });
 

@@ -101,6 +101,70 @@
           }
         }
       ]
+    },
+    {
+      "id": "hearing.q.supervision_philosophy",
+      "text": "hearing.q.supervision_philosophy.text",
+      "answers": [
+        {
+          "id": "hearing.a.supervision_tough",
+          "text": "hearing.a.supervision_tough.text",
+          "scenario_weights": {
+            "scen.2008_gfc": 2,
+            "scen.1979_stagflation": 1
+          },
+          "state_modifiers": [
+            { "target": "bank_fragility", "delta": -0.05 }
+          ]
+        },
+        {
+          "id": "hearing.a.supervision_riskbased",
+          "text": "hearing.a.supervision_riskbased.text",
+          "scenario_weights": {
+            "scen.1979_stagflation": 1,
+            "scen.2008_gfc": 1,
+            "scen.covid_2020": 1
+          }
+        },
+        {
+          "id": "hearing.a.supervision_light",
+          "text": "hearing.a.supervision_light.text",
+          "scenario_weights": {
+            "scen.covid_2020": 1
+          },
+          "state_modifiers": [
+            { "target": "bank_fragility", "delta": 0.05 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "hearing.q.transparency",
+      "text": "hearing.q.transparency.text",
+      "answers": [
+        {
+          "id": "hearing.a.transparency_open",
+          "text": "hearing.a.transparency_open.text",
+          "scenario_weights": {
+            "scen.1979_stagflation": 1,
+            "scen.2008_gfc": 1,
+            "scen.covid_2020": 1
+          },
+          "state_modifiers": [
+            { "target": "credibility", "delta": 3 }
+          ]
+        },
+        {
+          "id": "hearing.a.transparency_guarded",
+          "text": "hearing.a.transparency_guarded.text",
+          "scenario_weights": {
+            "scen.1979_stagflation": 1
+          },
+          "state_modifiers": [
+            { "target": "credibility", "delta": -2 }
+          ]
+        }
+      ]
     }
   ]
 }

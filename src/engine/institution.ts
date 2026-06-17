@@ -91,6 +91,14 @@ export class InsufficientCapitalError extends Error {
   }
 }
 
+/** SPEC-STAFF-3: Thrown by hireStaff when operating_budget < division.hire_cost. */
+export class InsufficientBudgetError extends Error {
+  constructor(have: number, need: number) {
+    super(`InsufficientBudgetError: need ${need} operating budget, have ${have}`);
+    this.name = "InsufficientBudgetError";
+  }
+}
+
 /** Thrown by hireStaff when the division is already staffed. */
 export class DivisionAlreadyStaffedError extends Error {
   constructor(divisionId: string) {
@@ -306,23 +314,28 @@ export function generateCandidates(
  *   vars["staff.<divisionId>.competence"] = candidate.competence
  *   vars["staff.<divisionId>.eff"]        = directorEffectiveness(candidate.skills, division.skill_weights)  (SPEC-STAFF-1)
  *   vars["staff.<divisionId>.lean"]       = hawk→+1, dove→-1, centrist→0                                     (SPEC-STAFF-1)
- *   vars.political_capital -= division.hire_cost
+ *   vars.operating_budget -= division.hire_cost                                                               (SPEC-STAFF-3)
  *
- * Throws InsufficientCapitalError if political_capital < hire_cost.
+ * Throws InsufficientBudgetError if operating_budget < hire_cost.
  * Throws DivisionAlreadyStaffedError if the division is already staffed.
  *
  * Pure: never mutates the input state.
  */
-export function hireStaff(state: GameState, division: Division, candidate: Candidate): GameState {
+export function hireStaff(
+  state: GameState,
+  division: Division,
+  candidate: Candidate,
+  params?: Pick<InstitutionParams, "initial_operating_budget">,
+): GameState {
   if (state.flags[staffedFlagKey(division.id)]) {
     throw new DivisionAlreadyStaffedError(division.id);
   }
-  // Absent political_capital defaults to 0 here (a bare state has no budget to spend).
-  // In a live game the Session constructor seeds political_capital from content
-  // (SPEC-INST-1), so this 0-default only applies to direct unit calls on bare state.
-  const capital = state.vars.political_capital ?? 0;
-  if (capital < division.hire_cost) {
-    throw new InsufficientCapitalError(capital, division.hire_cost);
+  // SPEC-STAFF-3: hire is funded by operating_budget, not political_capital.
+  // Absent operating_budget defaults to params.initial_operating_budget when provided,
+  // or 0 for bare-state unit tests that don't pass params.
+  const budget = state.vars.operating_budget ?? params?.initial_operating_budget ?? 0;
+  if (budget < division.hire_cost) {
+    throw new InsufficientBudgetError(budget, division.hire_cost);
   }
   // SPEC-STAFF-1: numeric lean stored as +1 / 0 / -1 so other modules can read it
   // without importing institution.ts (state-convention contract).
@@ -332,7 +345,7 @@ export function hireStaff(state: GameState, division: Division, candidate: Candi
     ...state,
     vars: {
       ...state.vars,
-      political_capital: capital - division.hire_cost,
+      operating_budget: budget - division.hire_cost,
       [`staff.${division.id}.competence`]: candidate.competence,
       [`staff.${division.id}.eff`]:        eff,
       [`staff.${division.id}.lean`]:       leanValue,
@@ -342,6 +355,34 @@ export function hireStaff(state: GameState, division: Division, candidate: Candi
     flags: {
       ...state.flags,
       [staffedFlagKey(division.id)]: true,
+    },
+  };
+}
+
+/**
+ * SPEC-STAFF-3: Fire a division director.
+ *
+ * Clears the staffed flag and removes all staff.<id>.* vars from the returned state,
+ * allowing the Chair to hire a replacement on the next turn.
+ *
+ * Pure: never mutates the input state.
+ */
+export function fireStaff(state: GameState, division: Division): GameState {
+  const flagKey = staffedFlagKey(division.id);
+  const prefix = `staff.${division.id}.`;
+  // Filter out all staff.<id>.* vars for the fired division.
+  const nextVars: Record<string, number> = {};
+  for (const [k, v] of Object.entries(state.vars)) {
+    if (!k.startsWith(prefix)) {
+      nextVars[k] = v;
+    }
+  }
+  return {
+    ...state,
+    vars: nextVars,
+    flags: {
+      ...state.flags,
+      [flagKey]: false,
     },
   };
 }

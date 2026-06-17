@@ -208,7 +208,7 @@ describe("hireStaff eff and lean (SPEC-STAFF-1)", () => {
       lean: "centrist",
       skills: SPECIALIST_SKILLS,
     };
-    const state = makeState({ vars: { political_capital: 50 } });
+    const state = makeState({ vars: { operating_budget: 50 } });
     const result = hireStaff(state, DIVISION_RESEARCH, candidate);
     const expectedEff = directorEffectiveness(SPECIALIST_SKILLS, WEIGHTS_RESEARCH);
     expect(result.vars["staff.research.eff"]).toBeCloseTo(expectedEff);
@@ -217,7 +217,7 @@ describe("hireStaff eff and lean (SPEC-STAFF-1)", () => {
   it("stores staff.<id>.lean = +1 for hawk", () => {
     // SPEC-STAFF-1
     const candidate: Candidate = { name: "Jordan Ellis", competence: 0.7, lean: "hawk", skills: UNIFORM_SKILLS };
-    const state = makeState({ vars: { political_capital: 50 } });
+    const state = makeState({ vars: { operating_budget: 50 } });
     const result = hireStaff(state, DIVISION_RESEARCH, candidate);
     expect(result.vars["staff.research.lean"]).toBe(1);
   });
@@ -225,7 +225,7 @@ describe("hireStaff eff and lean (SPEC-STAFF-1)", () => {
   it("stores staff.<id>.lean = -1 for dove", () => {
     // SPEC-STAFF-1
     const candidate: Candidate = { name: "Jordan Ellis", competence: 0.7, lean: "dove", skills: UNIFORM_SKILLS };
-    const state = makeState({ vars: { political_capital: 50 } });
+    const state = makeState({ vars: { operating_budget: 50 } });
     const result = hireStaff(state, DIVISION_RESEARCH, candidate);
     expect(result.vars["staff.research.lean"]).toBe(-1);
   });
@@ -233,7 +233,7 @@ describe("hireStaff eff and lean (SPEC-STAFF-1)", () => {
   it("stores staff.<id>.lean = 0 for centrist", () => {
     // SPEC-STAFF-1
     const candidate: Candidate = { name: "Jordan Ellis", competence: 0.7, lean: "centrist", skills: UNIFORM_SKILLS };
-    const state = makeState({ vars: { political_capital: 50 } });
+    const state = makeState({ vars: { operating_budget: 50 } });
     const result = hireStaff(state, DIVISION_RESEARCH, candidate);
     expect(result.vars["staff.research.lean"]).toBe(0);
   });
@@ -241,8 +241,8 @@ describe("hireStaff eff and lean (SPEC-STAFF-1)", () => {
   it("eff differs when same skills are hired into a different division", () => {
     // SPEC-STAFF-1: the skill_weights of the division change the effectiveness score
     const candidate: Candidate = { name: "Jordan Ellis", competence: 0.7, lean: "centrist", skills: SPECIALIST_SKILLS };
-    const stateA = makeState({ vars: { political_capital: 50 } });
-    const stateB = makeState({ vars: { political_capital: 50 } });
+    const stateA = makeState({ vars: { operating_budget: 50 } });
+    const stateB = makeState({ vars: { operating_budget: 50 } });
     const resultResearch = hireStaff(stateA, DIVISION_RESEARCH, candidate);
     const resultSupervision = hireStaff(stateB, DIVISION_SUPERVISION, candidate);
     expect(resultResearch.vars["staff.research.eff"]).not.toBeCloseTo(
@@ -253,7 +253,7 @@ describe("hireStaff eff and lean (SPEC-STAFF-1)", () => {
   it("is still a pure function — input not mutated", () => {
     // SPEC-STAFF-1
     const candidate: Candidate = { name: "Jordan Ellis", competence: 0.7, lean: "hawk", skills: UNIFORM_SKILLS };
-    const state = makeState({ vars: { political_capital: 50 } });
+    const state = makeState({ vars: { operating_budget: 50 } });
     const varsBefore = { ...state.vars };
     const flagsBefore = { ...state.flags };
     hireStaff(state, DIVISION_RESEARCH, candidate);

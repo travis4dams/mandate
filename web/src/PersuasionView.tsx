@@ -38,6 +38,12 @@ function DotPlot(props: {
     props.dots,
     props.proposed,
   );
+  // SPEC-WEB-15: above/below label for each member row is derived from their
+  // preferred rate relative to the proposed rate.
+  const positionLabel = (preferred: number): string =>
+    preferred >= proposed
+      ? t("ui.persuasion.above_proposed")
+      : t("ui.persuasion.below_proposed");
 
   const width = 600;
   const height = 84;
@@ -120,6 +126,28 @@ function DotPlot(props: {
           />
         ))}
       </svg>
+
+      {/* SPEC-WEB-15: per-member above/below-proposal label list */}
+      <div
+        data-testid="member-position-list"
+        style={{ marginTop: space.sm, display: "flex", flexDirection: "column", gap: 2 }}
+      >
+        {dots.map((d) => (
+          <div
+            key={d.memberId}
+            data-testid={`member-position-${d.memberId}`}
+            style={{ fontSize: 11, fontFamily: font.sans, color: color.inkSoft }}
+          >
+            <span style={{ fontWeight: 600, color: color.ink }}>{t(d.nameKey)}</span>
+            {" — "}
+            <span style={{ fontFamily: font.mono, color: color.navy }}>{(d.preferred * 100).toFixed(2)}%</span>
+            {" "}
+            <span data-testid={`member-position-label-${d.memberId}`}>
+              {positionLabel(d.preferred)}
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -294,6 +322,19 @@ export function PersuasionView(props: PersuasionViewProps): JSX.Element {
   return (
     <div style={{ marginTop: space.md }}>
       <DotPlot dots={previews} proposed={proposed} />
+      {/* SPEC-WEB-15: committee legend caption explaining the reaction-function logic. */}
+      <p
+        data-testid="committee-legend"
+        style={{
+          fontSize: 12,
+          fontFamily: font.sans,
+          color: color.inkSoft,
+          margin: `${space.sm}px 0`,
+          fontStyle: "italic",
+        }}
+      >
+        {t("ui.persuasion.legend")}
+      </p>
       {briefingId !== undefined && <ScenarioBriefingPanel briefingId={briefingId} />}
       <SpendCapitalControl
         previews={previews}

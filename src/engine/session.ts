@@ -5,7 +5,7 @@ import { loadCommittee } from "../content/committees.js";
 import { loadValidatedFile } from "../content/loader.js";
 import { tick } from "./clock.js";
 import { previewVote, loadCommitteeParams } from "./fomc.js";
-import { computeChairCapital, computeEffectiveBands, loadChairCapitalParams } from "./chair-capital.js";
+import { computeChairCapital, computeEffectiveBands, loadChairCapitalParams, updateConsensusCapital } from "./chair-capital.js";
 import type { CapitalSpend } from "./chair-capital.js";
 import { applyIntermeetingDrift } from "./stance.js";
 import { loadTraitCatalog } from "../content/traits.js";
@@ -31,11 +31,15 @@ import {
   loadDivisionCatalog,
   generateCandidates,
   hireStaff,
+  fireStaff,
   institutionInvestment,
   staffedFlagKey,
   type Division,
   type Candidate,
 } from "./institution.js";
+import { loadEventCatalog, type GameEvent } from "../content/events.js";
+import { eligibleEvents, eventFireProbability } from "./event-engine.js";
+import { applyEffects } from "../content/effects.js";
 import { nameForId, loadNamePools } from "./names.js";
 import {
   termProgress,
@@ -202,6 +206,11 @@ export class Session {
   private readonly _seed: number;
   private _rng: SeededRng;
 
+  // SPEC-EVENT-1/2: escalations the player must resolve, and the set of fires_once
+  // events already spent. Session-level (not in state.vars) — rebuilt by reset().
+  private _pendingEscalations: GameEvent[] = [];
+  private _firedOnce: Set<string> = new Set();
+
   // The `seed` parameter initialises `_rng` via mulberry32 (SPEC-SHOCK-1 / SPEC-SIM-1).
   private constructor(initialState: GameState, seed: number, replay: Replay | null, committeeId: string) {
     this._replay = replay;
@@ -363,6 +372,8 @@ export class Session {
     const divisionEffectsParams = loadDivisionEffectsParams();
     const cultureParams = loadCultureParams();
     const divisionCatalog = loadDivisionCatalog();
+    // SPEC-EVENT-1: the event catalog is loop-invariant.
+    const eventCatalog = loadEventCatalog();
     const effectiveParams = {
       ...dynamicsParams,
       expectations_anchor_pull:
@@ -544,6 +555,21 @@ export class Session {
         // pressure on political capital and independence.
         this._state = applyCongressionalPressure(this._state, congressParams);
 
+        // SPEC-EVENT-1: surface escalations. For each eligible event, draw a DERIVED seeded
+        // RNG keyed by (seed, date, eventId) — never the session supply-shock/crisis streams,
+        // so events can't perturb the macro calibration. A fired event joins the pending queue
+        // (deduped by id) for the player to resolve via resolveEscalation().
+        const pendingIds = new Set(this._pendingEscalations.map((e) => e.id));
+        for (const event of eligibleEvents(this._state, eventCatalog, this._firedOnce)) {
+          if (pendingIds.has(event.id)) continue;
+          const p = eventFireProbability(event, this._state);
+          const evRng = mulberry32(fnv1a32(`${this._seed}|event|${this._state.date}|${event.id}`));
+          if (evRng() < p) {
+            this._pendingEscalations.push(event);
+            pendingIds.add(event.id);
+          }
+        }
+
         const snapshot = Session._snapshotOf(this._state);
         this._trajectoryInternal.push(snapshot);
       }
@@ -658,7 +684,7 @@ export class Session {
    * Deducts the division's hire_cost from political capital and marks it staffed.
    * Fires listeners on success.
    * @throws {Error} if divisionId is unknown or candidateIndex is out of range.
-   * @throws {InsufficientCapitalError} if political capital is below the hire cost.
+   * @throws {InsufficientBudgetError} if the operating budget is below the hire cost.
    * @throws {DivisionAlreadyStaffedError} if the division is already staffed.
    */
   hire(divisionId: string, candidateIndex: number): void {
@@ -676,6 +702,21 @@ export class Session {
     // hireStaff is pure and throws before producing state, so this._state is
     // unchanged on failure — no checkpoint needed.
     this._state = hireStaff(this._state, division, candidate);
+    this._rebuildCaches();
+    this._notifyListeners();
+  }
+
+  /**
+   * SPEC-STAFF-3: dismiss the head of a division, clearing the appointment so a fresh
+   * candidate slate can be hired. No refund. Fires listeners.
+   * @throws {Error} if divisionId is unknown.
+   */
+  fire(divisionId: string): void {
+    const division = loadDivisionCatalog().find((d) => d.id === divisionId);
+    if (division === undefined) {
+      throw new Error(`Session.fire: unknown division "${divisionId}".`);
+    }
+    this._state = fireStaff(this._state, division);
     this._rebuildCaches();
     this._notifyListeners();
   }
@@ -738,13 +779,61 @@ export class Session {
     };
   }
 
+  // --- SPEC-EVENT-1/2: escalations ---
+
+  /** The events awaiting the Chair's decision, in arrival order. */
+  escalations(): readonly GameEvent[] {
+    return this._pendingEscalations;
+  }
+
+  /**
+   * Resolve a pending escalation by applying the chosen option's effects.
+   * Removes the escalation from the queue, records it in the fired-once set when
+   * `fires_once`, and enqueues any `trigger_event` follow-ups as new escalations.
+   * Fires listeners.
+   * @throws {Error} if the event is not pending or the option id is unknown.
+   */
+  resolveEscalation(eventId: string, optionId: string): void {
+    const idx = this._pendingEscalations.findIndex((e) => e.id === eventId);
+    if (idx === -1) {
+      throw new Error(`Session.resolveEscalation: no pending escalation "${eventId}".`);
+    }
+    const event = this._pendingEscalations[idx]!;
+    const option = event.options.find((o) => o.id === optionId);
+    if (option === undefined) {
+      throw new Error(`Session.resolveEscalation: event "${eventId}" has no option "${optionId}".`);
+    }
+    const { state, queuedEvents } = applyEffects(option.effects, this._state);
+    this._state = state;
+    if (event.fires_once === true) this._firedOnce.add(event.id);
+    // Remove the resolved escalation.
+    this._pendingEscalations = this._pendingEscalations.filter((e) => e.id !== eventId);
+    // A trigger_event effect enqueues the referenced event as a new escalation.
+    if (queuedEvents.length > 0) {
+      const catalog = loadEventCatalog();
+      const pendingIds = new Set(this._pendingEscalations.map((e) => e.id));
+      for (const qid of queuedEvents) {
+        if (pendingIds.has(qid)) continue;
+        const queued = catalog.find((e) => e.id === qid);
+        if (queued !== undefined) {
+          this._pendingEscalations.push(queued);
+          pendingIds.add(qid);
+        }
+      }
+    }
+    this._rebuildCaches();
+    this._notifyListeners();
+  }
+
   /**
    * Returns the Chair's persuasion budget for the current meeting.
    * SPEC-COMM-7: computed from credibility; refreshed each meeting, never banked.
+   * SPEC-COMM-9: also includes the consensus term from the stored consensus_capital var.
    */
   chairCapital(): number {
     const credibility = getCredibility(this._state);
-    return computeChairCapital(credibility, loadChairCapitalParams());
+    const consensusCapital = (this._state.vars.consensus_capital ?? 0) as number;
+    return computeChairCapital(credibility, loadChairCapitalParams(), consensusCapital);
   }
 
   /**
@@ -844,11 +933,17 @@ export class Session {
     // src/content/doctrines.ts maps each hook name to its handler. To add a new
     // meeting hook: add the string to DoctrineHook + schema enum, implement a handler,
     // and register it in HOOK_HANDLERS — no changes to this file needed.
+    // SPEC-COMM-9: update consensus_capital from the vote outcome.
+    // Zero dissents → add consensus_gain; above threshold dissents → subtract consensus_penalty (clamped ≥ 0).
+    const ccParams = loadChairCapitalParams();
+    const prevConsensusCap = (this._state.vars.consensus_capital ?? 0) as number;
+    const nextConsensusCap = updateConsensusCapital(prevConsensusCap, fomcVote.dissents, ccParams);
+
     // Vote outcome committed before the hook loop so a hook error never rolls back
     // the player's rate decision — only hook effects are restored on failure.
     let stateAfterMeeting: GameState = {
       ...this._state,
-      vars: { ...this._state.vars, policy_rate: fomcVote.decided, credibility: newCredibility },
+      vars: { ...this._state.vars, policy_rate: fomcVote.decided, credibility: newCredibility, consensus_capital: nextConsensusCap },
     };
     this._state = stateAfterMeeting;
     const hookCheckpoint = this._state;
@@ -879,6 +974,8 @@ export class Session {
   reset(): void {
     this._stance = "neutral";
     this._rng = mulberry32(this._seed);
+    this._pendingEscalations = [];
+    this._firedOnce = new Set();
     this._state = {
       ...this._initialState,
       vars: { ...this._initialState.vars },
@@ -1019,7 +1116,7 @@ export class Session {
         errors.push(err);
       }
     }
-    if (errors.length === 1) throw errors[0];
+    if (errors.length === 1) throw errors[0]!;
     if (errors.length > 1) throw new AggregateError(errors, "Session: one or more listeners threw during notification.");
   }
 

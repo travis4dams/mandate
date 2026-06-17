@@ -12,3 +12,8 @@ coverage/
 .claude/settings.local.json
 web/dist/
 web/node_modules/
+
+# Playwright MCP snapshot/screenshot artifacts
+.playwright-mcp/
+web/.playwright-mcp/
+*.png

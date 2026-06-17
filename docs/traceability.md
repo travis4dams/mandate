@@ -20,6 +20,7 @@ input in plain mode; only `--enrich` (workflow-only) fills empty cells from git 
 | SPEC-COMM-6 | testable | Committee | `test/session.test.ts`, `test/stance.test.ts` | #53 |
 | SPEC-COMM-7 | testable | Committee | `test/chair-capital.test.ts`, `web/src/MeetingPanel.tsx`, `web/src/PersuasionView.test.tsx`, `web/src/PersuasionView.tsx` | #55 |
 | SPEC-COMM-8 | testable | Committee | `test/committee-spread.test.ts` |  |
+| SPEC-COMM-9 | testable | Staffing economy & the living organization | `test/chair-capital.test.ts` |  |
 | SPEC-COND-1 | testable | Content language | `test/conditions.test.ts` |  |
 | SPEC-COND-2 | testable | Content language | `test/conditions.test.ts` |  |
 | SPEC-CONGRESS-1 | testable | Federal Reserve finances | `test/congress.test.ts`, `test/session-institution-depth.test.ts` |  |
@@ -40,6 +41,8 @@ input in plain mode; only `--enrich` (workflow-only) fills empty cells from git 
 | SPEC-DOCT-1 | testable | Doctrine | `test/doctrine.test.ts`, `test/dynamics.test.ts` | #61 |
 | SPEC-DOCT-2 | testable | Doctrine | `test/dot-plot.test.ts`, `test/session.test.ts` | #43 |
 | SPEC-DOCT-3 | testable | Doctrine | `test/doctrines-content.test.ts` | #99 |
+| SPEC-EVENT-1 | testable | Staffing economy & the living organization | `test/event-engine.test.ts`, `test/session-events.test.ts`, `web/src/engine-content.test.ts` |  |
+| SPEC-EVENT-2 | testable | Staffing economy & the living organization | `test/event-engine.test.ts`, `test/session-events.test.ts` |  |
 | SPEC-FED-1 | testable | Federal Reserve finances | `test/fed-finances.test.ts`, `test/session-institution-depth.test.ts` |  |
 | SPEC-FOG-1 | testable | Data fog | `test/fog.test.ts`, `test/gen-docs.test.ts`, `test/gen-state.test.ts` | #5 |
 | SPEC-FOG-2 | testable | Data fog | `test/fog.test.ts` | #102 |
@@ -75,6 +78,7 @@ input in plain mode; only `--enrich` (workflow-only) fills empty cells from git 
 | SPEC-SIM-6 | testable | Simulation core | `test/cadence.test.ts` | #64 |
 | SPEC-STAFF-1 | testable | Director skills, division functions & institutional culture | `test/staff.test.ts` |  |
 | SPEC-STAFF-2 | testable | Director skills, division functions & institutional culture | `test/disposition.test.ts` |  |
+| SPEC-STAFF-3 | testable | Staffing economy & the living organization | `test/institution.test.ts`, `test/session-institution.test.ts`, `test/staff-economy.test.ts`, `web/src/InstitutionPanel.test.tsx` |  |
 | SPEC-TERM-1 | testable | Macro dynamics | `test/term-structure.test.ts` |  |
 | SPEC-WEB-1 | testable | Web UI | `web/src/App.test.tsx` | #21 |
 | SPEC-WEB-10 | testable | Web UI | `test/scenarios.test.ts`, `test/session.test.ts`, `web/src/App.tsx`, `web/src/AppShell.tsx`, `web/src/StartScreen.test.tsx`, `web/src/StartScreen.tsx` | #128 |
@@ -82,6 +86,7 @@ input in plain mode; only `--enrich` (workflow-only) fills empty cells from git 
 | SPEC-WEB-12 | testable | Legacy & tenure | `web/src/InstitutionPanel.test.tsx`, `web/src/InstitutionPanel.tsx` |  |
 | SPEC-WEB-13 | testable | Legacy & tenure | `web/src/LegacyPanel.test.tsx`, `web/src/LegacyPanel.tsx` |  |
 | SPEC-WEB-14 | testable | Legacy & tenure | `web/src/AppShell.tsx`, `web/src/InstitutionDepth.test.tsx`, `web/src/InstitutionPanel.tsx` |  |
+| SPEC-WEB-15 | testable | Legacy & tenure | `web/src/AppShell.tsx`, `web/src/EscalationsPanel.tsx`, `web/src/InstitutionPanel.tsx`, `web/src/LivingInstitution.test.tsx`, `web/src/PersuasionView.tsx` |  |
 | SPEC-WEB-2 | testable | Web UI | `web/src/App.test.tsx`, `web/src/App.tsx`, `web/src/Dashboard.tsx`, `web/src/engine-content.test.ts`, `web/src/engine-content.ts`, `web/src/node-stubs.ts`, `web/src/useSession.ts` | #104 |
 | SPEC-WEB-3 | testable | Web UI | `web/src/ChartsPanel.plot-throws.test.tsx`, `web/src/ChartsPanel.test.tsx`, `web/src/ChartsPanel.tsx` | #30 |
 | SPEC-WEB-4 | testable | Web UI | `test/session.test.ts`, `web/src/App.test.tsx`, `web/src/MeetingPanel.tsx` | #28 |

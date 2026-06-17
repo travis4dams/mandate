@@ -1,0 +1,30 @@
+{
+  "id": "evt.foreign_crisis",
+  "category": "exogenous",
+  "title": "evt.foreign_crisis.title",
+  "desc": "evt.foreign_crisis.desc",
+  "fires_once": false,
+  "mean_time_to_happen": {
+    "base_days": 1825,
+    "modifiers": [
+      { "condition": { "var": "bank_fragility", "op": ">=", "value": 0.6 }, "factor": 0.5 }
+    ]
+  },
+  "options": [
+    {
+      "id": "swap_lines",
+      "name": "evt.foreign_crisis.opt.swap_lines",
+      "effects": [
+        { "op": "sub", "target": "operating_budget", "value": 40 },
+        { "op": "sub", "target": "bank_fragility", "value": 0.05 }
+      ]
+    },
+    {
+      "id": "stand_back",
+      "name": "evt.foreign_crisis.opt.stand_back",
+      "effects": [
+        { "op": "add", "target": "bank_fragility", "value": 0.05 }
+      ]
+    }
+  ]
+}

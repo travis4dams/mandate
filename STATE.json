@@ -6,7 +6,7 @@
     "divisions": 10,
     "doctrines": 3,
     "engine": 25,
-    "events": 1,
+    "events": 9,
     "hearings": 1,
     "localization": 1,
     "names": 1,
@@ -166,6 +166,14 @@
       "tag": "testable",
       "tests": [
         "test/committee-spread.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-COMM-9",
+      "section": "Staffing economy & the living organization",
+      "tag": "testable",
+      "tests": [
+        "test/chair-capital.test.ts"
       ]
     },
     {
@@ -346,6 +354,25 @@
       "tag": "testable",
       "tests": [
         "test/doctrines-content.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-EVENT-1",
+      "section": "Staffing economy & the living organization",
+      "tag": "testable",
+      "tests": [
+        "test/event-engine.test.ts",
+        "test/session-events.test.ts",
+        "web/src/engine-content.test.ts"
+      ]
+    },
+    {
+      "id": "SPEC-EVENT-2",
+      "section": "Staffing economy & the living organization",
+      "tag": "testable",
+      "tests": [
+        "test/event-engine.test.ts",
+        "test/session-events.test.ts"
       ]
     },
     {
@@ -657,6 +684,17 @@
       ]
     },
     {
+      "id": "SPEC-STAFF-3",
+      "section": "Staffing economy & the living organization",
+      "tag": "testable",
+      "tests": [
+        "test/institution.test.ts",
+        "test/session-institution.test.ts",
+        "test/staff-economy.test.ts",
+        "web/src/InstitutionPanel.test.tsx"
+      ]
+    },
+    {
       "id": "SPEC-TERM-1",
       "section": "Macro dynamics",
       "tag": "testable",
@@ -724,6 +762,18 @@
         "web/src/AppShell.tsx",
         "web/src/InstitutionDepth.test.tsx",
         "web/src/InstitutionPanel.tsx"
+      ]
+    },
+    {
+      "id": "SPEC-WEB-15",
+      "section": "Legacy & tenure",
+      "tag": "testable",
+      "tests": [
+        "web/src/AppShell.tsx",
+        "web/src/EscalationsPanel.tsx",
+        "web/src/InstitutionPanel.tsx",
+        "web/src/LivingInstitution.test.tsx",
+        "web/src/PersuasionView.tsx"
       ]
     },
     {

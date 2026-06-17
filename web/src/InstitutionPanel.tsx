@@ -2,7 +2,7 @@
 // capital, and institutional investment readouts, then lists every division
 // from the catalog. Unstaffed divisions show a candidate slate with Hire
 // buttons; staffed divisions show the hired head and their competence.
-// Engine errors (InsufficientCapitalError, DivisionAlreadyStaffedError) are
+// Engine errors (InsufficientBudgetError, DivisionAlreadyStaffedError) are
 // caught into a local useState and displayed inline — no crash.
 
 import { useState } from "react";
@@ -213,7 +213,8 @@ export function InstitutionPanel(props: {
                       textAlign: "right",
                     }}
                   >
-                    <span style={{ ...heading.label }}>{t("ui.institution.hire_cost_label")}</span>
+                    {/* SPEC-WEB-15: label explicitly calls out operating-budget cost. */}
+                    <span style={{ ...heading.label }}>{t("ui.institution.hire_cost_budget_label")}</span>
                     <div style={{ fontFamily: font.mono, color: color.caution, fontSize: 14 }}>
                       {division.hire_cost}
                     </div>
@@ -221,15 +222,23 @@ export function InstitutionPanel(props: {
                 )}
               </div>
 
-              {/* Staffed: show division head competence */}
+              {/* Staffed: show division head competence + Dismiss button */}
               {staffed && (
-                <div style={{ marginTop: space.sm, display: "flex", gap: space.xl }}>
+                <div style={{ marginTop: space.sm, display: "flex", alignItems: "center", justifyContent: "space-between", gap: space.xl }}>
                   <div>
                     <div style={{ ...heading.label }}>{t("ui.institution.head_label")}</div>
                     <div style={{ fontFamily: font.mono, fontSize: 13, color: color.ink }}>
                       {t("ui.institution.competence_label")}: {(competence * 100).toFixed(0)}%
                     </div>
                   </div>
+                  {/* SPEC-WEB-15: dismiss/fire button — calls session.fire(divisionId). */}
+                  <button
+                    data-testid={`fire-${division.id}`}
+                    style={{ ...buttonStyle("secondary"), fontSize: 12, color: color.negative, borderColor: color.negative }}
+                    onClick={() => run(() => session.fire(division.id))}
+                  >
+                    {t("ui.institution.dismiss_button")}
+                  </button>
                 </div>
               )}
 
@@ -266,9 +275,8 @@ export function InstitutionPanel(props: {
                             <span>
                               {t("ui.institution.competence_label")}: {(candidate.competence * 100).toFixed(0)}%
                             </span>
-                            <span>
-                              {t("ui.institution.lean_label")}: {t(`ui.institution.lean.${candidate.lean}`)}
-                            </span>
+                            {/* SPEC-WEB-15: hawk/dove lean is NOT shown for candidates —
+                                only fit and skills are surfaced to the player. */}
                             {/* SPEC-WEB-14: the fit computed for THIS division — a poor match is
                                 visible before hiring. The hidden disposition is deliberately NOT shown. */}
                             <span
