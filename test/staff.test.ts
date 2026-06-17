@@ -88,6 +88,7 @@ const BASE_PARAMS = {
   political_capital_baseline: 80,
   political_capital_recovery: 0.1,
   candidate_slate_size: 3,
+  candidate_refresh_months: 12,
 };
 
 beforeEach(() => {

@@ -44,6 +44,7 @@ input in plain mode; only `--enrich` (workflow-only) fills empty cells from git 
 | SPEC-EVENT-1 | testable | Staffing economy & the living organization | `test/event-engine.test.ts`, `test/session-events.test.ts`, `web/src/engine-content.test.ts` |  |
 | SPEC-EVENT-2 | testable | Staffing economy & the living organization | `test/event-engine.test.ts`, `test/session-events.test.ts` |  |
 | SPEC-FED-1 | testable | Federal Reserve finances | `test/fed-finances.test.ts`, `test/session-institution-depth.test.ts` |  |
+| SPEC-FEED-1 | testable | Staffing economy & the living organization | `test/refresh-and-feed.test.ts`, `web/src/ActivityFeed.tsx`, `web/src/AppShell.tsx`, `web/src/character.test.tsx` |  |
 | SPEC-FOG-1 | testable | Data fog | `test/fog.test.ts`, `test/gen-docs.test.ts`, `test/gen-state.test.ts` | #5 |
 | SPEC-FOG-2 | testable | Data fog | `test/fog.test.ts` | #102 |
 | SPEC-FRAG-1 | testable | Banking stability & the financial cycle | `test/fragility.test.ts`, `test/session-institution-depth.test.ts` |  |
@@ -55,6 +56,7 @@ input in plain mode; only `--enrich` (workflow-only) fills empty cells from git 
 | SPEC-HEAR-2 | testable | Confirmation hearing | `test/hearing-content.test.ts` | #100 |
 | SPEC-INST-1 | testable | Institution & resources (engine) | `test/institution.test.ts`, `test/session-institution.test.ts` |  |
 | SPEC-INST-2 | testable | Institution & resources (engine) | `test/institution.test.ts`, `test/session-institution.test.ts`, `web/src/engine-content.test.ts`, `web/src/engine-content.ts` |  |
+| SPEC-INST-5 | testable | Staffing economy & the living organization | `test/refresh-and-feed.test.ts` |  |
 | SPEC-LAG-1 | testable | Macro dynamics | `test/lags.test.ts`, `test/session.test.ts` | #52 |
 | SPEC-LEGACY-1 | testable | Legacy & tenure | `test/legacy.test.ts`, `test/session-institution.test.ts` |  |
 | SPEC-MANDATE-1 | testable | Mandate evaluator | `test/engine-params-loaders.test.ts`, `test/mandate.test.ts`, `test/session.test.ts` | #22 |

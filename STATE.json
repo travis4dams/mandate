@@ -385,6 +385,17 @@
       ]
     },
     {
+      "id": "SPEC-FEED-1",
+      "section": "Staffing economy & the living organization",
+      "tag": "testable",
+      "tests": [
+        "test/refresh-and-feed.test.ts",
+        "web/src/ActivityFeed.tsx",
+        "web/src/AppShell.tsx",
+        "web/src/character.test.tsx"
+      ]
+    },
+    {
       "id": "SPEC-FOG-1",
       "section": "Data fog",
       "tag": "testable",
@@ -474,6 +485,14 @@
         "test/session-institution.test.ts",
         "web/src/engine-content.test.ts",
         "web/src/engine-content.ts"
+      ]
+    },
+    {
+      "id": "SPEC-INST-5",
+      "section": "Staffing economy & the living organization",
+      "tag": "testable",
+      "tests": [
+        "test/refresh-and-feed.test.ts"
       ]
     },
     {

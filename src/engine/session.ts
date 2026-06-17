@@ -162,6 +162,28 @@ export function marketsSurprised(
 const REQUIRED_VARS = ["policy_rate", "inflation", "unemployment", "credibility", "expectations_anchor"] as const;
 
 /**
+ * SPEC-FEED-1: one entry in the Chair's activity log — a dated record of a notable
+ * happening and its effect on the economy. Strings are localization keys (no display
+ * text in engine code); the UI formats `deltas` into readable lines.
+ */
+export interface ActivityEntry {
+  date: string;
+  /** Localization key for the headline. */
+  titleKey: string;
+  /** Vars that moved as a result, with signed deltas (for the "what changed" line). */
+  deltas: { var: string; delta: number }[];
+}
+
+// Vars worth surfacing in the activity feed when they move (others are internal).
+const FEED_VARS = [
+  "credibility", "political_capital", "independence", "bank_fragility",
+  "inflation", "unemployment", "operating_budget", "output_gap",
+] as const;
+
+// Keep the activity log bounded — the Chair sees recent history, not all of it.
+const ACTIVITY_LOG_CAP = 60;
+
+/**
  * A pure Session façade that wraps the slice-1 engine functions.
  *
  * **React-render purity (SPEC-SESSION-0 contract):**
@@ -210,6 +232,9 @@ export class Session {
   // events already spent. Session-level (not in state.vars) — rebuilt by reset().
   private _pendingEscalations: GameEvent[] = [];
   private _firedOnce: Set<string> = new Set();
+
+  // SPEC-FEED-1: the Chair's activity log (most-recent-first via activityLog()).
+  private _activityLog: ActivityEntry[] = [];
 
   // The `seed` parameter initialises `_rng` via mulberry32 (SPEC-SHOCK-1 / SPEC-SIM-1).
   private constructor(initialState: GameState, seed: number, replay: Replay | null, committeeId: string) {
@@ -540,12 +565,15 @@ export class Session {
           // seeds "to decouple" them; that would silently change the crisis trajectory.
           const crisisRng = mulberry32(fnv1a32(`${this._seed}|crisis|${this._state.date}`));
           if (crisisRng() < p) {
+            const beforeCrisis = this._snapshotFeedVars();
             this._state = applyFinancialCrisis(this._state, effects.crisisSeverityReduction, crisisParams, crisisRng);
             this._state = {
               ...this._state,
               vars: { ...this._state.vars, crisis_cooldown: crisisParams.cooldown_months },
               flags: { ...this._state.flags, crisis: true },
             };
+            // SPEC-FEED-1: a crisis is a headline event with felt macro consequences.
+            this._logActivity("ui.feed.crisis", beforeCrisis);
           } else {
             this._state = { ...this._state, flags: { ...this._state.flags, crisis: false } };
           }
@@ -666,7 +694,13 @@ export class Session {
    * Stable across calls and play (same seed + division → same slate).
    */
   candidatesFor(divisionId: string): readonly Candidate[] {
-    return generateCandidates(divisionId, this._seed, loadNamePools(), loadInstitutionParams());
+    // SPEC-INST-5: the talent market turns over — the slate refreshes each time the
+    // post is vacated (a dismissal bumps refresh.<id>) and every candidate_refresh_months.
+    const params = loadInstitutionParams();
+    const monthsElapsed = this._trajectoryInternal.length - 1;
+    const dismissals = (this._state.vars[`refresh.${divisionId}`] ?? 0) as number;
+    const refreshIndex = dismissals + Math.floor(monthsElapsed / params.candidate_refresh_months);
+    return generateCandidates(divisionId, this._seed, loadNamePools(), params, refreshIndex);
   }
 
   /** Whether a division currently has a staffed head. */
@@ -717,6 +751,13 @@ export class Session {
       throw new Error(`Session.fire: unknown division "${divisionId}".`);
     }
     this._state = fireStaff(this._state, division);
+    // SPEC-INST-5: dismissing a director turns over the talent market for that post,
+    // so candidatesFor offers a fresh slate next time.
+    const dismissals = (this._state.vars[`refresh.${divisionId}`] ?? 0) as number;
+    this._state = {
+      ...this._state,
+      vars: { ...this._state.vars, [`refresh.${divisionId}`]: dismissals + 1 },
+    };
     this._rebuildCaches();
     this._notifyListeners();
   }
@@ -786,6 +827,31 @@ export class Session {
     return this._pendingEscalations;
   }
 
+  /** SPEC-FEED-1: the Chair's activity log, most recent first. */
+  activityLog(): readonly ActivityEntry[] {
+    return [...this._activityLog].reverse();
+  }
+
+  /** Snapshot the feed-relevant vars so a subsequent change can be diffed. */
+  private _snapshotFeedVars(): Record<string, number> {
+    const snap: Record<string, number> = {};
+    for (const v of FEED_VARS) snap[v] = (this._state.vars[v] ?? 0) as number;
+    return snap;
+  }
+
+  /** Append an activity entry capturing which feed vars moved since `before`. */
+  private _logActivity(titleKey: string, before: Record<string, number>): void {
+    const deltas: { var: string; delta: number }[] = [];
+    for (const v of FEED_VARS) {
+      const delta = ((this._state.vars[v] ?? 0) as number) - (before[v] ?? 0);
+      if (Math.abs(delta) > 1e-9) deltas.push({ var: v, delta });
+    }
+    this._activityLog.push({ date: this._state.date, titleKey, deltas });
+    if (this._activityLog.length > ACTIVITY_LOG_CAP) {
+      this._activityLog.splice(0, this._activityLog.length - ACTIVITY_LOG_CAP);
+    }
+  }
+
   /**
    * Resolve a pending escalation by applying the chosen option's effects.
    * Removes the escalation from the queue, records it in the fired-once set when
@@ -803,8 +869,11 @@ export class Session {
     if (option === undefined) {
       throw new Error(`Session.resolveEscalation: event "${eventId}" has no option "${optionId}".`);
     }
+    const before = this._snapshotFeedVars();
     const { state, queuedEvents } = applyEffects(option.effects, this._state);
     this._state = state;
+    // SPEC-FEED-1: record the decision and its felt effect on the economy.
+    this._logActivity(event.title, before);
     if (event.fires_once === true) this._firedOnce.add(event.id);
     // Remove the resolved escalation.
     this._pendingEscalations = this._pendingEscalations.filter((e) => e.id !== eventId);
@@ -976,6 +1045,7 @@ export class Session {
     this._rng = mulberry32(this._seed);
     this._pendingEscalations = [];
     this._firedOnce = new Set();
+    this._activityLog = [];
     this._state = {
       ...this._initialState,
       vars: { ...this._initialState.vars },

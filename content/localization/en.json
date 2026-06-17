@@ -308,6 +308,15 @@
   "ui.clock.meeting_pause": "FOMC meeting — set the rate, then resume.",
   "ui.feed.heading": "Activity",
   "ui.feed.empty": "Your tenure's record will accrue here as you act and the economy responds.",
+  "ui.feed.crisis": "Financial crisis struck the banking system",
+  "ui.feed.var.credibility": "credibility",
+  "ui.feed.var.political_capital": "political capital",
+  "ui.feed.var.independence": "independence",
+  "ui.feed.var.bank_fragility": "banking fragility",
+  "ui.feed.var.inflation": "inflation",
+  "ui.feed.var.unemployment": "unemployment",
+  "ui.feed.var.operating_budget": "operating budget",
+  "ui.feed.var.output_gap": "output gap",
   "ui.persuasion.briefing.target_rate_label": "Analyzed at policy rate",
   "ui.persuasion.briefing.horizon_label": "one-year-ahead outlook"
 }

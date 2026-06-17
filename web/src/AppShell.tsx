@@ -11,6 +11,7 @@ import { t } from "./loc";
 import { MeetingPanel } from "./MeetingPanel";
 import { DoctrinePanel } from "./DoctrinePanel";
 import { EscalationsPanel } from "./EscalationsPanel";
+import { ActivityFeed } from "./ActivityFeed";
 import { InstitutionPanel } from "./InstitutionPanel";
 import { LegacyPanel } from "./LegacyPanel";
 import { ChartsPanel } from "./ChartsPanel";
@@ -570,6 +571,9 @@ export function AppShell(props: AppShellProps): JSX.Element {
                 {btnError}
               </p>
             )}
+
+            {/* SPEC-FEED-1: the activity ledger — what's happened and its felt effect. */}
+            <ActivityFeed session={session} />
           </section>
         )}
 
