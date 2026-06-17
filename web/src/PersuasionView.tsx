@@ -3,6 +3,7 @@
 import type { MemberVotePreview } from "../../src/engine/fomc";
 import { loadBriefing, BriefingNotFoundError, type Briefing } from "../../src/content/briefings";
 import { t } from "./loc";
+import { color, font, space, radius, surface, heading } from "./theme";
 
 // ---- pure helper ---------------------------------------------------------
 
@@ -51,24 +52,35 @@ function DotPlot(props: {
 
   return (
     <div>
-      <div style={{ fontSize: 13, marginBottom: 4, color: "#555" }}>
-        <strong>{t("ui.persuasion.dot_plot.heading")}</strong>
+      <div
+        style={{
+          fontSize: 13,
+          marginBottom: space.xs,
+          color: color.inkSoft,
+          fontFamily: font.sans,
+        }}
+      >
+        <strong style={{ color: color.navy }}>{t("ui.persuasion.dot_plot.heading")}</strong>
         {" — "}
         {t("ui.persuasion.dot_plot.dissent_label")}:{" "}
-        <strong data-testid="dissent-count">{dissentCount}</strong> / {dots.length}
+        <strong data-testid="dissent-count" style={{ color: dissentCount > 0 ? color.negative : color.positive }}>
+          {dissentCount}
+        </strong>{" "}
+        / {dots.length}
       </div>
       <svg width={width} height={height} style={{ overflow: "visible" }}>
         {/* axis */}
-        <line x1={padX} x2={width - padX} y1={axisY} y2={axisY} stroke="#ccc" strokeWidth={1} />
+        <line x1={padX} x2={width - padX} y1={axisY} y2={axisY} stroke={color.line} strokeWidth={1} />
         {tickRates.map((v, i) => (
           <g key={i}>
-            <line x1={xOf(v)} x2={xOf(v)} y1={axisY - 4} y2={axisY + 4} stroke="#ccc" />
+            <line x1={xOf(v)} x2={xOf(v)} y1={axisY - 4} y2={axisY + 4} stroke={color.line} />
             <text
               x={xOf(v)}
               y={axisY + 18}
               fontSize={10}
               textAnchor="middle"
-              fill="#999"
+              fill={color.inkSoft}
+              fontFamily={font.mono}
             >
               {(v * 100).toFixed(2)}%
             </text>
@@ -80,7 +92,7 @@ function DotPlot(props: {
           x2={xOf(proposed)}
           y1={axisY - 24}
           y2={axisY + 4}
-          stroke="#555"
+          stroke={color.brass}
           strokeWidth={2}
           strokeDasharray="4 2"
         />
@@ -89,11 +101,13 @@ function DotPlot(props: {
           y={axisY - 28}
           fontSize={10}
           textAnchor="middle"
-          fill="#555"
+          fill={color.brass}
+          fontFamily={font.sans}
+          fontWeight={600}
         >
           {t("ui.persuasion.dot_plot.proposed_label")}
         </text>
-        {/* member dots */}
+        {/* member dots — colors are test-pinned (SPEC-WEB-6) */}
         {dots.map((d) => (
           <circle
             key={d.memberId}
@@ -122,44 +136,45 @@ function ScenarioBriefingPanel(props: { briefingId: string }): JSX.Element | nul
   }
 
   return (
-    <div style={{ marginTop: 12 }}>
-      <strong style={{ fontSize: 13 }}>{t("ui.persuasion.briefing.heading")}</strong>
-      <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
+    <div style={{ marginTop: space.md }}>
+      <p style={{ ...heading.label, marginBottom: space.sm }}>{t("ui.persuasion.briefing.heading")}</p>
+      <div style={{ display: "flex", gap: space.sm, marginTop: space.xs }}>
         {briefing.scenarios.map((s) => (
           <div
             key={s.scenario_type}
             data-testid={`scenario-card-${s.scenario_type}`}
             style={{
               flex: 1,
-              border: "1px solid #ddd",
-              borderRadius: 4,
-              padding: "8px 10px",
-              background: "#fafafa",
+              ...surface.card,
+              padding: `${space.sm}px ${space.md}px`,
             }}
           >
             <div
               style={{
-                fontSize: 12,
-                fontWeight: 600,
-                textTransform: "uppercase",
-                color: "#555",
-                marginBottom: 4,
+                ...heading.label,
+                marginBottom: space.xs,
               }}
             >
               {t(s.name)}
             </div>
-            <div style={{ fontSize: 12 }}>
+            <div style={{ fontSize: 12, fontFamily: font.sans, color: color.inkSoft }}>
               {t("ui.persuasion.briefing.inflation_label")}:{" "}
-              {(s.forecast.inflation_outlook * 100).toFixed(1)}%
+              <span style={{ fontFamily: font.mono, color: color.ink }}>
+                {(s.forecast.inflation_outlook * 100).toFixed(1)}%
+              </span>
             </div>
-            <div style={{ fontSize: 12 }}>
+            <div style={{ fontSize: 12, fontFamily: font.sans, color: color.inkSoft }}>
               {t("ui.persuasion.briefing.unemployment_label")}:{" "}
-              {(s.forecast.unemployment_outlook * 100).toFixed(1)}%
+              <span style={{ fontFamily: font.mono, color: color.ink }}>
+                {(s.forecast.unemployment_outlook * 100).toFixed(1)}%
+              </span>
             </div>
             {s.forecast.growth_outlook !== undefined && (
-              <div style={{ fontSize: 12 }}>
+              <div style={{ fontSize: 12, fontFamily: font.sans, color: color.inkSoft }}>
                 {t("ui.persuasion.briefing.growth_label")}:{" "}
-                {(s.forecast.growth_outlook * 100).toFixed(1)}%
+                <span style={{ fontFamily: font.mono, color: color.ink }}>
+                  {(s.forecast.growth_outlook * 100).toFixed(1)}%
+                </span>
               </div>
             )}
           </div>
@@ -182,7 +197,7 @@ function SpendCapitalControl(props: {
   const { previews, chairCapital, capitalSpend, maxSpendPerMember, onSpendChange } = props;
   if (chairCapital === undefined) {
     return (
-      <div style={{ marginTop: 10, fontSize: 13, color: "#999" }}>
+      <div style={{ marginTop: space.sm, fontSize: 13, color: color.inkSoft, fontFamily: font.sans }}>
         {t("ui.persuasion.capital.label")}:{" "}
         <span data-testid="chair-capital-display">{t("ui.persuasion.capital.placeholder")}</span>
       </div>
@@ -191,19 +206,44 @@ function SpendCapitalControl(props: {
   const spend = capitalSpend ?? {};
   const allocated = Object.values(spend).reduce((sum, v) => sum + v, 0);
   return (
-    <div style={{ marginTop: 10, fontSize: 13 }}>
-      <div>
-        {t("ui.persuasion.capital.label")}:{" "}
-        <strong data-testid="chair-capital-display">{chairCapital}</strong>
+    <div
+      style={{
+        marginTop: space.md,
+        padding: `${space.sm}px ${space.md}px`,
+        background: color.parchment,
+        border: `1px solid ${color.line}`,
+        borderRadius: radius.sm,
+      }}
+    >
+      <div style={{ fontSize: 13, fontFamily: font.sans, color: color.ink }}>
+        <span style={{ ...heading.label }}>{t("ui.persuasion.capital.label")}</span>{" "}
+        <strong data-testid="chair-capital-display" style={{ fontFamily: font.mono, color: color.navy }}>
+          {chairCapital}
+        </strong>
         {" · "}
-        {t("ui.persuasion.capital.allocated")}{" "}
-        <span data-testid="chair-capital-allocated">{allocated}</span>
+        <span style={{ color: color.inkSoft }}>{t("ui.persuasion.capital.allocated")}</span>{" "}
+        <span
+          data-testid="chair-capital-allocated"
+          style={{
+            fontFamily: font.mono,
+            color: allocated > 0 ? color.brass : color.inkSoft,
+          }}
+        >
+          {allocated}
+        </span>
       </div>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 6 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: space.sm, marginTop: space.sm }}>
         {previews.map((p) => (
           <label
             key={p.memberId}
-            style={{ fontSize: 12, display: "flex", gap: 4, alignItems: "center" }}
+            style={{
+              fontSize: 12,
+              display: "flex",
+              gap: space.xs,
+              alignItems: "center",
+              fontFamily: font.sans,
+              color: color.inkSoft,
+            }}
           >
             {t(p.nameKey)}
             <input
@@ -214,7 +254,16 @@ function SpendCapitalControl(props: {
               value={spend[p.memberId] ?? 0}
               onChange={(e) => onSpendChange?.(p.memberId, parseFloat(e.target.value) || 0)}
               data-testid={`capital-spend-${p.memberId}`}
-              style={{ width: 52, padding: "2px 4px", fontFamily: "monospace" }}
+              style={{
+                width: 52,
+                padding: `2px ${space.xs}px`,
+                fontFamily: font.mono,
+                fontSize: 12,
+                border: `1px solid ${color.line}`,
+                borderRadius: radius.sm,
+                background: color.parchmentRaised,
+                color: color.ink,
+              }}
             />
           </label>
         ))}
@@ -243,7 +292,7 @@ export interface PersuasionViewProps {
 export function PersuasionView(props: PersuasionViewProps): JSX.Element {
   const { previews, proposed, briefingId, chairCapital, capitalSpend, maxSpendPerMember, onSpendChange } = props;
   return (
-    <div style={{ marginTop: 12 }}>
+    <div style={{ marginTop: space.md }}>
       <DotPlot dots={previews} proposed={proposed} />
       {briefingId !== undefined && <ScenarioBriefingPanel briefingId={briefingId} />}
       <SpendCapitalControl

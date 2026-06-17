@@ -6,9 +6,9 @@
     {
       "id": "member.chair",
       "name": "member.chair.name",
-      "inflation_coef": 2.0,
-      "output_coef": 0.3,
-      "inertia": 0.85,
+      "inflation_coef": 1.781,
+      "output_coef": 0.356,
+      "inertia": 0.89,
       "competence": 0.95,
       "compromise_band": 0.005,
       "conviction": 0.85
@@ -16,9 +16,9 @@
     {
       "id": "member.vice_chair",
       "name": "member.vice_chair.name",
-      "inflation_coef": 1.6,
-      "output_coef": 0.4,
-      "inertia": 0.88,
+      "inflation_coef": 1.661,
+      "output_coef": 0.406,
+      "inertia": 0.89,
       "competence": 0.85,
       "compromise_band": 0.005,
       "conviction": 0.55
@@ -26,62 +26,68 @@
     {
       "id": "member.governor_a",
       "name": "member.governor_a.name",
-      "inflation_coef": 1.5,
-      "output_coef": 0.55,
-      "inertia": 0.88,
+      "inflation_coef": 1.631,
+      "output_coef": 0.481,
+      "inertia": 0.89,
       "competence": 0.78,
       "compromise_band": 0.005,
-      "conviction": 0.40,
-      "traits": ["trait.dovish_lean"]
+      "conviction": 0.4,
+      "traits": [
+        "trait.dovish_lean"
+      ]
     },
     {
       "id": "member.governor_b",
       "name": "member.governor_b.name",
-      "inflation_coef": 1.9,
-      "output_coef": 0.3,
-      "inertia": 0.85,
+      "inflation_coef": 1.751,
+      "output_coef": 0.356,
+      "inertia": 0.89,
       "competence": 0.82,
       "compromise_band": 0.005,
-      "conviction": 0.70,
-      "traits": ["trait.hawkish_lean"]
+      "conviction": 0.7,
+      "traits": [
+        "trait.hawkish_lean"
+      ]
     },
     {
       "id": "member.governor_c",
       "name": "member.governor_c.name",
-      "inflation_coef": 1.65,
-      "output_coef": 0.4,
-      "inertia": 0.87,
+      "inflation_coef": 1.676,
+      "output_coef": 0.406,
+      "inertia": 0.89,
       "competence": 0.72,
       "compromise_band": 0.005,
-      "conviction": 0.50
+      "conviction": 0.5
     },
     {
       "id": "member.governor_d",
       "name": "member.governor_d.name",
-      "inflation_coef": 1.45,
-      "output_coef": 0.6,
-      "inertia": 0.88,
+      "inflation_coef": 1.616,
+      "output_coef": 0.506,
+      "inertia": 0.89,
       "competence": 0.75,
       "compromise_band": 0.005,
       "conviction": 0.35,
-      "traits": ["trait.dovish_lean"]
+      "traits": [
+        "trait.dovish_lean"
+      ]
     },
     {
       "id": "member.governor_e",
       "name": "member.governor_e.name",
-      "inflation_coef": 1.7,
-      "output_coef": 0.35,
-      "inertia": 0.87,
-      "competence": 0.80,
+      "inflation_coef": 1.691,
+      "output_coef": 0.381,
+      "inertia": 0.89,
+      "competence": 0.8,
       "compromise_band": 0.005,
-      "conviction": 0.60
+      "conviction": 0.6
     },
     {
       "id": "member.regional_president_ny",
       "name": "member.regional_president_ny.name",
-      "inflation_coef": 1.75,
-      "output_coef": 0.4,
-      "inertia": 0.87,
+      "inflation_coef": 1.706,
+      "output_coef": 0.406,
+      "inertia": 0.89,
       "competence": 0.78,
       "compromise_band": 0.005,
       "conviction": 0.65
@@ -89,20 +95,22 @@
     {
       "id": "member.regional_president_chicago",
       "name": "member.regional_president_chicago.name",
-      "inflation_coef": 1.65,
-      "output_coef": 0.45,
-      "inertia": 0.88,
+      "inflation_coef": 1.676,
+      "output_coef": 0.431,
+      "inertia": 0.89,
       "competence": 0.74,
       "compromise_band": 0.005,
       "conviction": 0.55,
-      "traits": ["trait.ag_hawk"]
+      "traits": [
+        "trait.ag_hawk"
+      ]
     },
     {
       "id": "member.regional_president_sf",
       "name": "member.regional_president_sf.name",
-      "inflation_coef": 1.5,
-      "output_coef": 0.5,
-      "inertia": 0.88,
+      "inflation_coef": 1.631,
+      "output_coef": 0.456,
+      "inertia": 0.89,
       "competence": 0.72,
       "compromise_band": 0.005,
       "conviction": 0.45
@@ -110,23 +118,25 @@
     {
       "id": "member.regional_president_atlanta",
       "name": "member.regional_president_atlanta.name",
-      "inflation_coef": 1.95,
-      "output_coef": 0.3,
-      "inertia": 0.86,
-      "competence": 0.70,
+      "inflation_coef": 1.766,
+      "output_coef": 0.356,
+      "inertia": 0.89,
+      "competence": 0.7,
       "compromise_band": 0.005,
       "conviction": 0.75,
-      "traits": ["trait.hawkish_lean"]
+      "traits": [
+        "trait.hawkish_lean"
+      ]
     },
     {
       "id": "member.regional_president_cleveland",
       "name": "member.regional_president_cleveland.name",
-      "inflation_coef": 1.6,
-      "output_coef": 0.4,
-      "inertia": 0.88,
+      "inflation_coef": 1.661,
+      "output_coef": 0.406,
+      "inertia": 0.89,
       "competence": 0.71,
       "compromise_band": 0.005,
-      "conviction": 0.50
+      "conviction": 0.5
     }
   ]
 }

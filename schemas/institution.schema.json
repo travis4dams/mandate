@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mandate.dev/schemas/institution.schema.json",
+  "title": "InstitutionParams",
+  "description": "Institution resource params. SPEC-INST-1 + SPEC-INST-2: operating budget, political capital, and candidate slate configuration.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "initial_operating_budget",
+    "budget_monthly_growth",
+    "initial_political_capital",
+    "political_capital_baseline",
+    "political_capital_recovery",
+    "candidate_slate_size"
+  ],
+  "properties": {
+    "initial_operating_budget": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "SPEC-INST-1: starting operating budget in abstract units. Defaults into state when absent."
+    },
+    "budget_monthly_growth": {
+      "type": "number",
+      "exclusiveMinimum": -1,
+      "maximum": 1,
+      "description": "SPEC-INST-1: fractional monthly growth rate for operating_budget (e.g. 0.005 = 0.5%/month)."
+    },
+    "initial_political_capital": {
+      "type": "number",
+      "minimum": 0,
+      "description": "SPEC-INST-1: starting political capital. Defaults into state when absent."
+    },
+    "political_capital_baseline": {
+      "type": "number",
+      "minimum": 0,
+      "description": "SPEC-INST-1: long-run attractor for political capital mean-reversion."
+    },
+    "political_capital_recovery": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 1,
+      "description": "SPEC-INST-1: fraction of the gap between current and baseline recovered each month."
+    },
+    "candidate_slate_size": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "SPEC-INST-2: number of candidates generated per division per hire cycle."
+    }
+  }
+}

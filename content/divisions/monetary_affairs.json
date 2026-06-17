@@ -1,0 +1,7 @@
+{
+  "id": "monetary_affairs",
+  "name": "division.monetary_affairs.name",
+  "desc": "division.monetary_affairs.desc",
+  "hire_cost": 15,
+  "investment": 0.3
+}

@@ -1,0 +1,7 @@
+{
+  "id": "research",
+  "name": "division.research.name",
+  "desc": "division.research.desc",
+  "hire_cost": 12,
+  "investment": 0.25
+}

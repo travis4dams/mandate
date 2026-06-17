@@ -19,11 +19,12 @@ input in plain mode; only `--enrich` (workflow-only) fills empty cells from git 
 | SPEC-COMM-5 | testable | Committee | `test/committee.test.ts`, `test/engine-params-loaders.test.ts`, `test/fomc.test.ts`, `test/traits.test.ts` | #50 |
 | SPEC-COMM-6 | testable | Committee | `test/session.test.ts`, `test/stance.test.ts` | #53 |
 | SPEC-COMM-7 | testable | Committee | `test/chair-capital.test.ts`, `web/src/MeetingPanel.tsx`, `web/src/PersuasionView.test.tsx`, `web/src/PersuasionView.tsx` | #55 |
+| SPEC-COMM-8 | testable | Committee | `test/committee-spread.test.ts` |  |
 | SPEC-COND-1 | testable | Content language | `test/conditions.test.ts` |  |
 | SPEC-COND-2 | testable | Content language | `test/conditions.test.ts` |  |
 | SPEC-CONTENT-1 | testable | Content integrity | `test/content.test.ts` |  |
 | SPEC-CONTENT-2 | design | Content integrity | `web/src/loc.ts` |  |
-| SPEC-CONTENT-3 | testable | Content integrity | `test/content-lint.test.ts` |  |
+| SPEC-CONTENT-3 | testable | Content integrity | `test/content-lint.test.ts`, `test/names.test.ts` |  |
 | SPEC-CONTENT-4 | testable | Content integrity | `test/content.test.ts` | #96 |
 | SPEC-CRED-1 | testable | Credibility & expectations | `test/credibility.test.ts`, `test/fomc.test.ts`, `test/session.test.ts` |  |
 | SPEC-CRED-2 | testable | Credibility & expectations | `test/credibility.test.ts` |  |
@@ -42,13 +43,17 @@ input in plain mode; only `--enrich` (workflow-only) fills empty cells from git 
 | SPEC-GUIDE-2 | testable | Engine session | `test/session.test.ts` | #48 |
 | SPEC-HEAR-1 | testable | Confirmation hearing | `test/hearing.test.ts` | #67 |
 | SPEC-HEAR-2 | testable | Confirmation hearing | `test/hearing-content.test.ts` | #100 |
+| SPEC-INST-1 | testable | Institution & resources (engine) | `test/institution.test.ts`, `test/session-institution.test.ts` |  |
+| SPEC-INST-2 | testable | Institution & resources (engine) | `test/institution.test.ts`, `test/session-institution.test.ts`, `web/src/engine-content.test.ts`, `web/src/engine-content.ts` |  |
 | SPEC-LAG-1 | testable | Macro dynamics | `test/lags.test.ts`, `test/session.test.ts` | #52 |
+| SPEC-LEGACY-1 | testable | Legacy & tenure | `test/legacy.test.ts`, `test/session-institution.test.ts` |  |
 | SPEC-MANDATE-1 | testable | Mandate evaluator | `test/engine-params-loaders.test.ts`, `test/mandate.test.ts`, `test/session.test.ts` | #22 |
 | SPEC-META-1 | testable | Repo metadata | `test/gen-docs.test.ts`, `test/gen-state.test.ts` | #111 |
 | SPEC-META-2 | testable | Repo metadata | `test/gen-docs.test.ts` | #113 |
 | SPEC-META-3 | testable | Repo metadata | `test/routine-dryrun.test.ts` | #112 |
+| SPEC-NAME-1 | testable | Name generation | `test/names.test.ts`, `test/session-institution.test.ts`, `web/src/engine-content.test.ts`, `web/src/engine-content.ts` |  |
 | SPEC-PARAMS-1 | testable | Engine params | `test/engine-params-loaders.test.ts`, `test/fomc.test.ts` | #13 |
-| SPEC-PROD-1 | testable | Macro dynamics | `test/productivity.test.ts` | #81 |
+| SPEC-PROD-1 | testable | Macro dynamics | `test/institution.test.ts`, `test/productivity.test.ts` | #81 |
 | SPEC-SCEN-1 | testable | Scenarios | `test/gen-state.test.ts`, `test/scenarios.test.ts` | #2 |
 | SPEC-SCEN-2 | testable | Scenarios | `test/content.test.ts`, `test/scenarios.test.ts` |  |
 | SPEC-SESSION-0 | testable | Engine session | `test/session.test.ts`, `web/src/useSession.ts` | #15 |
@@ -63,12 +68,15 @@ input in plain mode; only `--enrich` (workflow-only) fills empty cells from git 
 | SPEC-SIM-6 | testable | Simulation core | `test/cadence.test.ts` | #64 |
 | SPEC-TERM-1 | testable | Macro dynamics | `test/term-structure.test.ts` |  |
 | SPEC-WEB-1 | testable | Web UI | `web/src/App.test.tsx` | #21 |
-| SPEC-WEB-10 | testable | Web UI | `test/scenarios.test.ts`, `test/session.test.ts`, `web/src/App.tsx`, `web/src/StartScreen.test.tsx`, `web/src/StartScreen.tsx` | #128 |
+| SPEC-WEB-10 | testable | Web UI | `test/scenarios.test.ts`, `test/session.test.ts`, `web/src/App.tsx`, `web/src/AppShell.tsx`, `web/src/StartScreen.test.tsx`, `web/src/StartScreen.tsx` | #128 |
+| SPEC-WEB-11 | testable | Legacy & tenure | `web/src/App.test.tsx`, `web/src/AppShell.test.tsx`, `web/src/AppShell.tsx`, `web/src/Dashboard.tsx`, `web/src/DoctrinePanel.test.tsx`, `web/src/theme.ts` |  |
+| SPEC-WEB-12 | testable | Legacy & tenure | `web/src/InstitutionPanel.test.tsx`, `web/src/InstitutionPanel.tsx` |  |
+| SPEC-WEB-13 | testable | Legacy & tenure | `web/src/LegacyPanel.test.tsx`, `web/src/LegacyPanel.tsx` |  |
 | SPEC-WEB-2 | testable | Web UI | `web/src/App.test.tsx`, `web/src/App.tsx`, `web/src/Dashboard.tsx`, `web/src/engine-content.test.ts`, `web/src/engine-content.ts`, `web/src/node-stubs.ts`, `web/src/useSession.ts` | #104 |
-| SPEC-WEB-3 | testable | Web UI | `web/src/ChartsPanel.plot-throws.test.tsx`, `web/src/ChartsPanel.test.tsx`, `web/src/ChartsPanel.tsx`, `web/src/Dashboard.tsx` | #30 |
-| SPEC-WEB-4 | testable | Web UI | `test/session.test.ts`, `web/src/App.test.tsx`, `web/src/Dashboard.tsx`, `web/src/MeetingPanel.tsx` | #28 |
-| SPEC-WEB-5 | testable | Web UI | `web/src/App.test.tsx`, `web/src/Dashboard.tsx` | #28 |
+| SPEC-WEB-3 | testable | Web UI | `web/src/ChartsPanel.plot-throws.test.tsx`, `web/src/ChartsPanel.test.tsx`, `web/src/ChartsPanel.tsx` | #30 |
+| SPEC-WEB-4 | testable | Web UI | `test/session.test.ts`, `web/src/App.test.tsx`, `web/src/MeetingPanel.tsx` | #28 |
+| SPEC-WEB-5 | testable | Web UI | `web/src/App.test.tsx` | #28 |
 | SPEC-WEB-6 | testable | Web UI | `web/src/PersuasionView.test.tsx`, `web/src/PersuasionView.tsx` | #63 |
 | SPEC-WEB-7 | testable | Web UI | `web/src/DoctrinePanel.test.tsx`, `web/src/DoctrinePanel.tsx` | #122 |
 | SPEC-WEB-8 | testable | Web UI | `web/src/MeetingPanel.test.tsx`, `web/src/MeetingPanel.tsx`, `web/src/PersuasionView.test.tsx`, `web/src/PersuasionView.tsx` | #124 |
-| SPEC-WEB-9 | testable | Web UI | `test/session.test.ts`, `web/src/Dashboard.test.tsx`, `web/src/Dashboard.tsx` | #126 |
+| SPEC-WEB-9 | testable | Web UI | `test/session.test.ts`, `web/src/AppShell.tsx`, `web/src/Dashboard.test.tsx` | #126 |

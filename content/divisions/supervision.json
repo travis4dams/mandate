@@ -1,0 +1,7 @@
+{
+  "id": "supervision",
+  "name": "division.supervision.name",
+  "desc": "division.supervision.desc",
+  "hire_cost": 20,
+  "investment": 0.15
+}

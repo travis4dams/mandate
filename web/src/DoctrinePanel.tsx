@@ -9,6 +9,7 @@ import { loadDoctrineCatalog } from "../../src/content/doctrines";
 import { doctrineFlagKey } from "../../src/engine/doctrine";
 import type { Session } from "../../src/engine/session";
 import type { GameStateSnapshot } from "../../src/engine/state";
+import { color, font, space, surface, heading, buttonStyle, chipStyle } from "./theme";
 
 export function DoctrinePanel(props: {
   session: Session;
@@ -29,9 +30,11 @@ export function DoctrinePanel(props: {
   }
 
   return (
-    <section style={{ margin: "16px 0" }}>
-      <h2 style={{ fontSize: 16, marginBottom: 8 }}>{t("ui.doctrine.heading")}</h2>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+    <section style={{ margin: `${space.xl}px 0` }}>
+      <h2 style={{ ...heading.display, fontSize: 18, marginBottom: space.md }}>
+        {t("ui.doctrine.heading")}
+      </h2>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: space.md }}>
         {catalog.map((d) => {
           const adopted = current.flags[doctrineFlagKey(d.id)] === true;
           const confirming = confirmingId === d.id;
@@ -39,36 +42,80 @@ export function DoctrinePanel(props: {
             <div
               key={d.id}
               data-testid={`doctrine-card-${d.id}`}
-              style={{ border: "1px solid #ddd", borderRadius: 6, padding: "10px 12px", background: "#fafafa" }}
+              style={{
+                ...surface.card,
+                borderLeft: adopted ? `3px solid ${color.brass}` : `3px solid transparent`,
+                background: adopted ? color.parchmentRaised : color.parchment,
+                transition: "border-color 150ms ease, background 150ms ease",
+              }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <strong>{t(d.name)}</strong>
+              <div style={{ display: "flex", alignItems: "center", gap: space.sm, marginBottom: space.xs }}>
+                <strong
+                  style={{
+                    fontFamily: font.display,
+                    fontSize: 15,
+                    color: color.navy,
+                    letterSpacing: "0.01em",
+                  }}
+                >
+                  {t(d.name)}
+                </strong>
                 {adopted && (
-                  <span
-                    style={{ fontSize: 11, padding: "1px 6px", borderRadius: 8, background: "#2b8a3e", color: "#fff" }}
-                  >
+                  <span style={chipStyle("positive")}>
                     {t("ui.doctrine.adopted_badge")}
                   </span>
                 )}
               </div>
-              <p style={{ fontSize: 12, color: "#666", margin: "6px 0" }}>{t(d.description)}</p>
+              <p
+                style={{
+                  fontSize: 12,
+                  color: color.inkSoft,
+                  margin: `${space.xs}px 0 ${space.sm}px`,
+                  fontFamily: font.sans,
+                  lineHeight: 1.5,
+                }}
+              >
+                {t(d.description)}
+              </p>
               {!adopted && (
-                <button onClick={() => run(() => { session.adoptDoctrine(d.id); setConfirmingId(null); })}>
+                <button
+                  style={buttonStyle("primary")}
+                  onClick={() => run(() => { session.adoptDoctrine(d.id); setConfirmingId(null); })}
+                >
                   {t("ui.doctrine.adopt")}
                 </button>
               )}
               {adopted && !confirming && (
-                <button onClick={() => setConfirmingId(d.id)}>{t("ui.doctrine.abandon")}</button>
+                <button
+                  style={buttonStyle("secondary")}
+                  onClick={() => setConfirmingId(d.id)}
+                >
+                  {t("ui.doctrine.abandon")}
+                </button>
               )}
               {adopted && confirming && (
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
-                  <span data-testid="flip-flop-cost" style={{ fontSize: 12, color: "#c92a2a" }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: space.sm, alignItems: "center" }}>
+                  <span
+                    data-testid="flip-flop-cost"
+                    style={{
+                      ...chipStyle("negative"),
+                      fontSize: 12,
+                    }}
+                  >
                     {t("ui.doctrine.flip_flop_label")} {d.flip_flop_cost}
                   </span>
-                  <button onClick={() => run(() => { session.abandonDoctrine(d.id); setConfirmingId(null); })}>
+                  <button
+                    style={{ ...buttonStyle("secondary"), borderColor: color.negative, color: color.negative }}
+                    onClick={() => run(() => { session.abandonDoctrine(d.id); setConfirmingId(null); })}
+                  >
                     {t("ui.doctrine.confirm_abandon")}
                   </button>
-                  <button onClick={() => setConfirmingId(null)}>{t("ui.doctrine.cancel")}</button>
+                  <button
+                    style={buttonStyle("ghost")}
+                    onClick={() => setConfirmingId(null)}
+                  >
+                    {t("ui.doctrine.cancel")}
+                  </button>
                 </div>
               )}
             </div>
@@ -76,7 +123,16 @@ export function DoctrinePanel(props: {
         })}
       </div>
       {error !== null && (
-        <p style={{ color: "#c92a2a", fontSize: 13, margin: "4px 0 0" }}>{error}</p>
+        <p
+          style={{
+            color: color.negative,
+            fontSize: 13,
+            margin: `${space.xs}px 0 0`,
+            fontFamily: font.sans,
+          }}
+        >
+          {error}
+        </p>
       )}
     </section>
   );

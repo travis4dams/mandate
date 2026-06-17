@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mandate.dev/schemas/division.schema.json",
+  "title": "Division",
+  "description": "A Federal Reserve division that can be staffed by the Chair. SPEC-INST-2.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "name", "desc", "hire_cost", "investment"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "SPEC-INST-2: unique division identifier, used as key in flags/vars."
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "SPEC-INST-2: localization key for the division display name (e.g. 'division.research.name')."
+    },
+    "desc": {
+      "type": "string",
+      "minLength": 1,
+      "description": "SPEC-INST-2: localization key for the division description."
+    },
+    "hire_cost": {
+      "type": "number",
+      "minimum": 0,
+      "description": "SPEC-INST-2: political capital cost to hire a division head."
+    },
+    "investment": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "description": "SPEC-INST-2: abstract investment contribution per unit of staff competence. Feeds SPEC-BRIEF-2 forecast quality."
+    }
+  }
+}

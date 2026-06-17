@@ -62,6 +62,17 @@ const techFiles = import.meta.glob<{ default: unknown }>(
   "../../content/tech/*.json",
   { eager: true },
 );
+// SPEC-INST-2 / SPEC-NAME-1: new runtime content directories. content/engine/*.json
+// (institution.json, legacy.json) is already covered by the engineParams glob above;
+// content/names and content/divisions are their own dirs and must be registered here.
+const nameFiles = import.meta.glob<{ default: unknown }>(
+  "../../content/names/*.json",
+  { eager: true },
+);
+const divisionFiles = import.meta.glob<{ default: unknown }>(
+  "../../content/divisions/*.json",
+  { eager: true },
+);
 
 // Reject `mod.default === undefined` at registration time rather than letting
 // such a value enter the registry and surface later as an opaque AJV
@@ -128,3 +139,8 @@ registerEach(eventFiles);
 registerDirEntities(eventFiles, "content/events");
 registerEach(techFiles);
 registerDirEntities(techFiles, "content/tech");
+// SPEC-NAME-1: name pools are loaded via loadNamePools() (single file, registerEach only).
+registerEach(nameFiles);
+// SPEC-INST-2: the division catalog is loaded as a directory (loadDivisionCatalog).
+registerEach(divisionFiles);
+registerDirEntities(divisionFiles, "content/divisions");

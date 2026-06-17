@@ -6,6 +6,7 @@ import * as Plot from "@observablehq/plot";
 import { t } from "./loc";
 import fogJson from "../../content/engine/fog.json";
 import type { FogParams } from "../../src/engine/fog";
+import { color, font, space } from "./theme";
 
 export type DataPoint = { date: string; value: number };
 
@@ -45,11 +46,12 @@ export function buildChartData(
   return result;
 }
 
+// Series colors drawn from the institutional palette.
 const SERIES_CONFIG = [
-  { key: "inflation" as const, color: "#c92a2a", labelKey: "ui.dashboard.chart.legend.inflation" },
-  { key: "unemployment" as const, color: "#1864ab", labelKey: "ui.dashboard.chart.legend.unemployment" },
-  { key: "policy_rate" as const, color: "#2b8a3e", labelKey: "ui.dashboard.chart.legend.policy_rate" },
-  { key: "credibility" as const, color: "#7c3aed", labelKey: "ui.dashboard.chart.legend.credibility" },
+  { key: "inflation" as const, color: color.negative, labelKey: "ui.dashboard.chart.legend.inflation" },
+  { key: "unemployment" as const, color: color.navy, labelKey: "ui.dashboard.chart.legend.unemployment" },
+  { key: "policy_rate" as const, color: color.positive, labelKey: "ui.dashboard.chart.legend.policy_rate" },
+  { key: "credibility" as const, color: color.brass, labelKey: "ui.dashboard.chart.legend.credibility" },
 ];
 
 export function ChartsPanel(props: { trajectory: readonly Snapshot[] }): JSX.Element {
@@ -72,8 +74,8 @@ export function ChartsPanel(props: { trajectory: readonly Snapshot[] }): JSX.Ele
               x: "date",
               y1: (d: DataPoint) => d.value - hw,
               y2: (d: DataPoint) => d.value + hw,
-              fill: "#888",
-              fillOpacity: 0.15,
+              fill: color.inkSoft,
+              fillOpacity: 0.10,
             }),
           );
         }
@@ -95,6 +97,12 @@ export function ChartsPanel(props: { trajectory: readonly Snapshot[] }): JSX.Ele
         color: { legend: false },
         width: el.offsetWidth || 880,
         height: 200,
+        style: {
+          background: "transparent",
+          fontFamily: font.mono,
+          fontSize: "11px",
+          color: color.inkSoft,
+        },
       });
 
       el.replaceChildren(plot);
@@ -102,6 +110,8 @@ export function ChartsPanel(props: { trajectory: readonly Snapshot[] }): JSX.Ele
       console.error("[ChartsPanel] Plot.plot() failed:", err);
       const msg = document.createElement("p");
       msg.textContent = t("ui.dashboard.chart.unavailable");
+      msg.style.color = color.inkSoft;
+      msg.style.fontFamily = font.sans;
       el.replaceChildren(msg);
     }
     return () => { el.replaceChildren(); };
@@ -110,10 +120,29 @@ export function ChartsPanel(props: { trajectory: readonly Snapshot[] }): JSX.Ele
   return (
     <div>
       <div ref={ref} />
-      <div style={{ display: "flex", gap: 16, marginTop: 4, fontSize: 12 }}>
+      <div
+        style={{
+          display: "flex",
+          gap: space.xl,
+          marginTop: space.xs,
+          fontSize: 12,
+          fontFamily: font.sans,
+        }}
+      >
         {SERIES_CONFIG.map((cfg) => (
-          <span key={cfg.key} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-            <span style={{ display: "inline-block", width: 16, height: 2, background: cfg.color }} />
+          <span
+            key={cfg.key}
+            style={{ display: "flex", alignItems: "center", gap: space.xs, color: color.inkSoft }}
+          >
+            <span
+              style={{
+                display: "inline-block",
+                width: 16,
+                height: 2,
+                background: cfg.color,
+                borderRadius: 1,
+              }}
+            />
             {t(cfg.labelKey)}
           </span>
         ))}
