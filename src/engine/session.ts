@@ -1023,17 +1023,28 @@ export class Session {
       vars: { ...this._state.vars, policy_rate: fomcVote.decided, credibility: newCredibility, consensus_capital: nextConsensusCap },
     };
     this._state = stateAfterMeeting;
-    // Shallow-spread so a mutating hook (engine-purity violation) can't corrupt the rollback target.
+    // Shallow-spread creates a new top-level GameState reference for the rollback target.
+    // Nested objects (vars, flags, history) are still aliased. Mutation protection for nested
+    // objects relies on hooks being pure (SPEC-SIM-1): they must return a new state, not mutate.
     const hookCheckpoint = { ...this._state };
-    // Capture flags at meeting-commit time. Hooks that write to flags must not affect whether
-    // *later* hooks in the same loop are considered adopted.
+    // Capture the flags reference at meeting-commit time. For pure hooks (which return a new
+    // state object with a different flags object rather than mutating state.flags in-place),
+    // stateAfterMeeting.flags changes each iteration but flagsAtMeeting keeps pointing to the
+    // pre-loop flags. Hooks that adopt a doctrine mid-loop therefore cannot activate later
+    // hooks in the same meeting. Mutation of flags in-place is an engine-purity violation (SPEC-SIM-1).
     const flagsAtMeeting = stateAfterMeeting.flags;
     try {
       const catalog = loadDoctrineCatalog();
       for (const doctrine of catalog) {
         if (doctrine.meeting_hook === undefined) continue;
         if (flagsAtMeeting[doctrineFlagKey(doctrine.id)] !== true) continue;
-        stateAfterMeeting = HOOK_HANDLERS[doctrine.meeting_hook](stateAfterMeeting, previews);
+        const nextState = HOOK_HANDLERS[doctrine.meeting_hook](stateAfterMeeting, previews);
+        if (nextState == null || typeof nextState !== "object") {
+          throw new Error(
+            `proposeRate: meeting hook "${doctrine.meeting_hook}" for doctrine "${doctrine.id}" returned ${String(nextState)} instead of a GameState`,
+          );
+        }
+        stateAfterMeeting = nextState;
       }
       this._state = stateAfterMeeting;
     } catch (err) {
@@ -1042,7 +1053,11 @@ export class Session {
       // If a future handler signature is widened to receive the Session object directly,
       // extend the rollback to cover those fields before making that change.
       this._state = hookCheckpoint;
-      this._rebuildCaches();
+      try {
+        this._rebuildCaches();
+      } catch {
+        // _rebuildCaches failure must not replace the original hook error.
+      }
       throw err;
     }
 

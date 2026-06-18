@@ -24,9 +24,9 @@ export interface FomcVote {
    *  unless overridden by an `effectiveBands` entry from Chair capital spend (SPEC-COMM-7).
    *  This count drives the median-pull override — see SPEC-COMM-10 and `FomcVote.decided`. */
   readonly dissents: number;
-  /** Median of all members' preferred rates — always present regardless of whether the
-   *  dissent override fires. For even-length committees this is the arithmetic mean of the
-   *  two middle values. SPEC-COMM-10. */
+  /** Median of all members' preferred rates (post-trait lean shift, post-effectiveBands) as
+   *  computed by `previewVote`. Always present regardless of whether the dissent override fires.
+   *  For even-length committees this is the arithmetic mean of the two middle values. SPEC-COMM-10. */
   readonly committeeMedian: number;
 }
 
