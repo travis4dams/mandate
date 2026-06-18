@@ -180,12 +180,14 @@ describe("trajectory invariance — SPEC-SIM-6", () => {
     ).toBeLessThan(TOLERANCE);
   });
 
-  it("n=4 sub-ticks agree on credibility within 0.2pp when starting above soft ceiling — drain only (SPEC-CRED-7 × SPEC-SIM-6)", () => {
+  it("n=4 sub-ticks agree on credibility within 0.002 credibility points when starting above soft ceiling — drain only (SPEC-CRED-7 × SPEC-SIM-6)", () => {
     // SPEC-SIM-6 × SPEC-CRED-7: credibility_drain_rate is cadence-scaled with exact geometric formula.
     // Uses the macro fixed point (distBefore === distAfter) so only the drain moves credibility.
-    // The geometric scaling is exact in isolation; the combined (drain + mission_gain)
-    // case is documented in cadence.ts as exceeding the 0.2pp tolerance for
-    // high-credibility + off-target scenarios — no trajectory-invariance test attempted.
+    // The geometric scaling is exact in isolation; actual error is floating-point noise (~1e-13),
+    // so TOLERANCE = 0.002 credibility points (on the 0-100 scale) is essentially float precision.
+    // The combined (drain + mission_gain) case is documented in cadence.ts as a first-order
+    // approximation — a loose 2pp tripwire for the combined case exists in the next test,
+    // but no tight (0.2pp) invariance test is attempted for the combined case.
     const INITIAL = {
       policy_rate: BASE.target_inflation + BASE.real_neutral_rate,
       inflation: BASE.target_inflation,

@@ -166,8 +166,8 @@ describe("applyMacroDynamics — soft-ceiling drain (SPEC-CRED-7)", () => {
   };
 
   it("credibility at cred_max drains to 97.0 when economy is at the macro steady state (zero mission-distance change)", () => {
-    // SPEC-CRED-7: drain = credibility_drain_rate × (credibility − credibility_soft_ceiling)
-    //              = 0.20 × (100 − 85) = 3.0  →  newCredibility = 100 − 3.0 = 97.0.
+    // SPEC-CRED-7: drain = credibility_drain_rate × max(0, min(credibility, CRED_MAX) − credibility_soft_ceiling)
+    //            = 0.20 × max(0, min(100, 100) − 85) = 0.20 × 15 = 3.0  →  newCredibility = 100 − 3.0 = 97.0.
     const state = makeState({ vars: { ...fixedPointVars, credibility: 100 } });
     const result = applyMacroDynamics(state, BASE);
     expect(result.vars.credibility).toBeCloseTo(97.0, 10);
@@ -224,9 +224,17 @@ describe("applyMacroDynamics — soft-ceiling drain (SPEC-CRED-7)", () => {
     expect(result.vars.credibility).toBeCloseTo(99.0, 5);
   });
 
+  it("throws when credibility is NaN (SPEC-CRED-7 NaN guard)", () => {
+    // SPEC-CRED-7: state.vars is Record<string, unknown>; casting as number lets NaN arrive
+    // from upstream bugs (e.g. a miscalculated doctrine delta). The guard catches it early
+    // so NaN doesn't silently propagate through clamp and corrupt subsequent ticks.
+    const nanState = makeState({ vars: { ...fixedPointVars, credibility: NaN } });
+    expect(() => applyMacroDynamics(nanState, BASE)).toThrow("not finite");
+  });
+
   it("drain uses prior credibility, not post-gain credibility (SPEC-CRED-7)", () => {
     // Economy improving (inflation=0.025 above target=0.02) → positive mission gain.
-    // Exact expected: newInflation = 0.952×0.025 + 0.048×0.02 = 0.02476.
+    // Exact expected: newInflation = 0.952×0.025 + 0.048×0.02 − 0.106×(0.0645 − 0.0645) = 0.02476.
     // distBefore=0.00975, distAfter=0.00951 → missionGain = 300×0.00024 = 0.072.
     // priorDrain = 0.20 × (92 − 85) = 1.4   →   newCred = 92 + 0.072 − 1.4 = 90.672.
     // If drain used post-gain cred (92.072): drain = 0.20×7.072 = 1.4144 → newCred = 90.6576.
