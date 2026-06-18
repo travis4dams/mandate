@@ -274,7 +274,7 @@ describe("loadDynamicsParams — soft-ceiling guard (SPEC-CRED-7)", () => {
     expectations_adaptivity: 0.051, expectations_anchor_pull: 0.025,
     credibility_mission_gain: 300, credibility_unemployment_weight: 0.5,
     anchor_threshold: 60, credibility_soft_ceiling: 85, credibility_drain_rate: 0.20,
-  } as const;
+  };
 
   function mockParams(overrides: Partial<typeof CRED_MOCK_BASE>): void {
     vi.spyOn(contentLoader, "loadValidatedFile")
