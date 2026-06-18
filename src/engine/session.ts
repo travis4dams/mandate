@@ -956,6 +956,9 @@ export class Session {
    * @throws {Error} if a capitalSpend key does not match any member id, or the resulting widened
    *   band would exceed 0.5 (propagated from computeEffectiveBands).
    * @throws {VoteMissingVarError} if state vars (inflation, unemployment, policy_rate) are missing or non-finite (propagated from previewVote()).
+   * SPEC-COMM-10: when dissents >= dissent_override_threshold, `fomcVote.decided` is
+   * pulled toward the committee median and will differ from `rate`. Always use
+   * `fomcVote.decided` as the enacted rate, not the input `rate`.
    */
   proposeRate(rate: number, capitalSpend?: CapitalSpend): FomcVote {
     if (!this.isMeetingMonth()) {
@@ -1004,7 +1007,7 @@ export class Session {
     // meeting hook: add the string to DoctrineHook + schema enum, implement a handler,
     // and register it in HOOK_HANDLERS — no changes to this file needed.
     // SPEC-COMM-9: update consensus_capital from the vote outcome.
-    // Zero dissents → add consensus_gain; above threshold dissents → subtract consensus_penalty (clamped ≥ 0).
+    // Zero dissents → add consensus_gain; dissents >= dissent_penalty_threshold → subtract consensus_penalty (clamped ≥ 0).
     const ccParams = loadChairCapitalParams();
     const prevConsensusCap = (this._state.vars.consensus_capital ?? 0) as number;
     const nextConsensusCap = updateConsensusCapital(prevConsensusCap, fomcVote.dissents, ccParams);
@@ -1026,6 +1029,9 @@ export class Session {
       }
       this._state = stateAfterMeeting;
     } catch (err) {
+      // Rollback covers GameState only — safe because HOOK_HANDLERS receive only GameState.
+      // If a future handler is given access to Session fields (_stance, _pendingEscalations, etc.),
+      // extend the rollback to cover those fields before widening the handler signature.
       this._state = hookCheckpoint;
       this._rebuildCaches();
       throw err;
