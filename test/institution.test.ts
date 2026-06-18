@@ -110,6 +110,15 @@ describe("loadInstitutionParams (SPEC-INST-1)", () => {
     registerContentFile("content/engine/institution.json", rest);
     expect(() => loadInstitutionParams()).toThrow();
   });
+
+  it("schema rejects upkeep_per_hire_cost above 1", () => {
+    // SPEC-INST-3: maximum: 1 in schema is enforced at content-load time
+    registerContentFile("content/engine/institution.json", {
+      ...PARAMS,
+      upkeep_per_hire_cost: 1.5,
+    });
+    expect(() => loadInstitutionParams()).toThrow();
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -234,7 +243,7 @@ describe("applyInstitutionDynamics — staffing upkeep (SPEC-INST-3)", () => {
     id: "div_b",
     name: "div_b.name",
     desc: "div_b.desc",
-    hire_cost: 20,
+    hire_cost: 30, // intentionally different from DIV_A so the sum formula is load-bearing
     investment: 0.1,
     channel: "transmission",
     skill_weights: { forecasting: 0, markets: 1, supervision: 0, communication: 0, crisis: 0 },
@@ -252,8 +261,8 @@ describe("applyInstitutionDynamics — staffing upkeep (SPEC-INST-3)", () => {
     expect(result.vars.operating_budget).toBeCloseTo(expectedGrowth - expectedUpkeep);
   });
 
-  it("two staffed divisions with equal hire_cost incur exactly twice the upkeep of one", () => {
-    // SPEC-INST-3
+  it("two staffed divisions incur the sum of their individual upkeeps (not count × one cost)", () => {
+    // SPEC-INST-3: DIV_A.hire_cost=20, DIV_B.hire_cost=30 — sum (50) ≠ 2×20 (40)
     const stateOne = makeState({
       vars: { operating_budget: 1000 },
       flags: { "staffed.div_a": true },
@@ -264,9 +273,11 @@ describe("applyInstitutionDynamics — staffing upkeep (SPEC-INST-3)", () => {
     });
     const one = applyInstitutionDynamics(stateOne, UPKEEP_PARAMS, [DIV_A, DIV_B]);
     const two = applyInstitutionDynamics(stateTwo, UPKEEP_PARAMS, [DIV_A, DIV_B]);
-    const oneUpkeep = 1000 * (1 + UPKEEP_PARAMS.budget_monthly_growth) - (one.vars.operating_budget as number);
-    const twoUpkeep = 1000 * (1 + UPKEEP_PARAMS.budget_monthly_growth) - (two.vars.operating_budget as number);
-    expect(twoUpkeep).toBeCloseTo(oneUpkeep * 2);
+    const growthBase = 1000 * (1 + UPKEEP_PARAMS.budget_monthly_growth);
+    const oneUpkeep = growthBase - (one.vars.operating_budget as number);
+    const twoUpkeep = growthBase - (two.vars.operating_budget as number);
+    expect(oneUpkeep).toBeCloseTo(UPKEEP_RATE * DIV_A.hire_cost);
+    expect(twoUpkeep).toBeCloseTo(UPKEEP_RATE * (DIV_A.hire_cost + DIV_B.hire_cost));
   });
 
   it("an unstaffed catalog produces no upkeep deduction", () => {

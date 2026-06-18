@@ -68,6 +68,17 @@ describe("Session institution + legacy + npc-name wiring", () => {
     expect(() => s.hire("research", 99)).toThrow();
   });
 
+  // SPEC-INST-3: Session.advance() wires upkeep deduction for staffed divisions.
+  it("Session.advance() deducts monthly upkeep for a staffed division (SPEC-INST-3)", () => {
+    const s = Session.fromScenario(SCEN, 42, COMM);
+    s.hire("research", 0); // research: hire_cost = 12
+    const budgetAfterHire = s.operatingBudget();
+    s.advance(1);
+    // Pure growth alone would give budgetAfterHire * 1.005.
+    // With upkeep_per_hire_cost=0.05 and hire_cost=12, upkeep = 0.6 is also deducted.
+    expect(s.operatingBudget()).toBeLessThan(budgetAfterHire * (1 + 0.005));
+  });
+
   // SPEC-LEGACY-1: term clock, reappointment outlook, and legacy score.
   it("exposes term progress, reappointment outlook, and legacy score", () => {
     const s = Session.fromScenario(SCEN, 42, COMM);

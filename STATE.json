@@ -531,7 +531,8 @@
       "section": "Institution & resources (engine)",
       "tag": "testable",
       "tests": [
-        "test/institution.test.ts"
+        "test/institution.test.ts",
+        "test/session-institution.test.ts"
       ]
     },
     {
