@@ -4,7 +4,7 @@ import { loadReplay } from "../content/replays.js";
 import { loadCommittee } from "../content/committees.js";
 import { loadValidatedFile } from "../content/loader.js";
 import { tick } from "./clock.js";
-import { previewVote, loadCommitteeParams } from "./fomc.js";
+import { previewVote, loadCommitteeParams, buildFomcVote, type FomcVote, type MemberVotePreview } from "./fomc.js";
 import { computeChairCapital, computeEffectiveBands, loadChairCapitalParams, updateConsensusCapital } from "./chair-capital.js";
 import type { CapitalSpend } from "./chair-capital.js";
 import { applyIntermeetingDrift } from "./stance.js";
@@ -50,7 +50,6 @@ import {
 import { mulberry32, fnv1a32, type SeededRng } from "./rng.js";
 import { observe } from "./fog.js";
 import type { GameState, GameStateSnapshot } from "./state.js";
-import { buildFomcVote, type FomcVote, type MemberVotePreview } from "./fomc.js";
 import type { Replay } from "../content/replays.js";
 
 // SPEC-SESSION-0: skeleton Session façade.

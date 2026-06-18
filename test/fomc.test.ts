@@ -742,6 +742,23 @@ describe("vote", () => {
     expect(() => buildFomcVote(previews, 0.05, { ...PARAMS, median_pull: 1.1 })).toThrow(/invalid median_pull/);
   });
 
+  it("SPEC-COMM-10: buildFomcVote throws on median_pull = NaN", () => {
+    // SPEC-COMM-10: !Number.isFinite(NaN) catches this; a range-only guard would miss it.
+    const previews = Array.from({ length: 7 }, (_, i) => ({
+      memberId: `m${i}`, nameKey: `m${i}`, preferred: 0.08, wouldDissent: true,
+    }));
+    expect(() => buildFomcVote(previews, 0.05, { ...PARAMS, median_pull: NaN })).toThrow(/invalid median_pull/);
+  });
+
+  it("SPEC-COMM-10: buildFomcVote throws on dissent_override_threshold = NaN", () => {
+    // SPEC-COMM-10: Number.isInteger(NaN) is false, so this is caught by the threshold guard.
+    const previews = Array.from({ length: 2 }, (_, i) => ({
+      memberId: `m${i}`, nameKey: `m${i}`, preferred: 0.08, wouldDissent: true,
+    }));
+    expect(() => buildFomcVote(previews, 0.05, { ...PARAMS, dissent_override_threshold: NaN }))
+      .toThrow(/invalid dissent_override_threshold/);
+  });
+
   it("SPEC-COMM-10: buildFomcVote throws on dissent_override_threshold = 0", () => {
     // SPEC-COMM-10
     const previews = Array.from({ length: 7 }, (_, i) => ({

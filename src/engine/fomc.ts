@@ -81,7 +81,12 @@ function computeMedian(values: readonly number[]): number {
 }
 
 /** SPEC-COMM-10: build a FomcVote from already-computed previews, applying the median-pull override
- *  when dissents >= params.dissent_override_threshold. */
+ *  when dissents >= params.dissent_override_threshold.
+ *  @throws {Error} if params.median_pull is not finite or not in (0, 1].
+ *  @throws {Error} if params.dissent_override_threshold is not a positive integer.
+ *  @throws {Error} if proposedRate is not finite.
+ *  @throws {Error} if previews is empty.
+ *  @throws {Error} if any preview's preferred rate is not finite. */
 export function buildFomcVote(
   previews: readonly MemberVotePreview[],
   proposedRate: number,
