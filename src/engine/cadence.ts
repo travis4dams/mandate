@@ -5,7 +5,7 @@
 // macro trajectory is invariant to cadence:
 //   - AR(1) persistence: p_tick = p_monthly^(1/n)  [exact for geometric decay]
 //   - Mean-reversion speed: α_tick = 1 − (1−α_monthly)^(1/n)  [exact for linear AR]
-//   - Soft-ceiling drain rate: same formula as mean-reversion, 1 − (1−rate)^(1/n)  [exact for the drain in isolation; first-order approximation when combined with the /n-scaled mission_gain term]
+//   - Soft-ceiling drain rate: `1 − (1−rate)^(1/n)` — exact when drain is the sole active credibility term; first-order approximation when `credibility_mission_gain` is simultaneously active (cross-term error; 2pp loose tripwire in cadence.test.ts guards against gross divergence)
 //   - Flow contributions (phillips_slope, expectations_adaptivity, expectations_anchor_pull, credibility_mission_gain): divided by n  [first-order approximation, error O(α²/n)]
 //   - Structural params (natural rates, targets, thresholds): unchanged
 //
@@ -65,9 +65,9 @@ export function scaleParamsForTick(params: MacroDynamicsParams, n: number): Read
   // Guard runs before the n=1 early-return so callers always receive a validated-or-thrown
   // result. applyMacroDynamics uses drain_rate directly and has no guard for it; accepting
   // an invalid rate for n=1 and returning it unchanged would let the bad value propagate.
-  if (params.credibility_drain_rate <= 0 || params.credibility_drain_rate >= 1) {
+  if (!Number.isFinite(params.credibility_drain_rate) || params.credibility_drain_rate <= 0 || params.credibility_drain_rate >= 1) {
     throw new RangeError(
-      `scaleParamsForTick: credibility_drain_rate must be in (0,1), got ${params.credibility_drain_rate}`,
+      `scaleParamsForTick: credibility_drain_rate must be a finite number in (0,1), got ${params.credibility_drain_rate}`,
     );
   }
   if (n === 1) return params;

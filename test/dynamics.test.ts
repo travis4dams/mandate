@@ -211,6 +211,15 @@ describe("applyMacroDynamics — soft-ceiling drain (SPEC-CRED-7)", () => {
       .toBe(applyMacroDynamics(atCeilingState, BASE).vars.credibility);
   });
 
+  it("drain fires at exactly soft_ceiling + 1 (off-by-one check, SPEC-CRED-7)", () => {
+    // SPEC-CRED-7: max(0, 86 − 85) = 1; drain = 0.20 × 1 = 0.20.
+    // At fixed-point state distBefore = distAfter = 0 → missionGain = 0; result = 86 − 0.20 = 85.80.
+    // Catches an off-by-one in Math.max(0, effectiveCred − soft_ceiling) (e.g. > vs >=).
+    const atCeilingPlusOne = makeState({ vars: { ...fixedPointVars, credibility: 86 } });
+    const result = applyMacroDynamics(atCeilingPlusOne, BASE);
+    expect(result.vars.credibility).toBeCloseTo(85.80, 10);
+  });
+
   it("drain is nonzero above the soft ceiling: higher drain_rate produces less credibility", () => {
     // SPEC-CRED-7: positive test that the drain is actually active and subtracts credibility above the ceiling.
     // A sign error (+drain instead of -drain) would make the higher-rate result larger, not smaller.
@@ -340,7 +349,9 @@ describe("loadDynamicsParams — soft-ceiling guard (SPEC-CRED-7)", () => {
     expect(() => loadDynamicsParams()).toThrow();
     // Restore spy so the next call uses real files (valid soft_ceiling = 85).
     vi.restoreAllMocks();
-    expect(loadDynamicsParams()).toBeDefined();
+    const result = loadDynamicsParams();
+    expect(result.credibility_soft_ceiling).toBe(85);
+    expect(result.credibility_drain_rate).toBe(0.20);
   });
 
   it("throws when credibility_drain_rate <= 0", () => {
@@ -366,5 +377,36 @@ describe("loadDynamicsParams — soft-ceiling guard (SPEC-CRED-7)", () => {
     // SPEC-CRED-7: soft_ceiling=0 makes max(0, cred - 0) = cred, firing the drain at all credibility levels.
     mockParams({ credibility_soft_ceiling: 0 });
     expect(() => loadDynamicsParams()).toThrow("credibility_soft_ceiling");
+  });
+
+  it("throws when credibility_drain_rate is NaN (bypasses <= 0 / >= 1 without isFinite guard)", () => {
+    // SPEC-CRED-7: NaN <= 0 and NaN >= 1 are both false, so a bare range check lets NaN through.
+    // The isFinite guard is required to reject it explicitly.
+    mockParams({ credibility_drain_rate: NaN });
+    expect(() => loadDynamicsParams()).toThrow("credibility_drain_rate");
+  });
+});
+
+describe("applyMacroDynamics — content-driven pin-prevention (SPEC-CRED-7)", () => {
+  afterEach(() => {
+    _resetDynamicsParamsCache();
+  });
+
+  it("one tick at cred_max with zero mission progress produces credibility < 100 using production params (SPEC-CRED-7)", () => {
+    // SPEC-CRED-7: production params must have drain large enough to move credibility strictly
+    // below 100 in a single tick when the economy is at the macro fixed point (zero mission-
+    // distance change). Complements the exact-value test against hardcoded BASE; survives
+    // param retuning that would break an exact-value assertion.
+    const params = loadDynamicsParams();
+    const fixedPt = {
+      policy_rate: params.target_inflation + params.real_neutral_rate,
+      inflation: params.target_inflation,
+      unemployment: params.unemployment_natural_rate,
+      expectations_anchor: params.target_inflation,
+      credibility: 100,
+      months_below_anchor: 0,
+    };
+    const result = applyMacroDynamics(makeState({ vars: { ...fixedPt } }), params);
+    expect(result.vars.credibility as number).toBeLessThan(100);
   });
 });

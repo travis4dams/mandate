@@ -48,9 +48,9 @@ export interface MacroDynamicsParams {
   credibility_unemployment_weight: number;
   /** Credibility below this counts as a month "below anchor" for the persistent-memory stat. */
   anchor_threshold: number;
-  /** SPEC-CRED-7: credibility above this threshold incurs a monthly drain (prevents endgame pin). */
+  /** SPEC-CRED-7: credibility above this threshold incurs a monthly drain (prevents endgame pin). Must be in (CRED_MIN, CRED_MAX); enforced at load time in loadDynamicsParams(). */
   credibility_soft_ceiling: number;
-  /** SPEC-CRED-7: monthly drain per unit of credibility above credibility_soft_ceiling. */
+  /** SPEC-CRED-7: monthly drain per unit of credibility above credibility_soft_ceiling. Must be in (0, 1) — values ≥ 1 break the 1-(1-r)^(1/n) cadence scaling (SPEC-SIM-6); enforced in loadDynamicsParams() and scaleParamsForTick(). */
   credibility_drain_rate: number;
 }
 
@@ -123,7 +123,9 @@ export function applyMacroDynamics(state: GameState, params: MacroDynamicsParams
   // scenario where mission progress tapers to zero (SPEC-CRED-7).
   // Cap at CRED_MAX so that over-range credibility stored by adoptDoctrine (SPEC-DOCT-1 symmetric-
   // delta guarantee) does not incur extra drain proportional to the excess — the drain applied
-  // equals on-cap drain; the clamp handles the range correction.
+  // equals on-cap drain. The arithmetic result typically lands within [CRED_MIN, CRED_MAX] in the
+  // over-range case (starting value minus on-cap drain < CRED_MAX); the outer clamp is a general
+  // safety net, not the mechanism for range correction.
   const effectiveCred = Math.min(credibility, CRED_MAX);
   const softCeilingDrain =
     params.credibility_drain_rate * Math.max(0, effectiveCred - params.credibility_soft_ceiling);
@@ -183,7 +185,7 @@ type CredibilityFile = Pick<
 // NOTE: only catches omitted *required* fields; new optional fields in
 // MacroDynamicsParams won't trigger this — add them to a Pick explicitly.
 type _Exhaustive = DynamicsFile & CredibilityFile extends MacroDynamicsParams ? true : never;
-const _check: _Exhaustive = true; void _check; // void: suppress "declared but never read"
+type _check = _Exhaustive extends true ? unknown : never; // TS fails here if MacroDynamicsParams has a field missing from both Picks
 
 let _cachedParams: MacroDynamicsParams | undefined;
 
@@ -213,9 +215,9 @@ export function loadDynamicsParams(): MacroDynamicsParams {
       `credibility_soft_ceiling (${candidate.credibility_soft_ceiling}) must be strictly greater than cred_min (${CRED_MIN}) — a value at or below cred_min applies the drain at minimum credibility`,
     );
   }
-  if (candidate.credibility_drain_rate <= 0) {
+  if (!Number.isFinite(candidate.credibility_drain_rate) || candidate.credibility_drain_rate <= 0) {
     throw new Error(
-      `credibility_drain_rate (${candidate.credibility_drain_rate}) must be strictly positive — zero silently disables the SPEC-CRED-7 soft-ceiling drain`,
+      `credibility_drain_rate (${candidate.credibility_drain_rate}) must be a finite number strictly greater than 0 — zero or NaN silently disables the SPEC-CRED-7 soft-ceiling drain`,
     );
   }
   if (candidate.credibility_drain_rate >= 1) {

@@ -66,6 +66,26 @@ describe("scaleParamsForTick — SPEC-SIM-6", () => {
     expect(() => scaleParamsForTick(badParams, 4)).toThrow(RangeError);
   });
 
+  it("throws RangeError for credibility_drain_rate = NaN (NaN bypasses <= 0 and >= 1 without isFinite guard)", () => {
+    // SPEC-SIM-6: NaN <= 0 and NaN >= 1 are both false in JS, so bare range checks let NaN
+    // through. Without the isFinite guard, Math.pow(1-NaN, 1/n) = NaN propagates into state.
+    const badParams = { ...BASE, credibility_drain_rate: NaN };
+    expect(() => scaleParamsForTick(badParams, 4)).toThrow(RangeError);
+  });
+
+  it("throws RangeError for credibility_drain_rate >= 1 when n=1 (guard runs before identity return)", () => {
+    // SPEC-SIM-6: guard must fire on the monthly (n=1) path — confirms the guard sits before
+    // the n=1 early return, so invalid rates can't silently reach applyMacroDynamics.
+    const badParams = { ...BASE, credibility_drain_rate: 1.5 };
+    expect(() => scaleParamsForTick(badParams, 1)).toThrow(RangeError);
+  });
+
+  it("throws RangeError for credibility_drain_rate <= 0 when n=1 (guard runs before identity return)", () => {
+    // SPEC-SIM-6: same guard, monthly path.
+    const badParams = { ...BASE, credibility_drain_rate: 0 };
+    expect(() => scaleParamsForTick(badParams, 1)).toThrow(RangeError);
+  });
+
   it("returns the same reference for n=1 (identity)", () => {
     // SPEC-SIM-6
     const scaled = scaleParamsForTick(BASE, 1);
