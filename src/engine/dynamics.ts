@@ -67,7 +67,11 @@ export function applyMacroDynamics(state: GameState, params: MacroDynamicsParams
   const policyRate = state.vars.policy_rate as number;
   const anchor = state.vars.expectations_anchor as number;
   const credibility = state.vars.credibility as number;
-  const monthsBelow = state.vars.months_below_anchor ?? 0;
+  const rawMonthsBelow = state.vars.months_below_anchor;
+  if (rawMonthsBelow !== undefined && !Number.isFinite(rawMonthsBelow)) {
+    throw new Error(`applyMacroDynamics: months_below_anchor is not finite (${rawMonthsBelow})`);
+  }
+  const monthsBelow = rawMonthsBelow ?? 0;
 
   // Fail-fast on NaN/Infinity in primary inputs — `as number` casts above let corrupt values
   // pass schema type-checking (e.g. a miscalculated event delta). Guards here prevent silent
@@ -195,11 +199,11 @@ type CredibilityFile = Pick<
 type _Exhaustive = DynamicsFile & CredibilityFile extends MacroDynamicsParams ? true : never;
 const _check: _Exhaustive = true; void _check; // void forces a read so noUnusedLocals doesn't flag it
 
-let _cachedParams: MacroDynamicsParams | undefined;
+let _cachedParams: Readonly<MacroDynamicsParams> | undefined;
 
 /** Lazy-loaded, cached merge of the macro (dynamics.json) and expectations/credibility
  *  (credibility.json) params — the full parameter set `applyMacroDynamics` consumes. */
-export function loadDynamicsParams(): MacroDynamicsParams {
+export function loadDynamicsParams(): Readonly<MacroDynamicsParams> {
   if (_cachedParams !== undefined) return _cachedParams;
   let dyn: DynamicsFile;
   let cred: CredibilityFile;
@@ -220,7 +224,7 @@ export function loadDynamicsParams(): MacroDynamicsParams {
   }
   if (candidate.credibility_soft_ceiling <= CRED_MIN) {
     throw new Error(
-      `credibility_soft_ceiling (${candidate.credibility_soft_ceiling}) must be strictly greater than cred_min (${CRED_MIN}) — a value at or below cred_min applies the drain at minimum credibility`,
+      `credibility_soft_ceiling (${candidate.credibility_soft_ceiling}) must be strictly greater than cred_min (${CRED_MIN}) — a value at or below cred_min makes the drain fire at all positive credibility levels (proportional to the full credibility score, not just the excess)`,
     );
   }
   if (!Number.isFinite(candidate.credibility_drain_rate) || candidate.credibility_drain_rate <= 0) {
@@ -233,7 +237,7 @@ export function loadDynamicsParams(): MacroDynamicsParams {
       `credibility_drain_rate (${candidate.credibility_drain_rate}) must be strictly less than 1 — a value ≥ 1 breaks the 1-(1-r)^(1/n) cadence scaling (SPEC-SIM-6)`,
     );
   }
-  _cachedParams = Object.freeze(candidate) as MacroDynamicsParams;
+  _cachedParams = Object.freeze(candidate);
   return _cachedParams;
 }
 

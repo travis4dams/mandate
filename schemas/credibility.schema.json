@@ -85,7 +85,8 @@
     "credibility_soft_ceiling": {
       "type": "number",
       "exclusiveMinimum": 0,
-      "description": "SPEC-CRED-7: credibility above this threshold incurs a monthly drain (prevents endgame pin at cred_max). Must be strictly between CRED_MIN and CRED_MAX — JSON Schema cannot express the cross-property constraint < cred_max, so the upper bound is enforced only at runtime by loadDynamicsParams()."
+      "exclusiveMaximum": 100,
+      "description": "SPEC-CRED-7: credibility above this threshold incurs a monthly drain (prevents endgame pin at cred_max). Must be strictly between CRED_MIN (0) and CRED_MAX (100). The upper bound is also enforced at runtime by loadDynamicsParams() for resilience against schema-bypass paths."
     },
     "credibility_drain_rate": {
       "type": "number",

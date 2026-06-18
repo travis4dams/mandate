@@ -272,6 +272,13 @@ describe("applyMacroDynamics — soft-ceiling drain (SPEC-CRED-7)", () => {
     expect(() => applyMacroDynamics(nanState, BASE)).toThrow("not finite");
   });
 
+  it("throws when months_below_anchor is NaN (output_gap-pattern guard)", () => {
+    // months_below_anchor uses ?? 0, so null/undefined → 0; but NaN ?? 0 = NaN.
+    // A NaN counter would permanently corrupt newMonthsBelow = NaN + 1 = NaN with no error.
+    const nanState = makeState({ vars: { ...fixedPointVars, months_below_anchor: NaN } });
+    expect(() => applyMacroDynamics(nanState, BASE)).toThrow("not finite");
+  });
+
   it("drain uses prior credibility, not post-gain credibility (SPEC-CRED-7)", () => {
     // Economy improving (inflation=0.025 above target=0.02) → positive mission gain.
     // Exact expected: newInflation = 0.952×0.025 + 0.048×0.02 − 0.106×(0.0645 − 0.0645) = 0.02476.
@@ -284,6 +291,14 @@ describe("applyMacroDynamics — soft-ceiling drain (SPEC-CRED-7)", () => {
     });
     const result = applyMacroDynamics(improvingState, BASE);
     expect(result.vars.credibility).toBeCloseTo(90.672, 3);
+  });
+
+  it("large mission progress above soft ceiling produces net credibility gain (drain slows, not blocks — SPEC-CRED-7)", () => {
+    // SPEC-CRED-7 behavioral contract: soft ceiling slows accumulation, not blocks it.
+    // credibility=86, drain = 0.20×1 = 0.20. Rapid disinflation from inflation=0.12 and
+    // elevated unemployment=0.10 produces large distBefore-distAfter → missionGain >> 0.20.
+    const state = makeState({ vars: { ...fixedPointVars, credibility: 86, inflation: 0.12, unemployment: 0.10 } });
+    expect((applyMacroDynamics(state, BASE).vars.credibility as number)).toBeGreaterThan(86);
   });
 });
 
