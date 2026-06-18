@@ -14,7 +14,7 @@ input in plain mode; only `--enrich` (workflow-only) fills empty cells from git 
 | SPEC-CAL-2 | testable | Calibration | `test/calibration-volcker.test.ts` |  |
 | SPEC-CAL-3 | testable | Calibration | `test/calibration-thresholds.test.ts` |  |
 | SPEC-COMM-1 | testable | Committee | `test/committee.test.ts`, `test/gen-state.test.ts` | #10 |
-| SPEC-COMM-10 | testable | Staffing economy & the living organization | `test/fomc.test.ts`, `test/session.test.ts` |  |
+| SPEC-COMM-10 | testable | Committee | `test/fomc.test.ts`, `test/session.test.ts` |  |
 | SPEC-COMM-2 | testable | Committee | `test/fomc.test.ts`, `test/gen-state.test.ts` | #11 |
 | SPEC-COMM-3 | testable | Committee | `test/committee.test.ts`, `test/engine-params-loaders.test.ts`, `test/fomc.test.ts` | #27 |
 | SPEC-COMM-4 | testable | Committee | `test/engine-params-loaders.test.ts`, `test/fomc.test.ts` |  |

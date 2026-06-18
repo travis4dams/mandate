@@ -20,7 +20,8 @@ export interface FomcVote {
   decided: number;
   /** Count of members whose `|preferred - proposedRate| > effectiveBand`, where
    *  `effectiveBand = Math.max(0, compromise_band * (1 - conviction * conviction_band_factor) * (1 + bandMod))`
-   *  unless overridden by an `effectiveBands` entry from Chair capital spend (SPEC-COMM-7). */
+   *  unless overridden by an `effectiveBands` entry from Chair capital spend (SPEC-COMM-7).
+   *  This count drives the median-pull override — see SPEC-COMM-10 and `FomcVote.decided`. */
   dissents: number;
   /** Arithmetic median of all members' preferred rates — always present regardless of whether the
    *  dissent override fires. Even-length committees average the two middle values. SPEC-COMM-10. */
@@ -69,7 +70,7 @@ function memberPreferred(
 }
 
 function computeMedian(values: readonly number[]): number {
-  if (values.length === 0) return 0;
+  if (values.length === 0) throw new Error("computeMedian: empty values array");
   const sorted = [...values].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
   return sorted.length % 2 === 0
@@ -78,14 +79,18 @@ function computeMedian(values: readonly number[]): number {
 }
 
 /** SPEC-COMM-10: build a FomcVote from already-computed previews, applying the median-pull override
- *  when dissents >= params.dissent_override_threshold. Exported so Session.proposeRate can use the
- *  same logic without calling vote() (which would re-run previewVote and lose the previews needed
- *  for doctrine hooks). */
+ *  when dissents >= params.dissent_override_threshold. */
 export function buildFomcVote(
   previews: readonly MemberVotePreview[],
   proposedRate: number,
   params: CommitteeParams,
 ): FomcVote {
+  if (!Number.isFinite(params.median_pull) || params.median_pull <= 0 || params.median_pull > 1) {
+    throw new Error(`buildFomcVote: invalid median_pull (${params.median_pull}); expected finite in (0, 1].`);
+  }
+  if (!Number.isInteger(params.dissent_override_threshold) || params.dissent_override_threshold < 1) {
+    throw new Error(`buildFomcVote: invalid dissent_override_threshold (${params.dissent_override_threshold}); expected integer >= 1.`);
+  }
   const dissents = previews.filter((p) => p.wouldDissent).length;
   const committeeMedian = computeMedian(previews.map((p) => p.preferred));
   const decided = dissents >= params.dissent_override_threshold

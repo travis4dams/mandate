@@ -709,4 +709,17 @@ describe("vote", () => {
     const result = buildFomcVote(previews, 0.05, PARAMS);
     expect(result.committeeMedian).toBeCloseTo(0.07, 10);
   });
+
+  // SPEC-COMM-10: median_pull = 1 sets decided exactly equal to committeeMedian.
+  it("SPEC-COMM-10: median_pull = 1 sets decided exactly equal to committeeMedian", () => {
+    // SPEC-COMM-10: upper boundary of valid range — decided = proposedRate + 1.0 * (median - proposedRate) = median.
+    const previews = Array.from({ length: 7 }, (_, i) => ({
+      memberId: `m${i}`,
+      nameKey: `m${i}`,
+      preferred: 0.08,
+      wouldDissent: true,
+    }));
+    const result = buildFomcVote(previews, 0.05, { ...PARAMS, median_pull: 1 });
+    expect(result.decided).toBeCloseTo(result.committeeMedian, 10);
+  });
 });

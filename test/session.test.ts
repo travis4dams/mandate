@@ -489,7 +489,8 @@ describe("SPEC-GUIDE-2: surprise lever wired into Session.proposeRate()", () => 
     // neutral stance triggers the committee median-pull (all 12 members dissent), enacting a rate
     // ~50bp higher. That exceeds the neutral surprise_tolerance (25bp), so markets are surprised.
     const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
-    s.proposeRate(0.1075);
+    const fomcVote = s.proposeRate(0.1075);
+    expect(fomcVote.decided).toBeGreaterThan(0.1075); // committee median-pull fired
     expect(s.current.vars.credibility).toBe(20); // 25 - 5 surprise penalty
   });
 
