@@ -1,7 +1,8 @@
 // SPEC-SIM-5 (real-rate transmission), SPEC-CRED-4 (continuous adaptive expectations),
 // SPEC-CRED-6 (mission-tied credibility) — all evolve in one simultaneous monthly step.
-import { describe, it, expect } from "vitest";
-import { applyMacroDynamics, type MacroDynamicsParams } from "../src/engine/dynamics";
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { applyMacroDynamics, loadDynamicsParams, _resetDynamicsParamsCache, type MacroDynamicsParams } from "../src/engine/dynamics";
+import * as contentLoader from "../src/content/loader";
 import { makeState } from "../src/engine/state";
 
 // Base params matching content/engine/dynamics.json + credibility.json for test use.
@@ -225,5 +226,51 @@ describe("applyMacroDynamics — mission-tied credibility (SPEC-CRED-6)", () => 
     expect(result.vars.inflation).toBeLessThan(state.vars.inflation); // disinflating
     expect(result.vars.unemployment).toBeGreaterThan(state.vars.unemployment); // recession deepening
     expect(result.vars.credibility).toBeGreaterThan(state.vars.credibility); // yet credibility earned
+  });
+});
+
+describe("loadDynamicsParams — soft-ceiling guard (SPEC-CRED-7)", () => {
+  afterEach(() => {
+    _resetDynamicsParamsCache();
+    vi.restoreAllMocks();
+  });
+
+  it("throws when credibility_soft_ceiling >= CRED_MAX", () => {
+    // SPEC-CRED-7: runtime guard fires if soft_ceiling >= cred_max (100) so the drain
+    // cannot be silently disabled by a misconfigured content file.
+    vi.spyOn(contentLoader, "loadValidatedFile")
+      .mockReturnValueOnce({
+        inflation_persistence: 0.952, phillips_slope: 0.106,
+        unemployment_natural_rate: 0.0645, real_neutral_rate: 0.027,
+        okun_coefficient: 1.14, unemployment_adjustment_speed: 0.045,
+      } as any)
+      .mockReturnValueOnce({
+        target_inflation: 0.02, unemployment_target: 0.055,
+        expectations_adaptivity: 0.051, expectations_anchor_pull: 0.025,
+        credibility_mission_gain: 300, credibility_unemployment_weight: 0.5,
+        anchor_threshold: 60, credibility_soft_ceiling: 100, credibility_drain_rate: 0.20,
+      } as any);
+    expect(() => loadDynamicsParams()).toThrow("credibility_soft_ceiling");
+  });
+
+  it("does not poison the cache on a failed load", () => {
+    // SPEC-CRED-7: _cachedParams is assigned only after the guard passes, so a failed
+    // call leaves the cache empty and a subsequent call with valid data succeeds.
+    vi.spyOn(contentLoader, "loadValidatedFile")
+      .mockReturnValueOnce({
+        inflation_persistence: 0.952, phillips_slope: 0.106,
+        unemployment_natural_rate: 0.0645, real_neutral_rate: 0.027,
+        okun_coefficient: 1.14, unemployment_adjustment_speed: 0.045,
+      } as any)
+      .mockReturnValueOnce({
+        target_inflation: 0.02, unemployment_target: 0.055,
+        expectations_adaptivity: 0.051, expectations_anchor_pull: 0.025,
+        credibility_mission_gain: 300, credibility_unemployment_weight: 0.5,
+        anchor_threshold: 60, credibility_soft_ceiling: 100, credibility_drain_rate: 0.20,
+      } as any);
+    expect(() => loadDynamicsParams()).toThrow();
+    // Restore spy so the next call uses real files (valid soft_ceiling = 85).
+    vi.restoreAllMocks();
+    expect(loadDynamicsParams()).toBeDefined();
   });
 });

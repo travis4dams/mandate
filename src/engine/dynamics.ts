@@ -176,12 +176,13 @@ export function loadDynamicsParams(): MacroDynamicsParams {
   try {
     const dyn = loadValidatedFile<DynamicsFile>(DYNAMICS_SCHEMA, DYNAMICS_FILE);
     const cred = loadValidatedFile<CredibilityFile>(CREDIBILITY_SCHEMA, CREDIBILITY_FILE);
-    _cachedParams = { ...dyn, ...cred };
-    if (_cachedParams.credibility_soft_ceiling >= CRED_MAX) {
+    const candidate = { ...dyn, ...cred };
+    if (candidate.credibility_soft_ceiling >= CRED_MAX) {
       throw new Error(
-        `credibility_soft_ceiling (${_cachedParams.credibility_soft_ceiling}) must be strictly less than cred_max (${CRED_MAX}) for the SPEC-CRED-7 drain to fire at the cap`,
+        `credibility_soft_ceiling (${candidate.credibility_soft_ceiling}) must be strictly less than cred_max (${CRED_MAX}) for the SPEC-CRED-7 drain to fire at the cap`,
       );
     }
+    _cachedParams = candidate;
   } catch (e) {
     throw new Error(
       `Failed to load macro dynamics params: ${e instanceof Error ? e.message : String(e)}`,
