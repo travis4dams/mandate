@@ -9,5 +9,7 @@
   "cred_min": 0,
   "cred_max": 100,
   "surprise_penalty": 5,
-  "on_target_gain": 3
+  "on_target_gain": 3,
+  "credibility_soft_ceiling": 85,
+  "credibility_drain_rate": 0.15
 }

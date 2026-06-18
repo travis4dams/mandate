@@ -28,6 +28,8 @@ const BASE: MacroDynamicsParams = {
   credibility_mission_gain: 300,
   credibility_unemployment_weight: 0.5,
   anchor_threshold: 60,
+  credibility_soft_ceiling: 85,
+  credibility_drain_rate: 0.15,
 };
 
 const STEADY_VARS = {
@@ -74,7 +76,7 @@ describe("scaleParamsForTick — SPEC-SIM-6", () => {
     );
   });
 
-  it("flow params (phillips_slope, credibility_mission_gain) are divided by n", () => {
+  it("flow params (phillips_slope, credibility_mission_gain, credibility_drain_rate) are divided by n", () => {
     // SPEC-SIM-6
     const n = 4;
     const scaled = scaleParamsForTick(BASE, n);
@@ -82,6 +84,7 @@ describe("scaleParamsForTick — SPEC-SIM-6", () => {
     expect(scaled.credibility_mission_gain).toBeCloseTo(BASE.credibility_mission_gain / n, 12);
     expect(scaled.expectations_adaptivity).toBeCloseTo(BASE.expectations_adaptivity / n, 12);
     expect(scaled.expectations_anchor_pull).toBeCloseTo(BASE.expectations_anchor_pull / n, 12);
+    expect(scaled.credibility_drain_rate).toBeCloseTo(BASE.credibility_drain_rate / n, 12);
   });
 
   it("structural params (natural rate, targets, thresholds) are unchanged", () => {
@@ -94,6 +97,7 @@ describe("scaleParamsForTick — SPEC-SIM-6", () => {
     expect(scaled.unemployment_target).toBe(BASE.unemployment_target);
     expect(scaled.credibility_unemployment_weight).toBe(BASE.credibility_unemployment_weight);
     expect(scaled.anchor_threshold).toBe(BASE.anchor_threshold);
+    expect(scaled.credibility_soft_ceiling).toBe(BASE.credibility_soft_ceiling);
   });
 
   it("is a pure function (does not mutate input)", () => {

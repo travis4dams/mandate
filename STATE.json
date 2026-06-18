@@ -304,6 +304,14 @@
       ]
     },
     {
+      "id": "SPEC-CRED-7",
+      "section": "Credibility & expectations",
+      "tag": "testable",
+      "tests": [
+        "test/dynamics.test.ts"
+      ]
+    },
+    {
       "id": "SPEC-CRISIS-1",
       "section": "Banking stability & the financial cycle",
       "tag": "testable",

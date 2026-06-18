@@ -19,6 +19,8 @@ const BASE: MacroDynamicsParams = {
   credibility_mission_gain: 300,
   credibility_unemployment_weight: 0.5,
   anchor_threshold: 60,
+  credibility_soft_ceiling: 85,
+  credibility_drain_rate: 0.15,
 };
 
 const baseVars = {
@@ -146,6 +148,35 @@ describe("applyMacroDynamics — over-range credibility clamp (SPEC-DOCT-1)", ()
       .toBe(Math.sign(resultAt.vars.expectations_anchor! - stateAt.vars.expectations_anchor!));
     // Credibility is clamped back to CRED_MAX by dynamics on the first tick.
     expect(resultOver.vars.credibility).toBeLessThanOrEqual(100);
+  });
+});
+
+describe("applyMacroDynamics — soft-ceiling drain (SPEC-CRED-7)", () => {
+  // SPEC-CRED-7: with credibility at cred_max and the economy exactly on the dual-mandate target
+  // (zero mission-distance change), the drain must pull credibility below cred_max.
+  // drain = credibility_drain_rate * (cred_max - credibility_soft_ceiling) = 0.15 * 15 = 2.25 > 0.
+  it("credibility at cred_max drains below cap when economy is exactly on target", () => {
+    const state = makeState({
+      vars: {
+        policy_rate: BASE.target_inflation + BASE.real_neutral_rate,
+        inflation: BASE.target_inflation,
+        unemployment: BASE.unemployment_target,
+        expectations_anchor: BASE.target_inflation,
+        credibility: 100,
+        months_below_anchor: 0,
+      },
+    });
+    const result = applyMacroDynamics(state, BASE);
+    expect(result.vars.credibility).toBeLessThan(100);
+  });
+
+  it("drain is zero when credibility is at or below credibility_soft_ceiling", () => {
+    // SPEC-CRED-7: max(0, credibility - soft_ceiling) = 0 when at/below ceiling, so
+    // a run with drain_rate > 0 produces the same credibility as one with drain_rate = 0.
+    const state = makeState({ vars: { ...baseVars, credibility: 50 } });
+    const nodrainParams = { ...BASE, credibility_drain_rate: 0 };
+    expect(applyMacroDynamics(state, nodrainParams).vars.credibility)
+      .toBe(applyMacroDynamics(state, BASE).vars.credibility);
   });
 });
 

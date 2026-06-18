@@ -46,6 +46,10 @@ export interface MacroDynamicsParams {
   credibility_unemployment_weight: number;
   /** Credibility below this counts as a month "below anchor" for the persistent-memory stat. */
   anchor_threshold: number;
+  /** SPEC-CRED-7: credibility above this threshold incurs a monthly drain (prevents endgame pin). */
+  credibility_soft_ceiling: number;
+  /** SPEC-CRED-7: monthly drain per unit of credibility above credibility_soft_ceiling. */
+  credibility_drain_rate: number;
 }
 
 const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));
@@ -109,8 +113,12 @@ export function applyMacroDynamics(state: GameState, params: MacroDynamicsParams
     params.credibility_unemployment_weight * Math.abs(u - params.unemployment_target);
   const distBefore = distance(inflation, unemployment);
   const distAfter = distance(newInflation, newUnemployment);
+  // Soft-ceiling drain: prevents credibility from pinning at cred_max in a resolved-endgame
+  // scenario where mission progress tapers to zero (SPEC-CRED-7).
+  const softCeilingDrain =
+    params.credibility_drain_rate * Math.max(0, credibility - params.credibility_soft_ceiling);
   const newCredibility = clamp(
-    credibility + params.credibility_mission_gain * (distBefore - distAfter),
+    credibility + params.credibility_mission_gain * (distBefore - distAfter) - softCeilingDrain,
     CRED_MIN,
     CRED_MAX,
   );
@@ -155,6 +163,8 @@ type CredibilityFile = Pick<
   | "credibility_mission_gain"
   | "credibility_unemployment_weight"
   | "anchor_threshold"
+  | "credibility_soft_ceiling"
+  | "credibility_drain_rate"
 >;
 
 let _cachedParams: MacroDynamicsParams | undefined;

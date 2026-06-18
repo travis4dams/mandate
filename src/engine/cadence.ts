@@ -68,5 +68,6 @@ export function scaleParamsForTick(params: MacroDynamicsParams, n: number): Read
     expectations_adaptivity: params.expectations_adaptivity / n,
     expectations_anchor_pull: params.expectations_anchor_pull / n,
     credibility_mission_gain: params.credibility_mission_gain / n,
+    credibility_drain_rate: params.credibility_drain_rate / n,
   };
 }

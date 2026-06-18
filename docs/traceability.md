@@ -35,6 +35,7 @@ input in plain mode; only `--enrich` (workflow-only) fills empty cells from git 
 | SPEC-CRED-4 | testable | Credibility & expectations | `test/calibration-volcker.test.ts`, `test/credibility.test.ts`, `test/dynamics.test.ts`, `test/engine-params-loaders.test.ts`, `test/gen-state.test.ts`, `test/session.test.ts` | #7 |
 | SPEC-CRED-5 | testable | Credibility & expectations | `test/credibility.test.ts`, `test/session.test.ts` | #95 |
 | SPEC-CRED-6 | testable | Credibility & expectations | `test/calibration-volcker.test.ts`, `test/credibility.test.ts`, `test/dynamics.test.ts`, `test/engine-params-loaders.test.ts` |  |
+| SPEC-CRED-7 | testable | Credibility & expectations | `test/dynamics.test.ts` |  |
 | SPEC-CRISIS-1 | testable | Banking stability & the financial cycle | `test/crisis.test.ts`, `test/session-institution-depth.test.ts` |  |
 | SPEC-CULTURE-1 | testable | Director skills, division functions & institutional culture | `test/culture.test.ts`, `test/session-institution-depth.test.ts` |  |
 | SPEC-DIV-1 | testable | Director skills, division functions & institutional culture | `test/division-effects.test.ts`, `test/session-institution-depth.test.ts`, `web/src/InstitutionPanel.tsx` |  |
