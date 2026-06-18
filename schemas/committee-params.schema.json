@@ -33,7 +33,7 @@
       "type": "number",
       "minimum": 0,
       "maximum": 1,
-      "description": "Scales how much a member's conviction narrows their effective compromise band. effective_band = compromise_band * (1 - conviction * conviction_band_factor). SPEC-COMM-5."
+      "description": "Scales how much a member's conviction narrows their effective compromise band. Full formula: effective_band = Math.max(0, compromise_band * (1 - conviction * conviction_band_factor) * (1 + bandMod)), where bandMod is the sum of band_modifier from the member's traits. SPEC-COMM-5."
     },
     "dissent_override_threshold": {
       "type": "integer",

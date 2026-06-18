@@ -971,7 +971,8 @@ export class Session {
     const traits = loadTraitCatalog();
     const effectiveBands = this._resolveEffectiveBands(committee, capitalSpend, "proposeRate");
     // SPEC-DOCT-2: use previewVote directly so member previews are available for dot-plot spread.
-    // SPEC-COMM-10: buildFomcVote applies the median-pull override when dissents meet or exceed the threshold (>= dissent_override_threshold).
+    // SPEC-COMM-10: buildFomcVote applies the median-pull override when dissents >= dissent_override_threshold,
+    // so fomcVote.decided may differ from rate.
     const { previews } = previewVote(committee, rate, this._state, params, traits, effectiveBands);
     const fomcVote: FomcVote = buildFomcVote(previews, rate, params);
 

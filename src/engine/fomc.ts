@@ -14,18 +14,19 @@ import type { CommitteeParams } from "./committee-types.js";
 export type { CommitteeParams } from "./committee-types.js";
 
 export interface FomcVote {
-  /** The enacted rate. Equals proposedRate when dissents < dissent_override_threshold; when the threshold
-   *  is met, pulled toward the committee median: proposedRate + median_pull * (committeeMedian - proposedRate).
-   *  SPEC-COMM-10. */
-  decided: number;
+  /** The enacted rate. Equals proposedRate when dissents < dissent_override_threshold; when
+   *  dissents >= dissent_override_threshold, pulled toward the committee median:
+   *  proposedRate + median_pull * (committeeMedian - proposedRate). SPEC-COMM-10. */
+  readonly decided: number;
   /** Count of members whose `|preferred - proposedRate| > effectiveBand`, where
    *  `effectiveBand = Math.max(0, compromise_band * (1 - conviction * conviction_band_factor) * (1 + bandMod))`
    *  unless overridden by an `effectiveBands` entry from Chair capital spend (SPEC-COMM-7).
    *  This count drives the median-pull override — see SPEC-COMM-10 and `FomcVote.decided`. */
-  dissents: number;
-  /** Arithmetic median of all members' preferred rates — always present regardless of whether the
-   *  dissent override fires. Even-length committees average the two middle values. SPEC-COMM-10. */
-  committeeMedian: number;
+  readonly dissents: number;
+  /** Median of all members' preferred rates — always present regardless of whether the
+   *  dissent override fires. For even-length committees this is the arithmetic mean of the
+   *  two middle values. SPEC-COMM-10. */
+  readonly committeeMedian: number;
 }
 
 // Thrown when vote() is called against a state whose required vars are missing or non-finite.
@@ -97,7 +98,6 @@ export function buildFomcVote(
   if (previews.length === 0) {
     throw new Error("buildFomcVote: previews array is empty — committee must have at least one member.");
   }
-  const dissents = previews.filter((p) => p.wouldDissent).length;
   for (const p of previews) {
     if (!Number.isFinite(p.preferred)) {
       throw new Error(
@@ -105,15 +105,11 @@ export function buildFomcVote(
       );
     }
   }
+  const dissents = previews.filter((p) => p.wouldDissent).length;
   const committeeMedian = computeMedian(previews.map((p) => p.preferred));
   const decided = dissents >= params.dissent_override_threshold
     ? proposedRate + params.median_pull * (committeeMedian - proposedRate)
     : proposedRate;
-  if (!Number.isFinite(decided)) {
-    throw new Error(
-      `buildFomcVote: computed decided rate is not finite (${decided}); committeeMedian=${committeeMedian}, proposedRate=${proposedRate}, median_pull=${params.median_pull}.`,
-    );
-  }
   return { decided, dissents, committeeMedian };
 }
 

@@ -11,12 +11,14 @@ import {
   type CommitteeParams,
 } from "../src/engine/fomc";
 import { applyMeetingOutcome } from "../src/engine/credibility";
+import { updateConsensusCapital, loadChairCapitalParams, _resetChairCapitalParamsCache } from "../src/engine/chair-capital";
 import { makeState } from "../src/engine/state";
 import type { Committee, CommitteeMember } from "../src/content/committees";
 import type { TraitEntry } from "../src/content/traits";
 
 afterEach(() => {
   _resetCommitteeParamsCache();
+  _resetChairCapitalParamsCache();
 });
 
 // SPEC-COMM-2 (vote) + SPEC-COMM-3 (per-member Taylor coefficients with inertia).
@@ -771,6 +773,25 @@ describe("vote", () => {
     const result = buildFomcVote(previews, 0.05, { ...PARAMS, dissent_override_threshold: 1 });
     expect(result.dissents).toBe(1);
     expect(result.decided).toBeGreaterThan(0.05);
+  });
+
+  it("SPEC-COMM-9 × SPEC-COMM-10: override-level dissents penalise consensus_capital via updateConsensusCapital", () => {
+    // SPEC-COMM-9 + SPEC-COMM-10: fomcVote.dissents (integer count) triggers the SPEC-COMM-9 penalty
+    // when fed to updateConsensusCapital. If fomcVote.decided (~0.065) were passed instead,
+    // `decided > dissent_penalty_threshold` would be false and the penalty would not fire.
+    // SPEC-COMM-10
+    const previews = Array.from({ length: 7 }, (_, i) => ({
+      memberId: `m${i}`, nameKey: `m${i}`, preferred: 0.08, wouldDissent: true,
+    }));
+    const fomcVote = buildFomcVote(previews, 0.05, PARAMS);
+    const chairParams = loadChairCapitalParams();
+    const capitalBefore = 50;
+    // Passing fomcVote.dissents (7) — should trigger the penalty.
+    const capitalAfter = updateConsensusCapital(capitalBefore, fomcVote.dissents, chairParams);
+    expect(capitalAfter).toBeLessThan(capitalBefore);
+    // Passing fomcVote.decided (~0.065) — should NOT trigger the penalty (a rate << threshold).
+    const capitalIfDecidedPassed = updateConsensusCapital(capitalBefore, fomcVote.decided, chairParams);
+    expect(capitalIfDecidedPassed).toBe(capitalBefore); // no penalty: rate value < threshold
   });
 
   it("SPEC-COMM-10: decided === proposedRate when committeeMedian === proposedRate despite pull", () => {

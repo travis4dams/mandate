@@ -191,7 +191,9 @@
       "section": "Staffing economy & the living organization",
       "tag": "testable",
       "tests": [
-        "test/chair-capital.test.ts"
+        "test/chair-capital.test.ts",
+        "test/fomc.test.ts",
+        "test/session.test.ts"
       ]
     },
     {

@@ -495,6 +495,32 @@ describe("SPEC-GUIDE-2: surprise lever wired into Session.proposeRate()", () => 
     expect(s.current.vars.credibility).toBe(20); // 25 - 5 surprise penalty
   });
 
+  it("SPEC-GUIDE-2: neutral stance + decided within tolerance → no surprise (no-override path)", () => {
+    // SPEC-GUIDE-2: marketsSurprised uses fomcVote.decided; when decided = current, no surprise.
+    // Exercises the no-override leg directly (independent of Session/1979 committee dynamics).
+    const currentRate = 0.1075;
+    expect(marketsSurprised("neutral", currentRate, currentRate, 0.0025)).toBe(false);
+    // Also verify the SPEC-GUIDE-2 tolerance boundary: decided within band → no surprise.
+    expect(marketsSurprised("neutral", currentRate, currentRate + 0.002, 0.0025)).toBe(false);
+    expect(marketsSurprised("neutral", currentRate, currentRate + 0.003, 0.0025)).toBe(true);
+  });
+
+  it("SPEC-COMM-9 × SPEC-COMM-10: override dissents are an integer count (not the enacted rate)", () => {
+    // SPEC-COMM-9 + SPEC-COMM-10: proposeRate passes fomcVote.dissents (an integer count) to
+    // updateConsensusCapital. The override path produces a fomcVote.decided far smaller than
+    // fomcVote.dissents — if decided were accidentally passed, the penalty threshold check
+    // `dissents > dissent_penalty_threshold` would silently not fire. Composition coverage via
+    // pure functions lives in test/fomc.test.ts (SPEC-COMM-9 × SPEC-COMM-10 test).
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    s.setForwardGuidanceStance("hawkish");
+    const fomcVote = s.proposeRate(0.1075);
+    expect(fomcVote.decided).toBeGreaterThan(0.1075); // SPEC-COMM-10 override fired
+    expect(Number.isInteger(fomcVote.dissents)).toBe(true); // dissents is an integer count
+    // fomcVote.decided is a policy rate (~0.11–0.12); fomcVote.dissents is a member count (>= 7).
+    // These differ by 2+ orders of magnitude, making them non-substitutable in capital accounting.
+    expect(fomcVote.dissents).toBeGreaterThan(fomcVote.decided * 10);
+  });
+
   it("reset() restores credibility after a surprise penalty", () => {
     // SPEC-GUIDE-2 / SPEC-SESSION-0: the surprise penalty must not persist into _initialState.
     const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
