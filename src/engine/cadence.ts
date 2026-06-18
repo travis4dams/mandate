@@ -13,7 +13,9 @@
 // over 36 months for inflation, unemployment, and expectations_anchor; typical error < 0.01pp.
 // Credibility cadence invariance is tested only for the isolated-drain case (fixed-point state,
 // mission_gain = 0). The combined (drain + active mission_gain) case exceeds the 0.2pp tolerance
-// in high-credibility + off-target scenarios; both terms together are first-order approximations.
+// in high-credibility + off-target scenarios; the combined trajectory is a first-order approximation —
+// the drain's geometric scaling is exact in isolation, but the cross-term interaction with the
+// /n-scaled mission_gain introduces error.
 import { join } from "node:path";
 import { loadValidatedFile } from "../content/loader.js";
 import type { MacroDynamicsParams } from "./dynamics.js";
@@ -60,12 +62,12 @@ export function scaleParamsForTick(params: MacroDynamicsParams, n: number): Read
   if (!Number.isInteger(n) || n < 1) {
     throw new RangeError(`scaleParamsForTick: n must be a positive integer, got ${n}`);
   }
+  if (n === 1) return params;
   if (params.credibility_drain_rate <= 0 || params.credibility_drain_rate >= 1) {
     throw new RangeError(
       `scaleParamsForTick: credibility_drain_rate must be in (0,1), got ${params.credibility_drain_rate}`,
     );
   }
-  if (n === 1) return params;
   return {
     ...params,
     // AR(1) memory: composing n ticks reproduces the monthly persistence exactly.
