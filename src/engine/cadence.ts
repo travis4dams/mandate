@@ -62,12 +62,15 @@ export function scaleParamsForTick(params: MacroDynamicsParams, n: number): Read
   if (!Number.isInteger(n) || n < 1) {
     throw new RangeError(`scaleParamsForTick: n must be a positive integer, got ${n}`);
   }
-  if (n === 1) return params;
+  // Guard runs before the n=1 early-return so callers always receive a validated-or-thrown
+  // result. applyMacroDynamics uses drain_rate directly and has no guard for it; accepting
+  // an invalid rate for n=1 and returning it unchanged would let the bad value propagate.
   if (params.credibility_drain_rate <= 0 || params.credibility_drain_rate >= 1) {
     throw new RangeError(
       `scaleParamsForTick: credibility_drain_rate must be in (0,1), got ${params.credibility_drain_rate}`,
     );
   }
+  if (n === 1) return params;
   return {
     ...params,
     // AR(1) memory: composing n ticks reproduces the monthly persistence exactly.
