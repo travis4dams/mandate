@@ -640,8 +640,9 @@ describe("vote", () => {
     expect(result.committeeMedian).toBeGreaterThan(0.05);
     expect(result.decided).toBeGreaterThan(0.05);
     expect(result.decided).toBeLessThan(result.committeeMedian);
-    // With median_pull = 0.5: decided = proposedRate + 0.5 * (committeeMedian - proposedRate).
-    expect(result.decided).toBeCloseTo(0.05 + PARAMS.median_pull * (result.committeeMedian - 0.05), 10);
+    // preferred = 0.88*0.05 + 0.12*(0.05 + 1.7*0.06) = 0.06224; median = 0.06224 (all identical).
+    // decided = 0.05 + 0.5*(0.06224 - 0.05) = 0.05612.
+    expect(result.decided).toBeCloseTo(0.05612, 10);
   });
 
   // SPEC-COMM-10: buildFomcVote applies pull precisely with controlled synthetic previews.

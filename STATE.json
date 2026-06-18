@@ -115,6 +115,7 @@
       "section": "Committee",
       "tag": "testable",
       "tests": [
+        "test/engine-params-loaders.test.ts",
         "test/fomc.test.ts",
         "test/session.test.ts"
       ]

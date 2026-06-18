@@ -72,8 +72,8 @@ function memberPreferred(
 }
 
 function computeMedian(values: readonly number[]): number {
-  // Defensive guard for future call sites; unreachable through the current buildFomcVote caller
-  // which validates previews.length > 0 before calling this function.
+  // Defensive guard for future callers of computeMedian directly; currently unreachable
+  // because buildFomcVote (the only caller) throws on empty previews before reaching this.
   if (values.length === 0) throw new Error("computeMedian: empty values array");
   const sorted = [...values].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);

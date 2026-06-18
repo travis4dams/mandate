@@ -1023,15 +1023,13 @@ export class Session {
       vars: { ...this._state.vars, policy_rate: fomcVote.decided, credibility: newCredibility, consensus_capital: nextConsensusCap },
     };
     this._state = stateAfterMeeting;
-    // Shallow-spread creates a new top-level GameState reference for the rollback target.
-    // Nested objects (vars, flags, history) are still aliased. Mutation protection for nested
-    // objects relies on hooks being pure (SPEC-SIM-1): they must return a new state, not mutate.
-    const hookCheckpoint = { ...this._state };
-    // Capture the flags reference at meeting-commit time. For pure hooks (which return a new
-    // state object with a different flags object rather than mutating state.flags in-place),
-    // stateAfterMeeting.flags changes each iteration but flagsAtMeeting keeps pointing to the
-    // pre-loop flags. Hooks that adopt a doctrine mid-loop therefore cannot activate later
-    // hooks in the same meeting. Mutation of flags in-place is an engine-purity violation (SPEC-SIM-1).
+    // Spread vars and flags so a hook that mutates those records in-place (an engine-purity
+    // violation — SPEC-SIM-1 requires hooks to return new state) cannot corrupt the checkpoint.
+    // history is not spread: hooks don't write to history, and copying the array is unnecessary.
+    const hookCheckpoint: GameState = { ...this._state, vars: { ...this._state.vars }, flags: { ...this._state.flags } };
+    // Hold a reference to the pre-loop flags. Works because each HOOK_HANDLER replaces
+    // stateAfterMeeting entirely rather than mutating .flags in place (engine-purity contract).
+    // A handler that mutated flags in place would break this invariant.
     const flagsAtMeeting = stateAfterMeeting.flags;
     try {
       const catalog = loadDoctrineCatalog();
