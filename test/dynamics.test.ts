@@ -179,28 +179,28 @@ describe("applyMacroDynamics — soft-ceiling drain (SPEC-CRED-7)", () => {
   });
 
   it("drain is zero when credibility is below the soft ceiling", () => {
-    // SPEC-CRED-7: max(0, 50 − 85) = 0, so drain_rate has no effect.
-    const nodrainParams = { ...BASE, credibility_drain_rate: 0 };
+    // SPEC-CRED-7: max(0, 50 − 85) = 0, so drain_rate has no effect for any valid rate.
+    const lowDrainParams = { ...BASE, credibility_drain_rate: 0.05 };
     const belowState = makeState({ vars: { ...baseVars, credibility: 50 } });
-    expect(applyMacroDynamics(belowState, nodrainParams).vars.credibility)
+    expect(applyMacroDynamics(belowState, lowDrainParams).vars.credibility)
       .toBe(applyMacroDynamics(belowState, BASE).vars.credibility);
   });
 
   it("drain is zero when credibility is exactly at the soft ceiling", () => {
-    // SPEC-CRED-7: max(0, 85 − 85) = 0, so drain_rate has no effect at the boundary.
-    const nodrainParams = { ...BASE, credibility_drain_rate: 0 };
+    // SPEC-CRED-7: max(0, 85 − 85) = 0, so drain_rate has no effect at the boundary for any valid rate.
+    const lowDrainParams = { ...BASE, credibility_drain_rate: 0.05 };
     const atCeilingState = makeState({ vars: { ...baseVars, credibility: BASE.credibility_soft_ceiling } });
-    expect(applyMacroDynamics(atCeilingState, nodrainParams).vars.credibility)
+    expect(applyMacroDynamics(atCeilingState, lowDrainParams).vars.credibility)
       .toBe(applyMacroDynamics(atCeilingState, BASE).vars.credibility);
   });
 
-  it("drain is nonzero above the soft ceiling: drain_rate=0.20 produces less credibility than drain_rate=0", () => {
+  it("drain is nonzero above the soft ceiling: higher drain_rate produces less credibility", () => {
     // SPEC-CRED-7: positive test that the drain is actually active and subtracts credibility above the ceiling.
-    // A sign error (+drain instead of -drain) would make the with-drain result *higher*, not just different.
-    const nodrainParams = { ...BASE, credibility_drain_rate: 0 };
+    // A sign error (+drain instead of -drain) would make the higher-rate result larger, not smaller.
+    const lowDrainParams = { ...BASE, credibility_drain_rate: 0.05 };
     const aboveState = makeState({ vars: { ...fixedPointVars, credibility: 95 } });
     expect(applyMacroDynamics(aboveState, BASE).vars.credibility)
-      .toBeLessThan(applyMacroDynamics(aboveState, nodrainParams).vars.credibility);
+      .toBeLessThan(applyMacroDynamics(aboveState, lowDrainParams).vars.credibility);
   });
 });
 

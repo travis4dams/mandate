@@ -212,7 +212,7 @@ export function loadDynamicsParams(): MacroDynamicsParams {
       { cause: e },
     );
   }
-  return _cachedParams;
+  return _cachedParams!;
 }
 
 /** Test-only: clear the cache so the next loadDynamicsParams() re-reads and re-validates. */

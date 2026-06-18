@@ -86,7 +86,7 @@
       "type": "number",
       "exclusiveMinimum": 0,
       "exclusiveMaximum": 100,
-      "description": "SPEC-CRED-7: credibility above this threshold incurs a monthly drain (prevents endgame pin at cred_max). Must be strictly less than cred_max (default 100) for the drain to fire at the cap; loadDynamicsParams() enforces this at runtime."
+      "description": "SPEC-CRED-7: credibility above this threshold incurs a monthly drain (prevents endgame pin at cred_max). Must be strictly less than cred_max (default 100) for the drain to fire at the cap; loadDynamicsParams() enforces this at runtime. Note: the schema exclusiveMaximum:100 assumes the default cred_max; if cred_max is changed in content, the runtime check in loadDynamicsParams() is authoritative."
     },
     "credibility_drain_rate": {
       "type": "number",
