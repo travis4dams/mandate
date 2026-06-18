@@ -24,8 +24,10 @@ export interface FomcVote {
    *  unless overridden by an `effectiveBands` entry from Chair capital spend (SPEC-COMM-7).
    *  This count drives the median-pull override — see SPEC-COMM-10 and `FomcVote.decided`. */
   readonly dissents: number;
-  /** Median of all members' preferred rates (post-trait lean shift, post-effectiveBands) as
-   *  computed by `previewVote`. Always present regardless of whether the dissent override fires.
+  /** Median of all members' preferred rates (post-trait lean shift) as
+   *  computed by `previewVote`. Chair capital `effectiveBands` do not affect `preferred`
+   *  rates — only the `wouldDissent` threshold — so capital spend does not shift the median.
+   *  Always present regardless of whether the dissent override fires.
    *  For even-length committees this is the arithmetic mean of the two middle values. SPEC-COMM-10. */
   readonly committeeMedian: number;
 }
@@ -119,6 +121,9 @@ export function buildFomcVote(
   }
   const dissents = previews.filter((p) => p.wouldDissent).length;
   const committeeMedian = computeMedian(previews.map((p) => p.preferred));
+  // decided is always finite (proposedRate, median_pull, and committeeMedian are all finite).
+  // The range is intentionally unclamped: negative enacted rates are permitted for NIRP scenarios;
+  // clamping here would be inconsistent with proposedRate, which also has no floor.
   const decided = dissents >= params.dissent_override_threshold
     ? proposedRate + params.median_pull * (committeeMedian - proposedRate)
     : proposedRate;

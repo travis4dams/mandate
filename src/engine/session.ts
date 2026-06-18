@@ -1027,9 +1027,13 @@ export class Session {
     // violation — SPEC-SIM-1 requires hooks to return new state) cannot corrupt the checkpoint.
     // history is not spread: hooks don't write to history, and copying the array is unnecessary.
     const hookCheckpoint: GameState = { ...this._state, vars: { ...this._state.vars }, flags: { ...this._state.flags } };
-    // Hold a reference to the pre-loop flags. Works because each HOOK_HANDLER replaces
-    // stateAfterMeeting entirely rather than mutating .flags in place (engine-purity contract).
-    // A handler that mutated flags in place would break this invariant.
+    const hookCacheCheckpoint = this._currentCache;
+    const hookTrajectoryCheckpoint = this._trajectoryCache;
+    // Snapshot flags before the loop to pin which doctrines are active for this meeting.
+    // A hook that writes a new doctrine-adoption flag into its returned state cannot trigger
+    // a second doctrine's meeting_hook in the same proposeRate() call — the active set is
+    // fixed at meeting start, preventing cascading multi-doctrine interactions.
+    // (Reading stateAfterMeeting.flags live would allow hook A to activate hook B.)
     const flagsAtMeeting = stateAfterMeeting.flags;
     try {
       const catalog = loadDoctrineCatalog();
@@ -1053,8 +1057,15 @@ export class Session {
       this._state = hookCheckpoint;
       try {
         this._rebuildCaches();
-      } catch {
-        // _rebuildCaches failure must not replace the original hook error.
+      } catch (secondaryErr) {
+        // Both hook failure and cache rebuild failed; force-restore caches from the pre-hook
+        // checkpoint so _currentCache / _trajectoryCache stay consistent with _state.
+        this._currentCache = hookCacheCheckpoint;
+        this._trajectoryCache = hookTrajectoryCheckpoint;
+        throw new Error(
+          `Session.proposeRate: cache rebuild failed during hook rollback (force-restored from pre-meeting checkpoint); original hook error: ${String(err)}`,
+          { cause: secondaryErr },
+        );
       }
       throw err;
     }
