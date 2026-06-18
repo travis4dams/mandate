@@ -23,6 +23,8 @@ export interface InstitutionParams {
   candidate_slate_size: number;
   /** SPEC-INST-5: months between automatic talent-market refreshes of candidate slates. */
   candidate_refresh_months: number;
+  /** SPEC-INST-3: fraction of each staffed division's hire_cost charged as monthly upkeep. Defaults to 0. */
+  upkeep_per_hire_cost?: number;
 }
 
 /** SPEC-STAFF-1: the five skill dimensions every director candidate carries. */
@@ -168,18 +170,39 @@ export function _resetInstitutionParamsCache(): void {
 /**
  * Apply one month of institution dynamics:
  *   operating_budget *= (1 + budget_monthly_growth)
+ *   operating_budget -= Σ upkeep_per_hire_cost × hire_cost  (staffed divisions only; floor 0)
  *   political_capital += political_capital_recovery * (political_capital_baseline - political_capital)
  *
  * Both vars default to their `params.initial_*` value when absent from state
  * (matches SPEC-PROD-1 pattern so existing scenarios are unaffected).
  *
+ * SPEC-INST-3: the optional `catalog` parameter enables monthly staffing upkeep.
+ * When omitted (or `upkeep_per_hire_cost` is 0/absent), behaviour is identical to SPEC-INST-1.
+ *
  * Pure: returns a new GameState without mutating the input.
  */
-export function applyInstitutionDynamics(state: GameState, params: InstitutionParams): GameState {
+export function applyInstitutionDynamics(
+  state: GameState,
+  params: InstitutionParams,
+  catalog?: Division[],
+): GameState {
   const prevBudget = state.vars.operating_budget ?? params.initial_operating_budget;
   const prevCapital = state.vars.political_capital ?? params.initial_political_capital;
 
-  const nextBudget = prevBudget * (1 + params.budget_monthly_growth);
+  let nextBudget = prevBudget * (1 + params.budget_monthly_growth);
+
+  // SPEC-INST-3: deduct monthly upkeep for each staffed division.
+  const upkeepRate = params.upkeep_per_hire_cost ?? 0;
+  if (catalog && upkeepRate > 0) {
+    let totalUpkeep = 0;
+    for (const div of catalog) {
+      if (state.flags[staffedFlagKey(div.id)]) {
+        totalUpkeep += upkeepRate * div.hire_cost;
+      }
+    }
+    nextBudget = Math.max(0, nextBudget - totalUpkeep);
+  }
+
   const nextCapital =
     prevCapital +
     params.political_capital_recovery * (params.political_capital_baseline - prevCapital);

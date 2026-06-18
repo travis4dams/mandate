@@ -213,6 +213,106 @@ describe("applyInstitutionDynamics (SPEC-INST-1)", () => {
 });
 
 // ---------------------------------------------------------------------------
+// applyInstitutionDynamics with upkeep — SPEC-INST-3
+// ---------------------------------------------------------------------------
+
+describe("applyInstitutionDynamics — staffing upkeep (SPEC-INST-3)", () => {
+  const UPKEEP_RATE = 0.1;
+  const UPKEEP_PARAMS = { ...PARAMS, upkeep_per_hire_cost: UPKEEP_RATE };
+
+  const DIV_A: Division = {
+    id: "div_a",
+    name: "div_a.name",
+    desc: "div_a.desc",
+    hire_cost: 20,
+    investment: 0.1,
+    channel: "fog",
+    skill_weights: { forecasting: 1, markets: 0, supervision: 0, communication: 0, crisis: 0 },
+  };
+
+  const DIV_B: Division = {
+    id: "div_b",
+    name: "div_b.name",
+    desc: "div_b.desc",
+    hire_cost: 20,
+    investment: 0.1,
+    channel: "transmission",
+    skill_weights: { forecasting: 0, markets: 1, supervision: 0, communication: 0, crisis: 0 },
+  };
+
+  it("deducts upkeep proportional to hire_cost for a staffed division", () => {
+    // SPEC-INST-3
+    const state = makeState({
+      vars: { operating_budget: 1000 },
+      flags: { "staffed.div_a": true },
+    });
+    const result = applyInstitutionDynamics(state, UPKEEP_PARAMS, [DIV_A]);
+    const expectedGrowth = 1000 * (1 + UPKEEP_PARAMS.budget_monthly_growth);
+    const expectedUpkeep = UPKEEP_RATE * DIV_A.hire_cost;
+    expect(result.vars.operating_budget).toBeCloseTo(expectedGrowth - expectedUpkeep);
+  });
+
+  it("two staffed divisions with equal hire_cost incur exactly twice the upkeep of one", () => {
+    // SPEC-INST-3
+    const stateOne = makeState({
+      vars: { operating_budget: 1000 },
+      flags: { "staffed.div_a": true },
+    });
+    const stateTwo = makeState({
+      vars: { operating_budget: 1000 },
+      flags: { "staffed.div_a": true, "staffed.div_b": true },
+    });
+    const one = applyInstitutionDynamics(stateOne, UPKEEP_PARAMS, [DIV_A, DIV_B]);
+    const two = applyInstitutionDynamics(stateTwo, UPKEEP_PARAMS, [DIV_A, DIV_B]);
+    const oneUpkeep = 1000 * (1 + UPKEEP_PARAMS.budget_monthly_growth) - (one.vars.operating_budget as number);
+    const twoUpkeep = 1000 * (1 + UPKEEP_PARAMS.budget_monthly_growth) - (two.vars.operating_budget as number);
+    expect(twoUpkeep).toBeCloseTo(oneUpkeep * 2);
+  });
+
+  it("an unstaffed catalog produces no upkeep deduction", () => {
+    // SPEC-INST-3
+    const state = makeState({ vars: { operating_budget: 1000 } });
+    const withCatalog = applyInstitutionDynamics(state, UPKEEP_PARAMS, [DIV_A, DIV_B]);
+    const withoutCatalog = applyInstitutionDynamics(state, UPKEEP_PARAMS);
+    expect(withCatalog.vars.operating_budget).toBeCloseTo(
+      withoutCatalog.vars.operating_budget as number
+    );
+  });
+
+  it("budget floors at 0 and never goes negative even when upkeep exceeds growth", () => {
+    // SPEC-INST-3: extreme upkeep rate drains to 0, never negative
+    const extremeParams = { ...PARAMS, upkeep_per_hire_cost: 10 }; // 10x hire_cost per month
+    const state = makeState({
+      vars: { operating_budget: 1 },
+      flags: { "staffed.div_a": true },
+    });
+    const result = applyInstitutionDynamics(state, extremeParams, [DIV_A]);
+    expect(result.vars.operating_budget).toBe(0);
+  });
+
+  it("is a pure function — input state is not mutated when catalog is supplied", () => {
+    // SPEC-INST-3
+    const state = makeState({
+      vars: { operating_budget: 500 },
+      flags: { "staffed.div_a": true },
+    });
+    const varsBefore = { ...state.vars };
+    applyInstitutionDynamics(state, UPKEEP_PARAMS, [DIV_A]);
+    expect(state.vars).toEqual(varsBefore);
+  });
+
+  it("omitting catalog keeps existing SPEC-INST-1 behaviour regardless of upkeep_per_hire_cost", () => {
+    // SPEC-INST-3: backward-compat path
+    const state = makeState({
+      vars: { operating_budget: 1000 },
+      flags: { "staffed.div_a": true },
+    });
+    const result = applyInstitutionDynamics(state, UPKEEP_PARAMS);
+    expect(result.vars.operating_budget).toBeCloseTo(1000 * (1 + UPKEEP_PARAMS.budget_monthly_growth));
+  });
+});
+
+// ---------------------------------------------------------------------------
 // loadDivisionCatalog — validated dir loader (SPEC-INST-2)
 // ---------------------------------------------------------------------------
 

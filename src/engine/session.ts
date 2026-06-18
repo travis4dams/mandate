@@ -537,9 +537,9 @@ export class Session {
         // SPEC-PROD-1: drift productivity after macro dynamics each month.
         this._state = applyProductivityDrift(this._state, productivityParams);
 
-        // SPEC-INST-1: evolve institution resources (budget growth, political-capital
-        // mean-reversion) after macro dynamics each month.
-        this._state = applyInstitutionDynamics(this._state, institutionParams);
+        // SPEC-INST-1 + SPEC-INST-3: evolve institution resources (budget growth,
+        // staffing upkeep, political-capital mean-reversion) after macro dynamics each month.
+        this._state = applyInstitutionDynamics(this._state, institutionParams, divisionCatalog);
 
         // SPEC-CULTURE-1: drift institutional culture toward the staffed cohort (lags + persists).
         this._state = applyCultureDrift(this._state, divisionCatalog, cultureParams);

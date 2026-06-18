@@ -51,6 +51,12 @@
       "type": "integer",
       "minimum": 1,
       "description": "SPEC-INST-5: months between automatic talent-market refreshes of candidate slates."
+    },
+    "upkeep_per_hire_cost": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "SPEC-INST-3: fraction of each staffed division's hire_cost charged as monthly upkeep. 0 disables upkeep."
     }
   }
 }
