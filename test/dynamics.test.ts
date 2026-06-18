@@ -173,10 +173,14 @@ describe("applyMacroDynamics — soft-ceiling drain (SPEC-CRED-7)", () => {
   it("drain is zero when credibility is at or below credibility_soft_ceiling", () => {
     // SPEC-CRED-7: max(0, credibility - soft_ceiling) = 0 when at/below ceiling, so
     // a run with drain_rate > 0 produces the same credibility as one with drain_rate = 0.
-    const state = makeState({ vars: { ...baseVars, credibility: 50 } });
+    // Tests both well-below (50) and exactly-at-ceiling (85) to catch off-by-one bugs.
     const nodrainParams = { ...BASE, credibility_drain_rate: 0 };
-    expect(applyMacroDynamics(state, nodrainParams).vars.credibility)
-      .toBe(applyMacroDynamics(state, BASE).vars.credibility);
+    const belowState = makeState({ vars: { ...baseVars, credibility: 50 } });
+    expect(applyMacroDynamics(belowState, nodrainParams).vars.credibility)
+      .toBe(applyMacroDynamics(belowState, BASE).vars.credibility);
+    const atCeilingState = makeState({ vars: { ...baseVars, credibility: BASE.credibility_soft_ceiling } });
+    expect(applyMacroDynamics(atCeilingState, nodrainParams).vars.credibility)
+      .toBe(applyMacroDynamics(atCeilingState, BASE).vars.credibility);
   });
 });
 
