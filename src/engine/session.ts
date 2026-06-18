@@ -369,12 +369,16 @@ export class Session {
     // The RNG checkpoint is required for SPEC-SIM-1: if the loop throws mid-way, draws
     // already consumed by applySupplyShock must be rolled back so the next advance() call
     // sees the same RNG stream as if the failed attempt never happened.
-    // _currentCache / _trajectoryCache are also snapshotted so that if _rebuildCaches()
-    // fails during rollback, we can force-restore them from the known-good checkpoint.
+    // _currentCache / _trajectoryCache are snapshotted so a double _rebuildCaches failure
+    // can be force-restored from the known-good checkpoint rather than left in a torn state.
+    // _pendingEscalations / _activityLog are length-checkpointed because both are mutated
+    // inside the try block (event pushes + crisis log entry) and must be truncated on rollback.
     const checkpointState = this._state;
     const checkpointCache = this._currentCache;
     const checkpointTrajectoryCache = this._trajectoryCache;
     const checkpointTrajectoryLength = this._trajectoryInternal.length;
+    const checkpointEscalationsLength = this._pendingEscalations.length;
+    const checkpointActivityLength = this._activityLog.length;
     const checkpointRng = this._rng.snapshot();
 
     // SPEC-GUIDE-1 / SPEC-SIM-5 / SPEC-SIM-6: loaders + effectiveParams are loop-invariant.
@@ -605,11 +609,13 @@ export class Session {
         }
 
         // SPEC-LEGACY-1: accumulate months_on_target — counts calendar months the Chair
-        // is on mandate. Placed here, post-dynamics, so the month's final macro state
-        // (not the pre-dynamics snapshot) determines on-target status.
+        // is on mandate. Placed after all monthly state updates (shocks, crises, congressional
+        // pressure) so the fully-settled state for the month determines on-target status.
         // IMPORTANT: months_on_target is an accumulation-only counter managed exclusively
         // here. Content effects (applyEffects, resolveEscalation) must never target this
-        // var — doing so would corrupt the running total and break legacy score calculation.
+        // var — doing so would corrupt the running total. resolveEscalation() enforces this
+        // at runtime; the event option schema has no enum restriction on target names, so
+        // content reviews must also check event option effect targets manually.
         const motRaw = this._state.vars.months_on_target;
         if (motRaw !== undefined && (typeof motRaw !== "number" || !Number.isFinite(motRaw))) {
           throw new Error(
@@ -630,12 +636,20 @@ export class Session {
     } catch (err) {
       this._state = checkpointState;
       this._trajectoryInternal.length = checkpointTrajectoryLength;
+      this._pendingEscalations.length = checkpointEscalationsLength;
+      this._activityLog.length = checkpointActivityLength;
       this._rng.restore(checkpointRng);
       try {
         this._rebuildCaches();
-      } catch {
-        // Both forward and rollback _rebuildCaches failed; force-restore caches from checkpoint
-        // so _currentCache/_trajectoryCache are never left in a torn state.
+      } catch (secondaryErr) {
+        // Both the forward path and the rollback _rebuildCaches failed.
+        // Force-restore caches from checkpoint so they are never left in a torn state.
+        // Log the secondary error; the original err is re-thrown below.
+        console.error(
+          `Session.advance: _rebuildCaches failed during rollback (force-restoring from checkpoint). ` +
+          `Original error: ${String(err)}. Secondary error:`,
+          secondaryErr,
+        );
         this._currentCache = checkpointCache;
         this._trajectoryCache = checkpointTrajectoryCache;
       }
@@ -900,6 +914,14 @@ export class Session {
     }
     const before = this._snapshotFeedVars();
     const { state, queuedEvents } = applyEffects(option.effects, this._state);
+    // Guard: months_on_target is managed exclusively by advance(). A content effect that
+    // targets this var would silently corrupt the running total even if the value is finite.
+    if (state.vars.months_on_target !== this._state.vars.months_on_target) {
+      throw new Error(
+        `Session.resolveEscalation: event "${eventId}" illegally modified months_on_target. ` +
+        `This var is managed exclusively by Session.advance().`,
+      );
+    }
     this._state = state;
     // SPEC-FEED-1: record the decision and its felt effect on the economy.
     this._logActivity(event.title, before);

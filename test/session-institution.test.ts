@@ -1,5 +1,6 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { Session } from "../src/engine/session.js";
+import * as stanceModule from "../src/engine/stance.js";
 
 // Integration coverage for the Session surface that wires the institution,
 // legacy, and name-generator engine modules into the live game façade.
@@ -9,6 +10,7 @@ const SCEN = "scen.1979_stagflation";
 const COMM = "comm.fomc_1979";
 
 describe("Session institution + legacy + npc-name wiring", () => {
+  afterEach(() => { vi.restoreAllMocks(); });
   // SPEC-NAME-1: npcName is deterministic per (seed, npcId) and varies by id/seed.
   it("npcName is deterministic and seed/id dependent", () => {
     const a = Session.fromScenario(SCEN, 42, COMM);
@@ -98,8 +100,11 @@ describe("Session institution + legacy + npc-name wiring", () => {
       },
     });
     expect(s.current.vars.months_on_target ?? 0).toBe(0);
+    const scoreBefore = s.legacyScore();
     s.advance(3);
     expect(s.current.vars.months_on_target ?? 0).toBe(3);
+    // Wire test: legacyScore() must reflect the accumulated mandate bonus.
+    expect(s.legacyScore()).toBeGreaterThan(scoreBefore);
   });
 
   // SPEC-LEGACY-1: months_on_target stays 0 when the Chair is persistently off-target.
@@ -108,6 +113,32 @@ describe("Session institution + legacy + npc-name wiring", () => {
     // 1979 scenario: inflation = 0.114, way outside the ±0.005 tolerance band.
     const s = Session.fromScenario(SCEN, 42, COMM);
     s.advance(6);
+    expect(s.current.vars.months_on_target ?? 0).toBe(0);
+  });
+
+  // SPEC-LEGACY-1: months_on_target accumulated during a failed advance() must be rolled back.
+  it("advance() rolls back months_on_target on mid-loop failure", () => {
+    // SPEC-LEGACY-1
+    // Start on-target so month 1 increments months_on_target.
+    const s = Session.fromScenario("scen.recovery_test", 42, "comm.fomc_1979", {
+      varDeltas: {
+        inflation: 0.022 - 0.04,
+        expectations_anchor: 0.022 - 0.05,
+      },
+    });
+
+    // Spy: first call passes through normally (month 1 completes, months_on_target → 1),
+    // second call returns the same reference (triggers the advance() same-ref guard → throw).
+    const realFn = stanceModule.applyIntermeetingDrift;
+    let callCount = 0;
+    vi.spyOn(stanceModule, "applyIntermeetingDrift").mockImplementation((...args) => {
+      callCount++;
+      if (callCount === 2) return args[0] as ReturnType<typeof realFn>;
+      return realFn(...args);
+    });
+
+    expect(() => s.advance(2)).toThrow(/applyIntermeetingDrift skipped/);
+    // State must be rolled back to the pre-advance checkpoint: months_on_target = 0.
     expect(s.current.vars.months_on_target ?? 0).toBe(0);
   });
 });
