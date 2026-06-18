@@ -84,14 +84,17 @@ describe("Session institution + legacy + npc-name wiring", () => {
   });
 
   // SPEC-LEGACY-1: Session.advance() accumulates months_on_target when the Chair is on mandate.
-  // Uses recovery_test with inflation/anchor nudged to on-target so onTarget() returns true each month.
+  // Uses recovery_test with inflation nudged to on-target. expectations_anchor is also nudged
+  // to match, which prevents macro dynamics from pulling inflation back off-target each month
+  // (it doesn't gate onTarget() directly — only inflation and unemployment do).
   it("advance() increments months_on_target for each on-target month", () => {
     // SPEC-LEGACY-1
-    // Bring inflation (0.04) and expectations_anchor (0.05) to on-target values via additive deltas.
+    // Bring inflation (0.04) to on-target via additive delta. Nudge expectations_anchor to match
+    // so macro dynamics don't pull inflation back off-target during the 3-month advance.
     const s = Session.fromScenario("scen.recovery_test", 42, "comm.fomc_1979", {
       varDeltas: {
         inflation: 0.022 - 0.04,           // → 0.022, within ±0.005 of 0.02 target
-        expectations_anchor: 0.022 - 0.05, // → 0.022, no persistent upward pull
+        expectations_anchor: 0.022 - 0.05, // → 0.022, prevents anchor-pull drifting inflation off-target
       },
     });
     expect(s.current.vars.months_on_target ?? 0).toBe(0);

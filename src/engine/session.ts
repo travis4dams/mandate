@@ -369,7 +369,11 @@ export class Session {
     // The RNG checkpoint is required for SPEC-SIM-1: if the loop throws mid-way, draws
     // already consumed by applySupplyShock must be rolled back so the next advance() call
     // sees the same RNG stream as if the failed attempt never happened.
+    // _currentCache / _trajectoryCache are also snapshotted so that if _rebuildCaches()
+    // fails during rollback, we can force-restore them from the known-good checkpoint.
     const checkpointState = this._state;
+    const checkpointCache = this._currentCache;
+    const checkpointTrajectoryCache = this._trajectoryCache;
     const checkpointTrajectoryLength = this._trajectoryInternal.length;
     const checkpointRng = this._rng.snapshot();
 
@@ -600,9 +604,20 @@ export class Session {
           }
         }
 
-        // SPEC-LEGACY-1: accumulate months_on_target — counts calendar months on mandate.
+        // SPEC-LEGACY-1: accumulate months_on_target — counts calendar months the Chair
+        // is on mandate. Placed here, post-dynamics, so the month's final macro state
+        // (not the pre-dynamics snapshot) determines on-target status.
+        // IMPORTANT: months_on_target is an accumulation-only counter managed exclusively
+        // here. Content effects (applyEffects, resolveEscalation) must never target this
+        // var — doing so would corrupt the running total and break legacy score calculation.
+        const motRaw = this._state.vars.months_on_target;
+        if (motRaw !== undefined && (typeof motRaw !== "number" || !Number.isFinite(motRaw))) {
+          throw new Error(
+            `Session.advance: months_on_target is corrupted at ${this._state.date} (got ${String(motRaw)})`,
+          );
+        }
         if (onTarget(this._state, mandateParams)) {
-          const mot = this._state.vars.months_on_target ?? 0;
+          const mot = motRaw ?? 0;
           this._state = {
             ...this._state,
             vars: { ...this._state.vars, months_on_target: mot + 1 },
@@ -619,7 +634,10 @@ export class Session {
       try {
         this._rebuildCaches();
       } catch {
-        // _rebuildCaches failure must not replace the original error.
+        // Both forward and rollback _rebuildCaches failed; force-restore caches from checkpoint
+        // so _currentCache/_trajectoryCache are never left in a torn state.
+        this._currentCache = checkpointCache;
+        this._trajectoryCache = checkpointTrajectoryCache;
       }
       throw err;
     }
