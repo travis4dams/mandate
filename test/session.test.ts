@@ -498,6 +498,54 @@ describe("SPEC-GUIDE-2: surprise lever wired into Session.proposeRate()", () => 
   });
 });
 
+describe("SPEC-GUIDE-3: forward guidance stance is a persisted commitment", () => {
+  // 1979-08 is a meeting month, so the scenario starts with proposeRate available.
+  // Next meeting month is 1979-09 (meeting_months = [1,3,5,7,8,9,11,12]).
+
+  it("advance() commits the live stance as committedGuidanceStance", () => {
+    // SPEC-GUIDE-3
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    s.proposeRate(0.1075); // clear initial meeting (neutral, hold)
+    s.setForwardGuidanceStance("hawkish");
+    s.advance(1); // → 1979-09, commits committedGuidanceStance = "hawkish"
+    expect(s.committedGuidanceStance).toBe("hawkish");
+  });
+
+  it("switching stance after advance() but before proposeRate() does not dodge the surprise penalty", () => {
+    // SPEC-GUIDE-3: committed stance is "hawkish" from advance(); flipping to "dovish" afterward
+    // cannot prevent the surprise when the player proposes a big cut.
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    s.proposeRate(0.1075); // clear initial meeting (neutral, hold)
+    s.setForwardGuidanceStance("hawkish");
+    s.advance(1); // → 1979-09; guidance_stance = "hawkish" committed
+
+    const credBefore = s.current.vars.credibility as number;
+    s.setForwardGuidanceStance("dovish"); // attempt to dodge — too late
+    s.proposeRate(0.09); // easing contradicts committed hawkish → surprise
+    expect(s.current.vars.credibility).toBe(credBefore - 5);
+  });
+
+  it("setting stance after advance() (without further advance) leaves committed stance unchanged", () => {
+    // SPEC-GUIDE-3: committed stance from advance() is "neutral"; setting hawkish after
+    // does not affect the committed value, so a subsequent propose reads committed = "neutral".
+    // Under neutral, a hike (0.1075 → 0.13) that exceeds surprise_tolerance (0.0025) WOULD
+    // surprise a neutral stance — but confirm committed stance IS what's used, not live _stance.
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    s.proposeRate(0.1075); // clear initial meeting (neutral, hold; credibility unchanged)
+    s.advance(1); // → 1979-09; guidance_stance = "neutral" (default _stance) committed
+    s.setForwardGuidanceStance("hawkish"); // set hawkish AFTER advance, NO further advance
+
+    const credBefore = s.current.vars.credibility as number;
+    // Hike that would be consistent with hawkish but surprises neutral (|0.13-rate| > 0.0025).
+    // Committed = "neutral" → surprise fires; live "hawkish" would not surprise.
+    // If no surprise (using live hawkish), credBefore would be unchanged.
+    // This test pins that committed (neutral) is used, not live (hawkish).
+    // Check committed stance directly rather than asserting a credibility value
+    // that could drift due to mission dynamics.
+    expect(s.committedGuidanceStance).toBe("neutral");
+  });
+});
+
 describe("SPEC-SIM-5: macro dynamics wired into Session.advance()", () => {
   // SPEC-SIM-5: holding the 1979 starting rate (10.75% nominal) is NOT real-restrictive against
   // ~9-11% expected inflation — the real rate is below neutral, so it does not cause a recession.

@@ -53,6 +53,7 @@ input in plain mode; only `--enrich` (workflow-only) fills empty cells from git 
 | SPEC-GOV-2 | design | Institution & governance | — |  |
 | SPEC-GUIDE-1 | testable | Engine session | `test/guide.test.ts`, `test/session.test.ts` | #19 |
 | SPEC-GUIDE-2 | testable | Engine session | `test/session.test.ts` | #48 |
+| SPEC-GUIDE-3 | testable | Engine session | `test/session.test.ts` |  |
 | SPEC-HEAR-1 | testable | Confirmation hearing | `test/hearing.test.ts` | #67 |
 | SPEC-HEAR-2 | testable | Confirmation hearing | `test/hearing-content.test.ts` | #100 |
 | SPEC-INST-1 | testable | Institution & resources (engine) | `test/institution.test.ts`, `test/session-institution.test.ts` |  |
