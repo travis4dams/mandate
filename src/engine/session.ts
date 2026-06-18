@@ -363,19 +363,7 @@ export class Session {
       throw new Error(`Session.advance: months must be a positive integer, got ${months}.`);
     }
 
-    // Checkpoint for mid-loop rollback: capture the current state reference and RNG position.
-    // Safe because all tick/spiral/dynamics functions are pure (CLAUDE.md) — they
-    // return new GameState objects and never mutate in place, so this ref stays valid.
-    // The RNG checkpoint is required for SPEC-SIM-1: if the loop throws mid-way, draws
-    // already consumed by applySupplyShock must be rolled back so the next advance() call
-    // sees the same RNG stream as if the failed attempt never happened.
-    // _currentCache / _trajectoryCache are snapshotted so a double _rebuildCaches failure
-    // can be force-restored from the known-good checkpoint rather than left in a torn state.
-    // _pendingEscalations / _activityLog are length-checkpointed because both are mutated
-    // inside the try block (event pushes + crisis log entry) and must be truncated on rollback.
-    // _firedOnce is not written inside the advance() for-loop body; fires_once additions
-    // happen only in resolveEscalation(). The defensive copy ensures any future loop change
-    // that mutates _firedOnce cannot silently bypass rollback.
+    // Checkpoint _firedOnce defensively; checkpoint caches so a double _rebuildCaches failure can force-restore from a known-good state.
     const checkpointState = this._state;
     const checkpointCache = this._currentCache;
     const checkpointTrajectoryCache = this._trajectoryCache;
@@ -612,14 +600,7 @@ export class Session {
           }
         }
 
-        // SPEC-LEGACY-1: accumulate months_on_target — counts calendar months the Chair
-        // is on mandate. Placed after all monthly state updates (shocks, crises, congressional
-        // pressure) so the fully-settled state for the month determines on-target status.
-        // IMPORTANT: months_on_target is an accumulation-only counter managed exclusively
-        // here. Content effects must never target this var — doing so corrupts the running
-        // total. resolveEscalation() enforces this by comparing the counter before/after
-        // calling applyEffects; other applyEffects call sites have no such guard and must
-        // be reviewed manually if they are ever added.
+        // SPEC-LEGACY-1: accumulate months_on_target after fully-settled state; advance() is the sole writer — content effects must never target this var.
         const motRaw = this._state.vars.months_on_target;
         if (motRaw !== undefined && (!Number.isInteger(motRaw) || motRaw < 0)) {
           throw new Error(
@@ -648,9 +629,7 @@ export class Session {
       try {
         this._rebuildCaches();
       } catch (secondaryErr) {
-        // The advance() loop threw, and the rollback's _rebuildCaches call also failed.
-        // Force-restore caches from checkpoint so they are never left in a torn state.
-        // Log the secondary error; the original err is re-thrown below.
+        // advance() loop threw and _rebuildCaches also failed — force-restore caches from checkpoint to avoid torn state.
         console.error(
           `Session.advance: _rebuildCaches failed during rollback (force-restoring from checkpoint).`,
           { originalErr: err, secondaryErr },
@@ -919,9 +898,7 @@ export class Session {
     }
     const before = this._snapshotFeedVars();
     const { state, queuedEvents } = applyEffects(option.effects, this._state);
-    // Guard: months_on_target is managed exclusively by advance(). Any content effect that
-    // targets this var corrupts the running total. Value equality covers all cases: key
-    // creation (undefined !== 0), deletion (N !== undefined), and modification (M !== N).
+    // SPEC-LEGACY-1: months_on_target is managed exclusively by advance(); any content effect touching it corrupts the running total.
     if (state.vars.months_on_target !== this._state.vars.months_on_target) {
       throw new Error(
         `Session.resolveEscalation: event "${eventId}" illegally modified months_on_target. ` +
