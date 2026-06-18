@@ -399,6 +399,8 @@ export class Session {
     const divisionCatalog = loadDivisionCatalog();
     // SPEC-EVENT-1: the event catalog is loop-invariant.
     const eventCatalog = loadEventCatalog();
+    // SPEC-LEGACY-1: mandate params are loop-invariant (cached singleton).
+    const mandateParamsForLegacy = loadMandateParams();
     const effectiveParams = {
       ...dynamicsParams,
       expectations_anchor_pull:
@@ -598,6 +600,15 @@ export class Session {
           }
         }
 
+        // SPEC-LEGACY-1: accumulate months_on_target — counts calendar months on mandate.
+        if (onTarget(this._state, mandateParamsForLegacy)) {
+          const mot = (this._state.vars.months_on_target ?? 0) as number;
+          this._state = {
+            ...this._state,
+            vars: { ...this._state.vars, months_on_target: mot + 1 },
+          };
+        }
+
         const snapshot = Session._snapshotOf(this._state);
         this._trajectoryInternal.push(snapshot);
       }
@@ -776,7 +787,7 @@ export class Session {
 
   /** The Chair's current legacy score. */
   legacyScore(): number {
-    return computeLegacyScore(this._state, this._trajectoryInternal.length - 1, loadLegacyParams());
+    return computeLegacyScore(this._state, loadLegacyParams());
   }
 
   // --- PR A: banking stability, Fed finances, independence, division effects, culture ---

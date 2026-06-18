@@ -93,7 +93,7 @@ export function loadLegacyParams(): LegacyParams;
 export function termProgress(monthsElapsed: number, params: LegacyParams): {
   termLength: number; termsServed: number; monthsIntoTerm: number; monthsToReappointment: number; reappointmentDue: boolean; };
 export function evaluateReappointment(state: GameState, params: LegacyParams): { reappointed: boolean; credibility: number; threshold: number; };
-export function computeLegacyScore(state: GameState, monthsElapsed: number, params: LegacyParams): number;
+export function computeLegacyScore(state: GameState, params: LegacyParams): number;
 ```
 - term_length_months = 48. reappointment_credibility_min ~ 50.
 

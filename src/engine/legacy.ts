@@ -2,7 +2,6 @@
 // No Math.random(), no Date.now(). All content values loaded from content/engine/legacy.json.
 import { join } from "node:path";
 import { loadValidatedFile } from "../content/loader.js";
-import { onTarget, loadMandateParams } from "./mandate.js";
 import { getCredibility } from "./credibility.js";
 import type { GameState } from "./state.js";
 
@@ -83,22 +82,20 @@ export function evaluateReappointment(
 /**
  * SPEC-LEGACY-1: compute the Chair's legacy score.
  * Formula: legacy_credibility_weight * credibility
- *          + legacy_mandate_bonus * (mandateOnTarget ? 1 : 0) * monthsElapsed
+ *          + legacy_mandate_bonus * months_on_target
  *          - legacy_anchor_penalty * months_below_anchor
- * Mandate on-target check reuses SPEC-MANDATE-1 (onTarget + loadMandateParams).
+ * months_on_target is accumulated by Session.advance() — not a final-snapshot check.
  */
 export function computeLegacyScore(
   state: GameState,
-  monthsElapsed: number,
   params: LegacyParams,
 ): number {
   const credibility = getCredibility(state);
-  const mandateParams = loadMandateParams();
-  const mandateOnTarget = onTarget(state, mandateParams);
-  const monthsBelowAnchor = state.vars.months_below_anchor ?? 0;
+  const monthsOnTarget = (state.vars.months_on_target ?? 0) as number;
+  const monthsBelowAnchor = (state.vars.months_below_anchor ?? 0) as number;
   return (
     params.legacy_credibility_weight * credibility +
-    params.legacy_mandate_bonus * (mandateOnTarget ? 1 : 0) * monthsElapsed -
+    params.legacy_mandate_bonus * monthsOnTarget -
     params.legacy_anchor_penalty * monthsBelowAnchor
   );
 }

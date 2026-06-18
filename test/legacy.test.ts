@@ -243,52 +243,49 @@ describe("evaluateReappointment", () => {
 // ---------------------------------------------------------------------------
 
 describe("computeLegacyScore", () => {
-  // SPEC-LEGACY-1: score formula with mandate on target and no anchor penalty.
-  // score = credibility_weight * credibility + mandate_bonus * 1 * months - anchor_penalty * months_below_anchor
-  // = 1*80 + 2*1*12 - 0.5*0 = 80 + 24 = 104
-  it("computes correct score when mandate is on target and no months below anchor", () => {
+  // SPEC-LEGACY-1: score formula using accumulated months_on_target and no anchor penalty.
+  // score = credibility_weight * credibility + mandate_bonus * months_on_target - anchor_penalty * months_below_anchor
+  // = 1*80 + 2*12 - 0.5*0 = 104
+  it("computes correct score from months_on_target with no anchor penalty", () => {
     // SPEC-LEGACY-1
     const state = makeState({
       vars: {
         credibility: 80,
-        inflation: 0.02,         // on target (within 0.005 band)
-        unemployment: 0.055,     // on target (within 0.01 band)
+        months_on_target: 12,
         months_below_anchor: 0,
       },
     });
-    const score = computeLegacyScore(state, 12, PARAMS);
+    const score = computeLegacyScore(state, PARAMS);
     expect(score).toBeCloseTo(104);
   });
 
-  // SPEC-LEGACY-1: score with mandate off target — bonus term drops to 0.
-  // score = 1*80 + 2*0*12 - 0.5*0 = 80
-  it("computes correct score when mandate is off target (no bonus)", () => {
+  // SPEC-LEGACY-1: zero months_on_target → no mandate bonus.
+  // score = 1*80 + 2*0 - 0.5*0 = 80
+  it("computes correct score when months_on_target is zero (no bonus)", () => {
     // SPEC-LEGACY-1
     const state = makeState({
       vars: {
         credibility: 80,
-        inflation: 0.10,         // off target
-        unemployment: 0.055,
+        months_on_target: 0,
         months_below_anchor: 0,
       },
     });
-    const score = computeLegacyScore(state, 12, PARAMS);
+    const score = computeLegacyScore(state, PARAMS);
     expect(score).toBeCloseTo(80);
   });
 
   // SPEC-LEGACY-1: score with anchor penalty applied.
-  // score = 1*60 + 2*1*10 - 0.5*4 = 60 + 20 - 2 = 78
+  // score = 1*60 + 2*10 - 0.5*4 = 60 + 20 - 2 = 78
   it("applies anchor penalty correctly", () => {
     // SPEC-LEGACY-1
     const state = makeState({
       vars: {
         credibility: 60,
-        inflation: 0.02,
-        unemployment: 0.055,
+        months_on_target: 10,
         months_below_anchor: 4,
       },
     });
-    const score = computeLegacyScore(state, 10, PARAMS);
+    const score = computeLegacyScore(state, PARAMS);
     expect(score).toBeCloseTo(78);
   });
 
@@ -296,28 +293,47 @@ describe("computeLegacyScore", () => {
   it("treats months_below_anchor as 0 when absent from state.vars", () => {
     // SPEC-LEGACY-1
     const state = makeState({
-      vars: {
-        credibility: 50,
-        inflation: 0.02,
-        unemployment: 0.055,
-      },
+      vars: { credibility: 50, months_on_target: 5 },
     });
-    const scoreWith = computeLegacyScore(state, 5, PARAMS);
+    const scoreWith = computeLegacyScore(state, PARAMS);
     const stateWithZero = makeState({
-      vars: { credibility: 50, inflation: 0.02, unemployment: 0.055, months_below_anchor: 0 },
+      vars: { credibility: 50, months_on_target: 5, months_below_anchor: 0 },
     });
-    const scoreZero = computeLegacyScore(stateWithZero, 5, PARAMS);
+    const scoreZero = computeLegacyScore(stateWithZero, PARAMS);
     expect(scoreWith).toBeCloseTo(scoreZero);
+  });
+
+  // SPEC-LEGACY-1: months_on_target defaults to 0 when absent from state.vars.
+  it("treats months_on_target as 0 when absent from state.vars", () => {
+    // SPEC-LEGACY-1
+    const state = makeState({ vars: { credibility: 50, months_below_anchor: 0 } });
+    const score = computeLegacyScore(state, PARAMS);
+    expect(score).toBeCloseTo(50); // credibility only, no bonus
+  });
+
+  // SPEC-LEGACY-1: two Chairs ending on-target at the same month but with different
+  // accumulated durations must score differently — this catches the old snapshot-bug.
+  it("a longer on-target run scores higher than a shorter one regardless of final state", () => {
+    // SPEC-LEGACY-1
+    const stateA = makeState({
+      vars: { credibility: 80, months_on_target: 90, months_below_anchor: 0 },
+    });
+    const stateB = makeState({
+      vars: { credibility: 80, months_on_target: 1, months_below_anchor: 0 },
+    });
+    const scoreA = computeLegacyScore(stateA, PARAMS);
+    const scoreB = computeLegacyScore(stateB, PARAMS);
+    expect(scoreA).toBeGreaterThan(scoreB);
   });
 
   // SPEC-LEGACY-1: pure — input state not mutated.
   it("does not mutate the input state", () => {
     // SPEC-LEGACY-1
     const state = makeState({
-      vars: { credibility: 70, inflation: 0.02, unemployment: 0.055, months_below_anchor: 0 },
+      vars: { credibility: 70, months_on_target: 12, months_below_anchor: 0 },
     });
     const varsBefore = { ...state.vars };
-    computeLegacyScore(state, 12, PARAMS);
+    computeLegacyScore(state, PARAMS);
     expect(state.vars).toEqual(varsBefore);
   });
 });
