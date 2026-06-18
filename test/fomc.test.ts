@@ -722,4 +722,41 @@ describe("vote", () => {
     const result = buildFomcVote(previews, 0.05, { ...PARAMS, median_pull: 1 });
     expect(result.decided).toBeCloseTo(result.committeeMedian, 10);
   });
+
+  // SPEC-COMM-10: buildFomcVote guard tests.
+  it("SPEC-COMM-10: buildFomcVote throws on median_pull = 0 (exclusive lower bound)", () => {
+    // SPEC-COMM-10
+    const previews = Array.from({ length: 7 }, (_, i) => ({
+      memberId: `m${i}`, nameKey: `m${i}`, preferred: 0.08, wouldDissent: true,
+    }));
+    expect(() => buildFomcVote(previews, 0.05, { ...PARAMS, median_pull: 0 })).toThrow(/invalid median_pull/);
+  });
+
+  it("SPEC-COMM-10: buildFomcVote throws on median_pull > 1", () => {
+    // SPEC-COMM-10
+    const previews = Array.from({ length: 7 }, (_, i) => ({
+      memberId: `m${i}`, nameKey: `m${i}`, preferred: 0.08, wouldDissent: true,
+    }));
+    expect(() => buildFomcVote(previews, 0.05, { ...PARAMS, median_pull: 1.1 })).toThrow(/invalid median_pull/);
+  });
+
+  it("SPEC-COMM-10: buildFomcVote throws on dissent_override_threshold = 0", () => {
+    // SPEC-COMM-10
+    const previews = Array.from({ length: 7 }, (_, i) => ({
+      memberId: `m${i}`, nameKey: `m${i}`, preferred: 0.08, wouldDissent: true,
+    }));
+    expect(() => buildFomcVote(previews, 0.05, { ...PARAMS, dissent_override_threshold: 0 })).toThrow(/invalid dissent_override_threshold/);
+  });
+
+  it("SPEC-COMM-10: decided === proposedRate when committeeMedian === proposedRate despite pull", () => {
+    // SPEC-COMM-10: median-pull formula is a no-op when median equals proposed.
+    // decided = proposed + pull * (proposed - proposed) = proposed.
+    const previews = Array.from({ length: 7 }, (_, i) => ({
+      memberId: `m${i}`, nameKey: `m${i}`, preferred: 0.05, wouldDissent: true,
+    }));
+    const result = buildFomcVote(previews, 0.05, PARAMS);
+    expect(result.dissents).toBe(7);
+    expect(result.committeeMedian).toBeCloseTo(0.05, 10);
+    expect(result.decided).toBeCloseTo(0.05, 10);
+  });
 });

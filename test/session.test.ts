@@ -491,6 +491,7 @@ describe("SPEC-GUIDE-2: surprise lever wired into Session.proposeRate()", () => 
     const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
     const fomcVote = s.proposeRate(0.1075);
     expect(fomcVote.decided).toBeGreaterThan(0.1075); // committee median-pull fired
+    expect(s.current.vars.policy_rate).toBe(fomcVote.decided); // SPEC-COMM-10: enacted rate written to state
     expect(s.current.vars.credibility).toBe(20); // 25 - 5 surprise penalty
   });
 

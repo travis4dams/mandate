@@ -91,6 +91,12 @@ export function buildFomcVote(
   if (!Number.isInteger(params.dissent_override_threshold) || params.dissent_override_threshold < 1) {
     throw new Error(`buildFomcVote: invalid dissent_override_threshold (${params.dissent_override_threshold}); expected integer >= 1.`);
   }
+  if (!Number.isFinite(proposedRate)) {
+    throw new Error(`buildFomcVote: proposedRate ${proposedRate} is not finite.`);
+  }
+  if (previews.length === 0) {
+    throw new Error("buildFomcVote: previews array is empty — committee must have at least one member.");
+  }
   const dissents = previews.filter((p) => p.wouldDissent).length;
   const committeeMedian = computeMedian(previews.map((p) => p.preferred));
   const decided = dissents >= params.dissent_override_threshold
