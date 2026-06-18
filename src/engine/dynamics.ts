@@ -1,8 +1,10 @@
 // SPEC-SIM-5 / SPEC-CRED-4 / SPEC-CRED-6 / SPEC-CRED-7: the monthly macro step.
 //
-// A single simultaneous update: inflation, unemployment, expectations_anchor, and
-// credibility are all computed from the PRIOR month's vars, so the step is
-// order-independent and matches the calibration harness (SPEC-CAL-2).
+// A single simultaneous update: inflation, unemployment, and expectations_anchor are
+// computed purely from prior-month vars. credibility uses prior-month credibility and
+// inflation/unemployment, but its mission-gain term reads the newly-computed
+// newInflation/newUnemployment (distAfter) — still cycle-free, but not pure-prior-month.
+// Matches the calibration harness (SPEC-CAL-2).
 //
 // The transmission is real-rate based: the policy rate bites on the economy only
 // through the *real* rate (nominal minus expected inflation). In 1979 an 11% nominal
@@ -115,8 +117,11 @@ export function applyMacroDynamics(state: GameState, params: MacroDynamicsParams
   const distAfter = distance(newInflation, newUnemployment);
   // Soft-ceiling drain: prevents credibility from pinning at cred_max in a resolved-endgame
   // scenario where mission progress tapers to zero (SPEC-CRED-7).
+  // Cap at CRED_MAX so that over-range credibility stored by adoptDoctrine (SPEC-DOCT-1 symmetric-
+  // delta guarantee) does not incur extra drain — the tick clamp restores it to CRED_MAX anyway.
+  const effectiveCred = Math.min(credibility, CRED_MAX);
   const softCeilingDrain =
-    params.credibility_drain_rate * Math.max(0, credibility - params.credibility_soft_ceiling);
+    params.credibility_drain_rate * Math.max(0, effectiveCred - params.credibility_soft_ceiling);
   const newCredibility = clamp(
     credibility + params.credibility_mission_gain * (distBefore - distAfter) - softCeilingDrain,
     CRED_MIN,
@@ -181,37 +186,39 @@ let _cachedParams: MacroDynamicsParams | undefined;
  *  (credibility.json) params — the full parameter set `applyMacroDynamics` consumes. */
 export function loadDynamicsParams(): MacroDynamicsParams {
   if (_cachedParams !== undefined) return _cachedParams;
+  let dyn: DynamicsFile;
+  let cred: CredibilityFile;
   try {
-    const dyn = loadValidatedFile<DynamicsFile>(DYNAMICS_SCHEMA, DYNAMICS_FILE);
-    const cred = loadValidatedFile<CredibilityFile>(CREDIBILITY_SCHEMA, CREDIBILITY_FILE);
-    const candidate = { ...dyn, ...cred };
-    if (candidate.credibility_soft_ceiling >= CRED_MAX) {
-      throw new Error(
-        `credibility_soft_ceiling (${candidate.credibility_soft_ceiling}) must be strictly less than cred_max (${CRED_MAX}) for the SPEC-CRED-7 drain to fire at the cap`,
-      );
-    }
-    if (candidate.credibility_soft_ceiling <= CRED_MIN) {
-      throw new Error(
-        `credibility_soft_ceiling (${candidate.credibility_soft_ceiling}) must be strictly greater than cred_min (${CRED_MIN}) — a value at or below cred_min applies the drain at minimum credibility`,
-      );
-    }
-    if (candidate.credibility_drain_rate <= 0) {
-      throw new Error(
-        `credibility_drain_rate (${candidate.credibility_drain_rate}) must be strictly positive — zero silently disables the SPEC-CRED-7 soft-ceiling drain`,
-      );
-    }
-    if (candidate.credibility_drain_rate >= 1) {
-      throw new Error(
-        `credibility_drain_rate (${candidate.credibility_drain_rate}) must be strictly less than 1 — a value ≥ 1 breaks the 1-(1-r)^(1/n) cadence scaling (SPEC-SIM-6)`,
-      );
-    }
-    _cachedParams = candidate;
+    dyn = loadValidatedFile<DynamicsFile>(DYNAMICS_SCHEMA, DYNAMICS_FILE);
+    cred = loadValidatedFile<CredibilityFile>(CREDIBILITY_SCHEMA, CREDIBILITY_FILE);
   } catch (e) {
     throw new Error(
       `Failed to load macro dynamics params: ${e instanceof Error ? e.message : String(e)}`,
       { cause: e },
     );
   }
+  const candidate = { ...dyn, ...cred };
+  if (candidate.credibility_soft_ceiling >= CRED_MAX) {
+    throw new Error(
+      `credibility_soft_ceiling (${candidate.credibility_soft_ceiling}) must be strictly less than cred_max (${CRED_MAX}) for the SPEC-CRED-7 drain to fire at the cap`,
+    );
+  }
+  if (candidate.credibility_soft_ceiling <= CRED_MIN) {
+    throw new Error(
+      `credibility_soft_ceiling (${candidate.credibility_soft_ceiling}) must be strictly greater than cred_min (${CRED_MIN}) — a value at or below cred_min applies the drain at minimum credibility`,
+    );
+  }
+  if (candidate.credibility_drain_rate <= 0) {
+    throw new Error(
+      `credibility_drain_rate (${candidate.credibility_drain_rate}) must be strictly positive — zero silently disables the SPEC-CRED-7 soft-ceiling drain`,
+    );
+  }
+  if (candidate.credibility_drain_rate >= 1) {
+    throw new Error(
+      `credibility_drain_rate (${candidate.credibility_drain_rate}) must be strictly less than 1 — a value ≥ 1 breaks the 1-(1-r)^(1/n) cadence scaling (SPEC-SIM-6)`,
+    );
+  }
+  _cachedParams = candidate;
   return _cachedParams!;
 }
 

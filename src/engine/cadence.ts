@@ -72,7 +72,8 @@ export function scaleParamsForTick(params: MacroDynamicsParams, n: number): Read
     expectations_adaptivity: params.expectations_adaptivity / n,
     expectations_anchor_pull: params.expectations_anchor_pull / n,
     credibility_mission_gain: params.credibility_mission_gain / n,
-    // Drain is AR(1) toward soft_ceiling — exact geometric scaling like unemployment_adjustment_speed.
+    // Drain is AR(1) toward soft_ceiling — exact geometric scaling for the drain alone;
+    // first-order approximation when mission_gain is also active (see module header).
     credibility_drain_rate: 1 - Math.pow(1 - params.credibility_drain_rate, 1 / n),
   };
 }

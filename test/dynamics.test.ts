@@ -154,7 +154,9 @@ describe("applyMacroDynamics — over-range credibility clamp (SPEC-DOCT-1)", ()
 
 describe("applyMacroDynamics — soft-ceiling drain (SPEC-CRED-7)", () => {
   // Fixed-point state: inflation=target, unemployment=natural_rate, policy=target+r*, anchor=target.
-  // At this state distBefore === distAfter (mission_gain = 0), so only the drain moves credibility.
+  // Although unemployment_natural_rate (6.45%) ≠ unemployment_target (5.5%), this is a dynamics
+  // fixed point (realGap=0, slack=0), so distBefore === distAfter === 0.00475 and
+  // credibility_mission_gain × (distBefore − distAfter) = 0. Only the drain moves credibility.
   const fixedPointVars = {
     policy_rate: BASE.target_inflation + BASE.real_neutral_rate,
     inflation: BASE.target_inflation,
@@ -201,6 +203,18 @@ describe("applyMacroDynamics — soft-ceiling drain (SPEC-CRED-7)", () => {
     const aboveState = makeState({ vars: { ...fixedPointVars, credibility: 95 } });
     expect(applyMacroDynamics(aboveState, BASE).vars.credibility)
       .toBeLessThan(applyMacroDynamics(aboveState, lowDrainParams).vars.credibility);
+  });
+
+  it("drain uses prior credibility, not post-gain credibility (SPEC-CRED-7)", () => {
+    // Economy improving → positive mission gain; credibility starts above ceiling.
+    // drain must equal drain_rate × (prior_cred − ceiling), not (prior_cred + gain − ceiling).
+    const improvingState = makeState({
+      vars: { ...fixedPointVars, credibility: 92, inflation: 0.025 },
+    });
+    const result = applyMacroDynamics(improvingState, BASE);
+    const priorDrain = BASE.credibility_drain_rate * (92 - BASE.credibility_soft_ceiling); // 0.20×7=1.4
+    // If drain used post-gain cred it would be larger; result would be lower.
+    expect(result.vars.credibility).toBeGreaterThan(92 - priorDrain);
   });
 });
 
