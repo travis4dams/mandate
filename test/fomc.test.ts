@@ -805,4 +805,34 @@ describe("vote", () => {
     expect(result.committeeMedian).toBeCloseTo(0.05, 10);
     expect(result.decided).toBeCloseTo(0.05, 10);
   });
+
+  it("buildFomcVote guard: throws on non-finite proposedRate (NaN)", () => {
+    // Guard path only reachable by calling buildFomcVote directly — vote() validates upstream.
+    const previews = [{ memberId: "m0", nameKey: "m0", preferred: 0.05, wouldDissent: false }];
+    expect(() => buildFomcVote(previews, NaN, PARAMS)).toThrow("proposedRate");
+  });
+
+  it("buildFomcVote guard: throws on non-finite member preferred rate", () => {
+    // Guard path: synthetic preview carrying NaN preferred — cannot arise through previewVote().
+    const previews = [
+      { memberId: "m0", nameKey: "m0", preferred: NaN, wouldDissent: false },
+    ];
+    expect(() => buildFomcVote(previews, 0.05, PARAMS)).toThrow("m0");
+  });
+
+  it("SPEC-COMM-10: odd-length median with distinct preferred values picks the middle value", () => {
+    // SPEC-COMM-10: for a 3-member committee sorted [0.02, 0.05, 0.08] the median is 0.05.
+    // Verifies the mid = floor(3/2) = 1 index path with distinct values (not all-equal).
+    const previews = [
+      { memberId: "m0", nameKey: "m0", preferred: 0.08, wouldDissent: true },
+      { memberId: "m1", nameKey: "m1", preferred: 0.02, wouldDissent: true },
+      { memberId: "m2", nameKey: "m2", preferred: 0.05, wouldDissent: true },
+    ];
+    const params = { ...PARAMS, dissent_override_threshold: 3 };
+    const result = buildFomcVote(previews, 0.10, params);
+    expect(result.committeeMedian).toBeCloseTo(0.05, 10);
+    expect(result.dissents).toBe(3);
+    // decided = 0.10 + 0.5 * (0.05 - 0.10) = 0.075
+    expect(result.decided).toBeCloseTo(0.075, 10);
+  });
 });

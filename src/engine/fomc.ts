@@ -7,8 +7,9 @@ import type { EffectiveBands } from "./chair-capital.js";
 import { stanceKey, resolveStoredStance } from "./stance.js";
 import type { CommitteeParams } from "./committee-types.js";
 
-// FOMC vote engine — SPEC-COMM-2 + SPEC-COMM-3 + SPEC-COMM-5 + SPEC-COMM-7.
+// FOMC vote engine — SPEC-COMM-2 + SPEC-COMM-3 + SPEC-COMM-5 + SPEC-COMM-7 + SPEC-COMM-10.
 // SPEC-COMM-7 adds optional Chair capital effectiveBands that override the trait-computed band.
+// SPEC-COMM-10 adds the median-pull dissent override via buildFomcVote.
 // Pure: returns a new FomcVote; never mutates state or committee.
 
 export type { CommitteeParams } from "./committee-types.js";
@@ -279,7 +280,7 @@ export function loadCommitteeParams(): CommitteeParams {
   try {
     _cachedCommitteeParams = loadValidatedFile<CommitteeParams>(SCHEMA_PATH, FILE_PATH);
   } catch (e) {
-    throw new Error("Failed to load committee params from content/engine/committee.json", { cause: e });
+    throw new Error(`Failed to load committee params from ${FILE_PATH}`, { cause: e });
   }
   return _cachedCommitteeParams;
 }

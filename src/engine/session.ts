@@ -50,8 +50,7 @@ import {
 import { mulberry32, fnv1a32, type SeededRng } from "./rng.js";
 import { observe } from "./fog.js";
 import type { GameState, GameStateSnapshot } from "./state.js";
-import { buildFomcVote } from "./fomc.js";
-import type { FomcVote, MemberVotePreview } from "./fomc.js";
+import { buildFomcVote, type FomcVote, type MemberVotePreview } from "./fomc.js";
 import type { Replay } from "../content/replays.js";
 
 // SPEC-SESSION-0: skeleton Session façade.
