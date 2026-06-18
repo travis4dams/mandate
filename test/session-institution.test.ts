@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { Session } from "../src/engine/session.js";
 import * as stanceModule from "../src/engine/stance.js";
+import type { GameEvent } from "../src/content/events.js";
 
 // Integration coverage for the Session surface that wires the institution,
 // legacy, and name-generator engine modules into the live game façade.
@@ -11,6 +12,7 @@ const COMM = "comm.fomc_1979";
 
 describe("Session institution + legacy + npc-name wiring", () => {
   afterEach(() => { vi.restoreAllMocks(); });
+
   // SPEC-NAME-1: npcName is deterministic per (seed, npcId) and varies by id/seed.
   it("npcName is deterministic and seed/id dependent", () => {
     const a = Session.fromScenario(SCEN, 42, COMM);
@@ -127,18 +129,52 @@ describe("Session institution + legacy + npc-name wiring", () => {
       },
     });
 
-    // Spy: first call passes through normally (month 1 completes, months_on_target → 1),
-    // second call returns the same reference (triggers the advance() same-ref guard → throw).
+    // First call passes through (month 1 completes, months_on_target → 1 in _state);
+    // second call returns the same reference → triggers the same-ref guard → throw on month 2.
     const realFn = stanceModule.applyIntermeetingDrift;
-    let callCount = 0;
-    vi.spyOn(stanceModule, "applyIntermeetingDrift").mockImplementation((...args) => {
-      callCount++;
-      if (callCount === 2) return args[0] as ReturnType<typeof realFn>;
-      return realFn(...args);
-    });
+    vi.spyOn(stanceModule, "applyIntermeetingDrift")
+      .mockImplementationOnce((...args) => realFn(...args))
+      .mockImplementationOnce((...args) => args[0] as ReturnType<typeof realFn>);
 
     expect(() => s.advance(2)).toThrow(/applyIntermeetingDrift skipped/);
-    // State must be rolled back to the pre-advance checkpoint: months_on_target = 0.
+    // State must be rolled back to the pre-advance checkpoint.
+    expect(s.current.vars.months_on_target ?? 0).toBe(0);
+    expect(s.escalations().length).toBe(0);
+    expect(s.activityLog().length).toBe(0);
+  });
+
+  // SPEC-LEGACY-1: resolveEscalation throws when an event effect targets months_on_target.
+  it("resolveEscalation throws when an event effect targets months_on_target", () => {
+    // SPEC-LEGACY-1
+    const s = Session.fromScenario(SCEN, 42, COMM);
+    const fakeEvent: GameEvent = {
+      id: "test.bad_event",
+      category: "exogenous",
+      title: "test.bad",
+      fires_once: false,
+      options: [{
+        id: "opt",
+        name: "test.opt",
+        effects: [{ op: "add", target: "months_on_target", value: 1 }],
+      }],
+    };
+    (s as unknown as { _pendingEscalations: GameEvent[] })._pendingEscalations.push(fakeEvent);
+    expect(() => s.resolveEscalation("test.bad_event", "opt"))
+      .toThrow(/illegally modified months_on_target/);
+  });
+
+  // SPEC-LEGACY-1: reset() clears months_on_target accumulated during a prior advance.
+  it("reset() clears months_on_target", () => {
+    // SPEC-LEGACY-1
+    const s = Session.fromScenario("scen.recovery_test", 42, "comm.fomc_1979", {
+      varDeltas: {
+        inflation: 0.022 - 0.04,
+        expectations_anchor: 0.022 - 0.05,
+      },
+    });
+    s.advance(3);
+    expect(s.current.vars.months_on_target ?? 0).toBe(3);
+    s.reset();
     expect(s.current.vars.months_on_target ?? 0).toBe(0);
   });
 });

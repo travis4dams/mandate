@@ -373,12 +373,15 @@ export class Session {
     // can be force-restored from the known-good checkpoint rather than left in a torn state.
     // _pendingEscalations / _activityLog are length-checkpointed because both are mutated
     // inside the try block (event pushes + crisis log entry) and must be truncated on rollback.
+    // _firedOnce is not mutated inside advance() today, but is copied defensively so a future
+    // fires_once handler added to the loop cannot silently bypass rollback.
     const checkpointState = this._state;
     const checkpointCache = this._currentCache;
     const checkpointTrajectoryCache = this._trajectoryCache;
     const checkpointTrajectoryLength = this._trajectoryInternal.length;
     const checkpointEscalationsLength = this._pendingEscalations.length;
     const checkpointActivityLength = this._activityLog.length;
+    const checkpointFiredOnce = new Set(this._firedOnce);
     const checkpointRng = this._rng.snapshot();
 
     // SPEC-GUIDE-1 / SPEC-SIM-5 / SPEC-SIM-6: loaders + effectiveParams are loop-invariant.
@@ -638,6 +641,7 @@ export class Session {
       this._trajectoryInternal.length = checkpointTrajectoryLength;
       this._pendingEscalations.length = checkpointEscalationsLength;
       this._activityLog.length = checkpointActivityLength;
+      this._firedOnce = checkpointFiredOnce;
       this._rng.restore(checkpointRng);
       try {
         this._rebuildCaches();
