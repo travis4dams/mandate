@@ -91,8 +91,8 @@ export function computeLegacyScore(
   params: LegacyParams,
 ): number {
   const credibility = getCredibility(state);
-  const monthsOnTarget = (state.vars.months_on_target ?? 0) as number;
-  const monthsBelowAnchor = (state.vars.months_below_anchor ?? 0) as number;
+  const monthsOnTarget = state.vars.months_on_target ?? 0;
+  const monthsBelowAnchor = state.vars.months_below_anchor ?? 0;
   return (
     params.legacy_credibility_weight * credibility +
     params.legacy_mandate_bonus * monthsOnTarget -

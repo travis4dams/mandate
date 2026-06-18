@@ -400,7 +400,7 @@ export class Session {
     // SPEC-EVENT-1: the event catalog is loop-invariant.
     const eventCatalog = loadEventCatalog();
     // SPEC-LEGACY-1: mandate params are loop-invariant (cached singleton).
-    const mandateParamsForLegacy = loadMandateParams();
+    const mandateParams = loadMandateParams();
     const effectiveParams = {
       ...dynamicsParams,
       expectations_anchor_pull:
@@ -601,8 +601,8 @@ export class Session {
         }
 
         // SPEC-LEGACY-1: accumulate months_on_target — counts calendar months on mandate.
-        if (onTarget(this._state, mandateParamsForLegacy)) {
-          const mot = (this._state.vars.months_on_target ?? 0) as number;
+        if (onTarget(this._state, mandateParams)) {
+          const mot = this._state.vars.months_on_target ?? 0;
           this._state = {
             ...this._state,
             vars: { ...this._state.vars, months_on_target: mot + 1 },

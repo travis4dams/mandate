@@ -82,4 +82,29 @@ describe("Session institution + legacy + npc-name wiring", () => {
     s.advance(6);
     expect(s.termProgress().monthsIntoTerm).toBe(6);
   });
+
+  // SPEC-LEGACY-1: Session.advance() accumulates months_on_target when the Chair is on mandate.
+  // Uses recovery_test with inflation/anchor nudged to on-target so onTarget() returns true each month.
+  it("advance() increments months_on_target for each on-target month", () => {
+    // SPEC-LEGACY-1
+    // Bring inflation (0.04) and expectations_anchor (0.05) to on-target values via additive deltas.
+    const s = Session.fromScenario("scen.recovery_test", 42, "comm.fomc_1979", {
+      varDeltas: {
+        inflation: 0.022 - 0.04,           // → 0.022, within ±0.005 of 0.02 target
+        expectations_anchor: 0.022 - 0.05, // → 0.022, no persistent upward pull
+      },
+    });
+    expect(s.current.vars.months_on_target ?? 0).toBe(0);
+    s.advance(3);
+    expect(s.current.vars.months_on_target ?? 0).toBe(3);
+  });
+
+  // SPEC-LEGACY-1: months_on_target stays 0 when the Chair is persistently off-target.
+  it("advance() does not increment months_on_target when inflation is far off-target", () => {
+    // SPEC-LEGACY-1
+    // 1979 scenario: inflation = 0.114, way outside the ±0.005 tolerance band.
+    const s = Session.fromScenario(SCEN, 42, COMM);
+    s.advance(6);
+    expect(s.current.vars.months_on_target ?? 0).toBe(0);
+  });
 });
