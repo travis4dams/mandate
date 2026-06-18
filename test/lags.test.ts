@@ -149,7 +149,7 @@ const MACRO_PARAMS: MacroDynamicsParams = {
   credibility_unemployment_weight: 0.5,
   anchor_threshold: 60,
   credibility_soft_ceiling: 85,
-  credibility_drain_rate: 0.15,
+  credibility_drain_rate: 0.20,
 };
 
 const BASE_VARS = {

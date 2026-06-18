@@ -20,7 +20,7 @@ const BASE: MacroDynamicsParams = {
   credibility_unemployment_weight: 0.5,
   anchor_threshold: 60,
   credibility_soft_ceiling: 85,
-  credibility_drain_rate: 0.15,
+  credibility_drain_rate: 0.20,
 };
 
 const baseVars = {
@@ -152,32 +152,42 @@ describe("applyMacroDynamics — over-range credibility clamp (SPEC-DOCT-1)", ()
 });
 
 describe("applyMacroDynamics — soft-ceiling drain (SPEC-CRED-7)", () => {
-  // SPEC-CRED-7: with credibility at cred_max and the economy exactly on the dual-mandate target
-  // (zero mission-distance change), the drain must pull credibility below cred_max.
-  // drain = credibility_drain_rate * (cred_max - credibility_soft_ceiling) = 0.15 * 15 = 2.25 > 0.
-  it("credibility at cred_max drains below cap when economy is exactly on target", () => {
-    const state = makeState({
-      vars: {
-        policy_rate: BASE.target_inflation + BASE.real_neutral_rate,
-        inflation: BASE.target_inflation,
-        unemployment: BASE.unemployment_target,
-        expectations_anchor: BASE.target_inflation,
-        credibility: 100,
-        months_below_anchor: 0,
-      },
-    });
+  // Fixed-point state: inflation=target, unemployment=natural_rate, policy=target+r*, anchor=target.
+  // At this state distBefore === distAfter (mission_gain = 0), so only the drain moves credibility.
+  const fixedPointVars = {
+    policy_rate: BASE.target_inflation + BASE.real_neutral_rate,
+    inflation: BASE.target_inflation,
+    unemployment: BASE.unemployment_natural_rate,
+    expectations_anchor: BASE.target_inflation,
+    months_below_anchor: 0,
+  };
+
+  it("credibility at cred_max drains to 97.0 when economy is exactly on target", () => {
+    // SPEC-CRED-7: drain = credibility_drain_rate × (credibility − credibility_soft_ceiling)
+    //              = 0.20 × (100 − 85) = 3.0  →  newCredibility = 100 − 3.0 = 97.0.
+    const state = makeState({ vars: { ...fixedPointVars, credibility: 100 } });
     const result = applyMacroDynamics(state, BASE);
-    expect(result.vars.credibility).toBeLessThan(100);
+    expect(result.vars.credibility).toBeCloseTo(97.0, 10);
   });
 
-  it("drain is zero when credibility is at or below credibility_soft_ceiling", () => {
-    // SPEC-CRED-7: max(0, credibility - soft_ceiling) = 0 when at/below ceiling, so
-    // a run with drain_rate > 0 produces the same credibility as one with drain_rate = 0.
-    // Tests both well-below (50) and exactly-at-ceiling (85) to catch off-by-one bugs.
+  it("drain is proportional: credibility=90 drains to 89.0", () => {
+    // SPEC-CRED-7: drain = 0.20 × (90 − 85) = 1.0  →  newCredibility = 90 − 1.0 = 89.0.
+    const state = makeState({ vars: { ...fixedPointVars, credibility: 90 } });
+    const result = applyMacroDynamics(state, BASE);
+    expect(result.vars.credibility).toBeCloseTo(89.0, 10);
+  });
+
+  it("drain is zero when credibility is below the soft ceiling", () => {
+    // SPEC-CRED-7: max(0, 50 − 85) = 0, so drain_rate has no effect.
     const nodrainParams = { ...BASE, credibility_drain_rate: 0 };
     const belowState = makeState({ vars: { ...baseVars, credibility: 50 } });
     expect(applyMacroDynamics(belowState, nodrainParams).vars.credibility)
       .toBe(applyMacroDynamics(belowState, BASE).vars.credibility);
+  });
+
+  it("drain is zero when credibility is exactly at the soft ceiling", () => {
+    // SPEC-CRED-7: max(0, 85 − 85) = 0, so drain_rate has no effect at the boundary.
+    const nodrainParams = { ...BASE, credibility_drain_rate: 0 };
     const atCeilingState = makeState({ vars: { ...baseVars, credibility: BASE.credibility_soft_ceiling } });
     expect(applyMacroDynamics(atCeilingState, nodrainParams).vars.credibility)
       .toBe(applyMacroDynamics(atCeilingState, BASE).vars.credibility);

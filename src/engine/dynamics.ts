@@ -177,9 +177,14 @@ export function loadDynamicsParams(): MacroDynamicsParams {
     const dyn = loadValidatedFile<DynamicsFile>(DYNAMICS_SCHEMA, DYNAMICS_FILE);
     const cred = loadValidatedFile<CredibilityFile>(CREDIBILITY_SCHEMA, CREDIBILITY_FILE);
     _cachedParams = { ...dyn, ...cred };
+    if (_cachedParams.credibility_soft_ceiling >= CRED_MAX) {
+      throw new Error(
+        `credibility_soft_ceiling (${_cachedParams.credibility_soft_ceiling}) must be strictly less than cred_max (${CRED_MAX}) for the SPEC-CRED-7 drain to fire at the cap`,
+      );
+    }
   } catch (e) {
     throw new Error(
-      "Failed to load macro dynamics params from content/engine/dynamics.json + credibility.json",
+      `Failed to load macro dynamics params: ${e instanceof Error ? e.message : String(e)}`,
       { cause: e },
     );
   }

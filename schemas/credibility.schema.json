@@ -85,13 +85,13 @@
     "credibility_soft_ceiling": {
       "type": "number",
       "minimum": 0,
-      "maximum": 1000,
-      "description": "SPEC-CRED-7: credibility above this threshold incurs a monthly drain (prevents endgame pin at cred_max). Must be strictly less than cred_max (default 100) for the drain to fire at the cap."
+      "maximum": 100,
+      "description": "SPEC-CRED-7: credibility above this threshold incurs a monthly drain (prevents endgame pin at cred_max). Must be strictly less than cred_max (default 100) for the drain to fire at the cap; loadDynamicsParams() enforces this at runtime."
     },
     "credibility_drain_rate": {
       "type": "number",
       "minimum": 0,
-      "description": "SPEC-CRED-7: monthly drain per unit of credibility above credibility_soft_ceiling. Must be large enough that drain at cred_max exceeds on_target_gain to prevent pin."
+      "description": "SPEC-CRED-7: monthly drain per unit of credibility above credibility_soft_ceiling. To prevent endgame pin, the annual drain at cred_max (drain_rate × (cred_max − credibility_soft_ceiling) × 12) must exceed the annual on_target_gain from meetings (on_target_gain × ~8 meetings/year)."
     }
   }
 }
