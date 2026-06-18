@@ -136,11 +136,13 @@ describe("Session institution + legacy + npc-name wiring", () => {
       .mockImplementationOnce((...args) => realFn(...args))
       .mockImplementationOnce((...args) => args[0] as ReturnType<typeof realFn>);
 
+    const trajectoryLengthBefore = s.trajectory.length;
     expect(() => s.advance(2)).toThrow(/applyIntermeetingDrift skipped/);
-    // State must be rolled back to the pre-advance checkpoint.
+    // All checkpointed fields must be restored to their pre-advance values.
     expect(s.current.vars.months_on_target ?? 0).toBe(0);
     expect(s.escalations().length).toBe(0);
     expect(s.activityLog().length).toBe(0);
+    expect(s.trajectory.length).toBe(trajectoryLengthBefore);
   });
 
   // SPEC-LEGACY-1: resolveEscalation throws when an event effect targets months_on_target.
@@ -161,6 +163,18 @@ describe("Session institution + legacy + npc-name wiring", () => {
     (s as unknown as { _pendingEscalations: GameEvent[] })._pendingEscalations.push(fakeEvent);
     expect(() => s.resolveEscalation("test.bad_event", "opt"))
       .toThrow(/illegally modified months_on_target/);
+  });
+
+  // SPEC-LEGACY-1: advance() throws when months_on_target is corrupted (NaN, negative, non-integer).
+  it("advance() throws when months_on_target is corrupted", () => {
+    // SPEC-LEGACY-1
+    const s = Session.fromScenario(SCEN, 42, COMM);
+    (s as unknown as { _state: { vars: Record<string, number> } })._state.vars.months_on_target = NaN;
+    expect(() => s.advance(1)).toThrow(/months_on_target is corrupted/);
+
+    const s2 = Session.fromScenario(SCEN, 42, COMM);
+    (s2 as unknown as { _state: { vars: Record<string, number> } })._state.vars.months_on_target = -1;
+    expect(() => s2.advance(1)).toThrow(/months_on_target is corrupted/);
   });
 
   // SPEC-LEGACY-1: reset() clears months_on_target accumulated during a prior advance.

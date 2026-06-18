@@ -373,8 +373,9 @@ export class Session {
     // can be force-restored from the known-good checkpoint rather than left in a torn state.
     // _pendingEscalations / _activityLog are length-checkpointed because both are mutated
     // inside the try block (event pushes + crisis log entry) and must be truncated on rollback.
-    // _firedOnce is not mutated inside advance() today, but is copied defensively so a future
-    // fires_once handler added to the loop cannot silently bypass rollback.
+    // _firedOnce is not mutated inside the advance() loop (eligibleEvents only reads it),
+    // but is copied defensively so a future fires_once mutation added to the loop cannot
+    // silently bypass rollback.
     const checkpointState = this._state;
     const checkpointCache = this._currentCache;
     const checkpointTrajectoryCache = this._trajectoryCache;
@@ -620,9 +621,10 @@ export class Session {
         // at runtime; the event option schema has no enum restriction on target names, so
         // content reviews must also check event option effect targets manually.
         const motRaw = this._state.vars.months_on_target;
-        if (motRaw !== undefined && (typeof motRaw !== "number" || !Number.isFinite(motRaw))) {
+        if (motRaw !== undefined && (typeof motRaw !== "number" || !Number.isFinite(motRaw) || motRaw < 0 || !Number.isInteger(motRaw))) {
           throw new Error(
-            `Session.advance: months_on_target is corrupted at ${this._state.date} (got ${String(motRaw)})`,
+            `Session.advance: months_on_target is corrupted at ${this._state.date} ` +
+            `(got ${String(motRaw)}; expected a non-negative integer)`,
           );
         }
         if (onTarget(this._state, mandateParams)) {
@@ -650,9 +652,8 @@ export class Session {
         // Force-restore caches from checkpoint so they are never left in a torn state.
         // Log the secondary error; the original err is re-thrown below.
         console.error(
-          `Session.advance: _rebuildCaches failed during rollback (force-restoring from checkpoint). ` +
-          `Original error: ${String(err)}. Secondary error:`,
-          secondaryErr,
+          `Session.advance: _rebuildCaches failed during rollback (force-restoring from checkpoint).`,
+          { originalErr: err, secondaryErr },
         );
         this._currentCache = checkpointCache;
         this._trajectoryCache = checkpointTrajectoryCache;
