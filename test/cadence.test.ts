@@ -170,7 +170,8 @@ describe("trajectory invariance — SPEC-SIM-6", () => {
   it("n=4 sub-ticks agree on credibility within 0.2pp when starting above soft ceiling (SPEC-CRED-7 × SPEC-SIM-6)", () => {
     // SPEC-SIM-6 × SPEC-CRED-7: credibility_drain_rate is a cadence-scaled flow param.
     // Starting above the soft ceiling (95 > 85) exercises the drain in both cadences.
-    // Verifies scaleParamsForTick divides drain_rate by n but leaves soft_ceiling unchanged.
+    // Verifies scaleParamsForTick applies exact geometric scaling (1-(1-rate)^(1/n)) to drain_rate
+    // — same as unemployment_adjustment_speed — and leaves soft_ceiling unchanged.
     const INITIAL = {
       policy_rate: BASE.target_inflation + BASE.real_neutral_rate,
       inflation: BASE.target_inflation,

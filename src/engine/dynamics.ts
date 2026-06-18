@@ -193,6 +193,11 @@ export function loadDynamicsParams(): MacroDynamicsParams {
         `credibility_drain_rate (${candidate.credibility_drain_rate}) must be strictly positive — zero silently disables the SPEC-CRED-7 soft-ceiling drain`,
       );
     }
+    if (candidate.credibility_drain_rate >= 1) {
+      throw new Error(
+        `credibility_drain_rate (${candidate.credibility_drain_rate}) must be strictly less than 1 — a value ≥ 1 breaks the 1-(1-r)^(1/n) cadence scaling (SPEC-SIM-6)`,
+      );
+    }
     _cachedParams = candidate;
   } catch (e) {
     throw new Error(

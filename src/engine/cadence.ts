@@ -5,7 +5,7 @@
 // macro trajectory is invariant to cadence:
 //   - AR(1) persistence: p_tick = p_monthly^(1/n)  [exact for geometric decay]
 //   - Mean-reversion speed: α_tick = 1 − (1−α_monthly)^(1/n)  [exact for linear AR]
-//   - Soft-ceiling drain rate: same formula as mean-reversion, 1 − (1−rate)^(1/n)  [exact: drain is AR(1) toward soft_ceiling]
+//   - Soft-ceiling drain rate: same formula as mean-reversion, 1 − (1−rate)^(1/n)  [exact for the drain in isolation; first-order approximation when combined with the /n-scaled mission_gain term]
 //   - Flow contributions (phillips_slope, expectations_adaptivity, expectations_anchor_pull, credibility_mission_gain): divided by n  [first-order approximation, error O(α²/n)]
 //   - Structural params (natural rates, targets, thresholds): unchanged
 //

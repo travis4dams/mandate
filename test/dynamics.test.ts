@@ -194,13 +194,13 @@ describe("applyMacroDynamics — soft-ceiling drain (SPEC-CRED-7)", () => {
       .toBe(applyMacroDynamics(atCeilingState, BASE).vars.credibility);
   });
 
-  it("drain is nonzero above the soft ceiling: drain_rate=0 and drain_rate=0.20 differ", () => {
-    // SPEC-CRED-7: positive test that the drain is actually active above the ceiling.
-    // A bug that zeroed drain_rate silently would pass the zero-drain tests but fail here.
+  it("drain is nonzero above the soft ceiling: drain_rate=0.20 produces less credibility than drain_rate=0", () => {
+    // SPEC-CRED-7: positive test that the drain is actually active and subtracts credibility above the ceiling.
+    // A sign error (+drain instead of -drain) would make the with-drain result *higher*, not just different.
     const nodrainParams = { ...BASE, credibility_drain_rate: 0 };
     const aboveState = makeState({ vars: { ...fixedPointVars, credibility: 95 } });
-    expect(applyMacroDynamics(aboveState, nodrainParams).vars.credibility)
-      .not.toBe(applyMacroDynamics(aboveState, BASE).vars.credibility);
+    expect(applyMacroDynamics(aboveState, BASE).vars.credibility)
+      .toBeLessThan(applyMacroDynamics(aboveState, nodrainParams).vars.credibility);
   });
 });
 
@@ -296,6 +296,41 @@ describe("loadDynamicsParams — soft-ceiling guard (SPEC-CRED-7)", () => {
         expectations_adaptivity: 0.051, expectations_anchor_pull: 0.025,
         credibility_mission_gain: 300, credibility_unemployment_weight: 0.5,
         anchor_threshold: 60, credibility_soft_ceiling: 85, credibility_drain_rate: 0,
+      } as any);
+    expect(() => loadDynamicsParams()).toThrow("credibility_drain_rate");
+  });
+
+  it("throws when credibility_drain_rate is negative", () => {
+    // SPEC-CRED-7: guard is <= 0, not just == 0; a negative rate inverts the drain into a gain.
+    vi.spyOn(contentLoader, "loadValidatedFile")
+      .mockReturnValueOnce({
+        inflation_persistence: 0.952, phillips_slope: 0.106,
+        unemployment_natural_rate: 0.0645, real_neutral_rate: 0.027,
+        okun_coefficient: 1.14, unemployment_adjustment_speed: 0.045,
+      } as any)
+      .mockReturnValueOnce({
+        target_inflation: 0.02, unemployment_target: 0.055,
+        expectations_adaptivity: 0.051, expectations_anchor_pull: 0.025,
+        credibility_mission_gain: 300, credibility_unemployment_weight: 0.5,
+        anchor_threshold: 60, credibility_soft_ceiling: 85, credibility_drain_rate: -0.1,
+      } as any);
+    expect(() => loadDynamicsParams()).toThrow("credibility_drain_rate");
+  });
+
+  it("throws when credibility_drain_rate >= 1", () => {
+    // SPEC-CRED-7 × SPEC-SIM-6: rate >= 1 breaks the 1-(1-r)^(1/n) geometric cadence scaling
+    // (rate=1 gives pow(0,1/n)=0 so per-tick rate stays 1; rate>1 gives NaN via pow(negative,fraction)).
+    vi.spyOn(contentLoader, "loadValidatedFile")
+      .mockReturnValueOnce({
+        inflation_persistence: 0.952, phillips_slope: 0.106,
+        unemployment_natural_rate: 0.0645, real_neutral_rate: 0.027,
+        okun_coefficient: 1.14, unemployment_adjustment_speed: 0.045,
+      } as any)
+      .mockReturnValueOnce({
+        target_inflation: 0.02, unemployment_target: 0.055,
+        expectations_adaptivity: 0.051, expectations_anchor_pull: 0.025,
+        credibility_mission_gain: 300, credibility_unemployment_weight: 0.5,
+        anchor_threshold: 60, credibility_soft_ceiling: 85, credibility_drain_rate: 1.0,
       } as any);
     expect(() => loadDynamicsParams()).toThrow("credibility_drain_rate");
   });

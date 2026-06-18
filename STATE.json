@@ -701,7 +701,8 @@
       "section": "Simulation core",
       "tag": "testable",
       "tests": [
-        "test/cadence.test.ts"
+        "test/cadence.test.ts",
+        "test/dynamics.test.ts"
       ]
     },
     {

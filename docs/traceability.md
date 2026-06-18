@@ -79,7 +79,7 @@ input in plain mode; only `--enrich` (workflow-only) fills empty cells from git 
 | SPEC-SIM-3 | testable | Simulation core | `test/clock.test.ts`, `test/gen-state.test.ts` | #5 |
 | SPEC-SIM-4 | testable | Simulation core | `test/gen-state.test.ts`, `test/replay.test.ts`, `test/run-replay.ts` | #6 |
 | SPEC-SIM-5 | testable | Macro dynamics | `test/calibration-volcker.test.ts`, `test/dynamics.test.ts`, `test/engine-params-loaders.test.ts`, `test/session.test.ts` | #20 |
-| SPEC-SIM-6 | testable | Simulation core | `test/cadence.test.ts` | #64 |
+| SPEC-SIM-6 | testable | Simulation core | `test/cadence.test.ts`, `test/dynamics.test.ts` | #64 |
 | SPEC-STAFF-1 | testable | Director skills, division functions & institutional culture | `test/staff.test.ts` |  |
 | SPEC-STAFF-2 | testable | Director skills, division functions & institutional culture | `test/disposition.test.ts` |  |
 | SPEC-STAFF-3 | testable | Staffing economy & the living organization | `test/institution.test.ts`, `test/session-institution.test.ts`, `test/staff-economy.test.ts`, `web/src/InstitutionPanel.test.tsx` |  |
