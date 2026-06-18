@@ -330,8 +330,9 @@ export class Session {
   }
 
   /** SPEC-GUIDE-3: the stance committed by the last advance(). Before the first advance() —
-   *  and after reset(), which also resets the live stance to "neutral" — returns the live
-   *  stance, matching the fallback proposeRate() uses.
+   *  and after reset() (which clears _committedStance back to undefined) — returns the live
+   *  stance, so callers always receive a defined ForwardGuidanceStance regardless of lifecycle
+   *  phase.
    */
   get committedGuidanceStance(): ForwardGuidanceStance {
     return this._committedStance ?? this._stance;

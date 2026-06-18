@@ -502,6 +502,13 @@ describe("SPEC-GUIDE-3: forward guidance stance is a persisted commitment", () =
   // 1979-08 is a meeting month, so the scenario starts with proposeRate available.
   // Next meeting month is 1979-09 (meeting_months = [1,3,5,7,8,9,11,12]).
 
+  it("committedGuidanceStance falls through to live stance before first advance()", () => {
+    // SPEC-GUIDE-3: before any advance(), _committedStance is undefined; getter returns live _stance.
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    s.setForwardGuidanceStance("hawkish");
+    expect(s.committedGuidanceStance).toBe("hawkish");
+  });
+
   it("advance() commits the live stance as committedGuidanceStance", () => {
     // SPEC-GUIDE-3
     const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
@@ -509,6 +516,17 @@ describe("SPEC-GUIDE-3: forward guidance stance is a persisted commitment", () =
     s.setForwardGuidanceStance("hawkish");
     s.advance(1); // → 1979-09, commits committedGuidanceStance = "hawkish"
     expect(s.committedGuidanceStance).toBe("hawkish");
+  });
+
+  it("second advance() overwrites the committed stance", () => {
+    // SPEC-GUIDE-3: _committedStance is updated on every advance(), not just the first.
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    s.proposeRate(0.1075);
+    s.setForwardGuidanceStance("hawkish");
+    s.advance(1); // committed = "hawkish"
+    s.setForwardGuidanceStance("dovish");
+    s.advance(1); // committed must overwrite to "dovish"
+    expect(s.committedGuidanceStance).toBe("dovish");
   });
 
   it("switching stance after advance() but before proposeRate() does not dodge the surprise penalty", () => {
@@ -554,15 +572,22 @@ describe("SPEC-GUIDE-3: forward guidance stance is a persisted commitment", () =
     expect(s.committedGuidanceStance).toBe("neutral");
   });
 
-  it("advance() that throws does not modify committedGuidanceStance", () => {
-    // SPEC-GUIDE-3: a failed advance() must leave committedGuidanceStance unchanged.
+  it("advance() that throws inside the loop rolls back _committedStance (catch-block)", () => {
+    // SPEC-GUIDE-3: when advance() throws inside the try block, the catch block restores
+    // _committedStance to its pre-advance checkpoint value.
     const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
     s.proposeRate(0.1075);
     s.setForwardGuidanceStance("hawkish");
     s.advance(1); // committedGuidanceStance = "hawkish"
-    s.setForwardGuidanceStance("dovish"); // change live stance — committed stays "hawkish"
-    expect(() => s.advance(-1)).toThrow(); // invalid argument — advance throws
-    expect(s.committedGuidanceStance).toBe("hawkish"); // must not have changed to "dovish"
+
+    s.setForwardGuidanceStance("dovish");
+    // Spy on applyIntermeetingDrift to return the same state reference (triggers the
+    // "applyIntermeetingDrift skipped" guard throw inside the advance() loop, after
+    // _committedStance has been committed to "dovish" inside the try block).
+    vi.spyOn(stanceModule, "applyIntermeetingDrift").mockImplementationOnce((state) => state);
+    expect(() => s.advance(1)).toThrow(/applyIntermeetingDrift skipped/);
+    // catch block must have restored _committedStance from "dovish" back to "hawkish".
+    expect(s.committedGuidanceStance).toBe("hawkish");
   });
 });
 
