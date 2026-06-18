@@ -169,8 +169,10 @@ export function _resetInstitutionParamsCache(): void {
 
 /**
  * Apply one month of institution dynamics:
- *   operating_budget *= (1 + budget_monthly_growth)
- *   operating_budget = max(0, operating_budget × (1 + budget_monthly_growth) − Σ upkeep_per_hire_cost × hire_cost)  [staffed only]
+ *   without upkeep (catalog omitted or upkeep_per_hire_cost = 0):
+ *     operating_budget *= (1 + budget_monthly_growth)
+ *   with upkeep (catalog provided and upkeep_per_hire_cost > 0):
+ *     operating_budget = max(0, operating_budget × (1 + budget_monthly_growth) − Σ upkeep_per_hire_cost × hire_cost)  [staffed only]
  *   political_capital += political_capital_recovery * (political_capital_baseline - political_capital)
  *
  * Both vars default to their `params.initial_*` value when absent from state
@@ -192,13 +194,13 @@ export function applyInstitutionDynamics(
   let nextBudget = prevBudget * (1 + params.budget_monthly_growth);
 
   // SPEC-INST-3: deduct monthly upkeep for each staffed division.
-  // When catalog is omitted with a non-zero rate, upkeep silently does not apply —
-  // this is a deliberate backward-compat no-op for callers that predated SPEC-INST-3.
+  // When catalog is omitted (or upkeep_per_hire_cost is 0/absent) the step is skipped,
+  // making the function usable in unit tests that don't need a catalog.
   const upkeepRate = params.upkeep_per_hire_cost ?? 0;
   if (catalog && upkeepRate > 0) {
     let totalUpkeep = 0;
     for (const div of catalog) {
-      if (state.flags[staffedFlagKey(div.id)]) {
+      if (state.flags[staffedFlagKey(div.id)] === true) {
         totalUpkeep += upkeepRate * div.hire_cost;
       }
     }

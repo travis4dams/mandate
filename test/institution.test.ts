@@ -322,10 +322,11 @@ describe("applyInstitutionDynamics — staffing upkeep (SPEC-INST-3)", () => {
   });
 
   it("budget floors at 0 and never goes negative even when upkeep exceeds growth", () => {
-    // SPEC-INST-3: extreme upkeep rate drains to 0, never negative
-    const extremeParams = { ...PARAMS, upkeep_per_hire_cost: 10 }; // 10x hire_cost per month
+    // SPEC-INST-3: upkeep_per_hire_cost: 1 = 100% of hire_cost per month (schema maximum).
+    // Starting budget below hire_cost ensures growth < upkeep, so the floor must fire.
+    const extremeParams = { ...PARAMS, upkeep_per_hire_cost: 1 };
     const state = makeState({
-      vars: { operating_budget: 1 },
+      vars: { operating_budget: DIV_A.hire_cost * 0.5 },
       flags: { "staffed.div_a": true },
     });
     const result = applyInstitutionDynamics(state, extremeParams, [DIV_A]);
@@ -333,12 +334,20 @@ describe("applyInstitutionDynamics — staffing upkeep (SPEC-INST-3)", () => {
   });
 
   it("budget stays at 0 across consecutive ticks when upkeep exceeds growth (SPEC-INST-3)", () => {
-    const extremeParams = { ...PARAMS, upkeep_per_hire_cost: 10 };
-    let state = makeState({ vars: { operating_budget: 1 }, flags: { "staffed.div_a": true } });
+    const extremeParams = { ...PARAMS, upkeep_per_hire_cost: 1 };
+    let state = makeState({ vars: { operating_budget: DIV_A.hire_cost * 0.5 }, flags: { "staffed.div_a": true } });
     for (let i = 0; i < 3; i++) {
       state = applyInstitutionDynamics(state, extremeParams, [DIV_A]);
       expect(state.vars.operating_budget).toBe(0);
     }
+  });
+
+  it("explicit upkeep_per_hire_cost: 0 with a staffed catalog produces no deduction (SPEC-INST-3)", () => {
+    // SPEC-INST-3: the > 0 guard at institution.ts must be tested with rate=0, not just catalog=undefined.
+    const zeroRateParams = { ...PARAMS, upkeep_per_hire_cost: 0 };
+    const state = makeState({ vars: { operating_budget: 1000 }, flags: { "staffed.div_a": true } });
+    const result = applyInstitutionDynamics(state, zeroRateParams, [DIV_A]);
+    expect(result.vars.operating_budget).toBeCloseTo(1000 * (1 + PARAMS.budget_monthly_growth));
   });
 
   it("is a pure function — input state is not mutated when catalog is supplied", () => {

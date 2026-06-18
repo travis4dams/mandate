@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { Session } from "../src/engine/session.js";
 import * as stanceModule from "../src/engine/stance.js";
 import type { GameEvent } from "../src/content/events.js";
+import { loadInstitutionParams, loadDivisionCatalog } from "../src/engine/institution.js";
 
 // Integration coverage for the Session surface that wires the institution,
 // legacy, and name-generator engine modules into the live game façade.
@@ -70,12 +71,16 @@ describe("Session institution + legacy + npc-name wiring", () => {
 
   // SPEC-INST-3: Session.advance() wires upkeep deduction for staffed divisions.
   it("Session.advance() deducts monthly upkeep for a staffed division (SPEC-INST-3)", () => {
+    const params = loadInstitutionParams();
+    const catalog = loadDivisionCatalog();
+    const research = catalog.find((d) => d.id === "research")!;
+    const upkeep = (params.upkeep_per_hire_cost ?? 0) * research.hire_cost;
+
     const s = Session.fromScenario(SCEN, 42, COMM);
-    s.hire("research", 0); // research: hire_cost = 12
+    s.hire("research", 0);
     const budgetAfterHire = s.operatingBudget();
     s.advance(1);
-    // Pure growth: budgetAfterHire * 1.005. Upkeep: 0.05 * 12 = 0.6. Both must apply.
-    expect(s.operatingBudget()).toBeCloseTo(budgetAfterHire * (1 + 0.005) - 0.6);
+    expect(s.operatingBudget()).toBeCloseTo(budgetAfterHire * (1 + params.budget_monthly_growth) - upkeep);
   });
 
   // SPEC-LEGACY-1: term clock, reappointment outlook, and legacy score.
