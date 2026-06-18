@@ -96,6 +96,9 @@ export function computeLegacyScore(
     throw new Error(`computeLegacyScore: months_on_target is corrupted (got ${monthsOnTarget})`);
   }
   const monthsBelowAnchor = state.vars.months_below_anchor ?? 0;
+  if (!Number.isInteger(monthsBelowAnchor) || monthsBelowAnchor < 0) {
+    throw new Error(`computeLegacyScore: months_below_anchor is corrupted (got ${monthsBelowAnchor})`);
+  }
   return (
     params.legacy_credibility_weight * credibility +
     params.legacy_mandate_bonus * monthsOnTarget -

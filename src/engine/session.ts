@@ -919,13 +919,10 @@ export class Session {
     }
     const before = this._snapshotFeedVars();
     const { state, queuedEvents } = applyEffects(option.effects, this._state);
-    // Guard: months_on_target is managed exclusively by advance(). A content effect that
-    // targets this var would silently corrupt the running total even if the value is finite.
-    // Check both key presence and value: a no-op write (e.g. add:0) changes neither, but a
-    // write that adds the key or changes the value must be caught regardless of the delta.
-    const motKeyBefore = "months_on_target" in this._state.vars;
-    const motKeyAfter = "months_on_target" in state.vars;
-    if (motKeyBefore !== motKeyAfter || state.vars.months_on_target !== this._state.vars.months_on_target) {
+    // Guard: months_on_target is managed exclusively by advance(). Any content effect that
+    // targets this var corrupts the running total. Value equality covers all cases: key
+    // creation (undefined !== 0), deletion (N !== undefined), and modification (M !== N).
+    if (state.vars.months_on_target !== this._state.vars.months_on_target) {
       throw new Error(
         `Session.resolveEscalation: event "${eventId}" illegally modified months_on_target. ` +
         `This var is managed exclusively by Session.advance().`,

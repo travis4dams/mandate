@@ -165,6 +165,28 @@ describe("Session institution + legacy + npc-name wiring", () => {
       .toThrow(/illegally modified months_on_target/);
   });
 
+  // SPEC-LEGACY-1: double-failure path — when advance() throws AND the rollback _rebuildCaches also
+  // throws, caches must be force-restored from the pre-advance checkpoint and the original error propagated.
+  it("advance() force-restores caches from checkpoint when rollback _rebuildCaches also throws", () => {
+    // SPEC-LEGACY-1
+    const s = Session.fromScenario(SCEN, 42, COMM);
+    const cacheBefore = s.current;
+    const trajectoryLenBefore = s.trajectory.length;
+
+    // Step 1: make the advance loop throw (applyIntermeetingDrift same-ref trigger).
+    vi.spyOn(stanceModule, "applyIntermeetingDrift").mockImplementationOnce((state) => state);
+    // Step 2: make the rollback's _rebuildCaches() also throw.
+    type SessionInternal = { _rebuildCaches: () => void };
+    vi.spyOn(s as unknown as SessionInternal, "_rebuildCaches")
+      .mockImplementationOnce(() => { throw new Error("secondary: cache rebuild failed"); });
+
+    // The original error (applyIntermeetingDrift) must still propagate.
+    expect(() => s.advance(1)).toThrow(/applyIntermeetingDrift skipped/);
+    // Caches must be force-restored from the pre-advance checkpoint.
+    expect(s.current).toStrictEqual(cacheBefore);
+    expect(s.trajectory.length).toBe(trajectoryLenBefore);
+  });
+
   // SPEC-LEGACY-1: advance() throws when months_on_target is corrupted (NaN, Infinity, negative, fractional).
   it("advance() throws when months_on_target is corrupted", () => {
     // SPEC-LEGACY-1
