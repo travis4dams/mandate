@@ -69,13 +69,21 @@ export function applyMacroDynamics(state: GameState, params: MacroDynamicsParams
   const credibility = state.vars.credibility as number;
   const monthsBelow = state.vars.months_below_anchor ?? 0;
 
+  // Fail-fast on NaN/Infinity in primary inputs — `as number` casts above let corrupt values
+  // pass schema type-checking (e.g. a miscalculated event delta). Guards here prevent silent
+  // propagation through the entire dynamics step.
+  for (const [key, val] of [
+    ["inflation", inflation], ["unemployment", unemployment],
+    ["policy_rate", policyRate], ["expectations_anchor", anchor], ["credibility", credibility],
+  ] as [string, number][]) {
+    if (!Number.isFinite(val)) {
+      throw new Error(`applyMacroDynamics: ${key} is not finite (${val})`);
+    }
+  }
+
   // Real-rate transmission.
   const realRate = policyRate - anchor;
   const realGap = realRate - params.real_neutral_rate;
-
-  if (!Number.isFinite(credibility)) {
-    throw new Error(`applyMacroDynamics: credibility is not finite (${credibility})`);
-  }
 
   // Use lagged output_gap if available (SPEC-LAG-1), else fall back to the immediate realGap.
   const rawLaggedGap = state.vars.output_gap;
@@ -225,8 +233,8 @@ export function loadDynamicsParams(): MacroDynamicsParams {
       `credibility_drain_rate (${candidate.credibility_drain_rate}) must be strictly less than 1 — a value ≥ 1 breaks the 1-(1-r)^(1/n) cadence scaling (SPEC-SIM-6)`,
     );
   }
-  _cachedParams = candidate;
-  return candidate;
+  _cachedParams = Object.freeze(candidate) as MacroDynamicsParams;
+  return _cachedParams;
 }
 
 /** Test-only: clear the cache so the next loadDynamicsParams() re-reads and re-validates. */

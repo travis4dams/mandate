@@ -248,18 +248,28 @@ describe("applyMacroDynamics — soft-ceiling drain (SPEC-CRED-7)", () => {
     expect(result.vars.credibility).toBeCloseTo(99.0, 5);
   });
 
-  it("throws when credibility is NaN (SPEC-CRED-7 NaN guard)", () => {
-    // SPEC-CRED-7: state.vars is Record<string, unknown>; casting as number lets NaN arrive
-    // from upstream bugs (e.g. a miscalculated doctrine delta). The guard catches it early
-    // so NaN doesn't silently propagate through clamp and corrupt subsequent ticks.
+  it("throws when credibility is NaN (primary-input finiteness guard)", () => {
+    // Guard catches NaN from upstream bugs (e.g. a miscalculated doctrine delta) before it
+    // propagates silently through the entire dynamics step.
     const nanState = makeState({ vars: { ...fixedPointVars, credibility: NaN } });
     expect(() => applyMacroDynamics(nanState, BASE)).toThrow("not finite");
   });
 
-  it("throws when credibility is Infinity (SPEC-CRED-7 NaN guard)", () => {
-    // SPEC-CRED-7: same guard covers Infinity (e.g. a blown-up doctrine delta or overflow).
+  it("throws when credibility is Infinity (primary-input finiteness guard)", () => {
     const infState = makeState({ vars: { ...fixedPointVars, credibility: Infinity } });
     expect(() => applyMacroDynamics(infState, BASE)).toThrow("not finite");
+  });
+
+  it("throws when inflation is NaN (primary-input finiteness guard)", () => {
+    // Guard extends to all primary inputs — NaN from a miscalculated event delta propagates
+    // through the Phillips curve silently without this check.
+    const nanState = makeState({ vars: { ...fixedPointVars, inflation: NaN } });
+    expect(() => applyMacroDynamics(nanState, BASE)).toThrow("not finite");
+  });
+
+  it("throws when unemployment is NaN (primary-input finiteness guard)", () => {
+    const nanState = makeState({ vars: { ...fixedPointVars, unemployment: NaN } });
+    expect(() => applyMacroDynamics(nanState, BASE)).toThrow("not finite");
   });
 
   it("drain uses prior credibility, not post-gain credibility (SPEC-CRED-7)", () => {
@@ -384,6 +394,15 @@ describe("loadDynamicsParams — soft-ceiling guard (SPEC-CRED-7)", () => {
     // The isFinite guard is required to reject it explicitly.
     mockParams({ credibility_drain_rate: NaN });
     expect(() => loadDynamicsParams()).toThrow("credibility_drain_rate");
+  });
+
+  it("returned params are frozen — mutation throws in strict mode", () => {
+    // Prevents a caller from silently corrupting every subsequent loadDynamicsParams() call by
+    // mutating the cached object reference. Object.freeze ensures immediate error on mutation.
+    const params = loadDynamicsParams();
+    expect(() => {
+      (params as Record<string, unknown>).credibility_drain_rate = 0.999;
+    }).toThrow(TypeError);
   });
 });
 

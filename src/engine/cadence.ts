@@ -11,11 +11,11 @@
 //
 // Documented tolerance: monthly and weekly (n=4) trajectories agree within 0.2pp
 // over 36 months for inflation, unemployment, and expectations_anchor; typical error < 0.01pp.
-// Credibility cadence invariance is tested only for the isolated-drain case (fixed-point state,
-// mission_gain = 0). The combined (drain + active mission_gain) case exceeds the 0.2pp tolerance
-// in high-credibility + off-target scenarios; the combined trajectory is a first-order approximation —
-// the drain's geometric scaling is exact in isolation, but the cross-term interaction with the
-// /n-scaled mission_gain introduces error.
+// Credibility cadence invariance is tested at two levels: a tight 0.002-point test for the
+// isolated-drain case (fixed-point state, mission_gain = 0, where geometric scaling is exact);
+// and a loose 2pp tripwire for the combined (drain + active mission_gain) case. The combined
+// trajectory is a first-order approximation — the drain's geometric scaling is exact in isolation,
+// but the cross-term interaction with the /n-scaled mission_gain introduces error.
 import { join } from "node:path";
 import { loadValidatedFile } from "../content/loader.js";
 import type { MacroDynamicsParams } from "./dynamics.js";
