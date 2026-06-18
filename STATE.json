@@ -173,6 +173,7 @@
       "tag": "testable",
       "tests": [
         "test/chair-capital.test.ts",
+        "test/fomc.test.ts",
         "web/src/MeetingPanel.tsx",
         "web/src/PersuasionView.test.tsx",
         "web/src/PersuasionView.tsx"
