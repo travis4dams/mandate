@@ -676,6 +676,26 @@ describe("vote", () => {
     expect(result.decided).toBe(proposedRate);
   });
 
+  // SPEC-COMM-10: dovish committee (committeeMedian < proposedRate) pulls decided downward.
+  it("SPEC-COMM-10: dovish committee where committeeMedian < proposedRate pulls decided down", () => {
+    // SPEC-COMM-10
+    // 7 members all prefer 0.03, proposedRate = 0.10 → all dissent (7 >= 7).
+    // decided = 0.10 + 0.5 * (0.03 - 0.10) = 0.10 - 0.035 = 0.065.
+    // So decided < proposedRate and decided > committeeMedian.
+    const previews = Array.from({ length: 7 }, (_, i) => ({
+      memberId: `m${i}`,
+      nameKey: `m${i}`,
+      preferred: 0.03,
+      wouldDissent: true,
+    }));
+    const result = buildFomcVote(previews, 0.1, PARAMS);
+    expect(result.dissents).toBe(7);
+    expect(result.committeeMedian).toBeCloseTo(0.03, 10);
+    expect(result.decided).toBeGreaterThan(result.committeeMedian);
+    expect(result.decided).toBeLessThan(0.1);
+    expect(result.decided).toBeCloseTo(0.065, 10);
+  });
+
   // SPEC-COMM-10: even-member committee median is arithmetic mean of the two middle preferred rates.
   it("SPEC-COMM-10: even-member committee median is mean of two middle preferred rates", () => {
     // SPEC-COMM-10
