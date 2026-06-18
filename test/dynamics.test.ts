@@ -401,7 +401,7 @@ describe("loadDynamicsParams — soft-ceiling guard (SPEC-CRED-7)", () => {
     // mutating the cached object reference. Object.freeze ensures immediate error on mutation.
     const params = loadDynamicsParams();
     expect(() => {
-      (params as Record<string, unknown>).credibility_drain_rate = 0.999;
+      (params as unknown as Record<string, unknown>).credibility_drain_rate = 0.999;
     }).toThrow(TypeError);
   });
 });
