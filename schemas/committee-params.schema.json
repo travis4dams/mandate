@@ -9,7 +9,9 @@
     "neutral_rate",
     "target_inflation",
     "target_unemployment",
-    "conviction_band_factor"
+    "conviction_band_factor",
+    "dissent_override_threshold",
+    "median_pull"
   ],
   "properties": {
     "neutral_rate": {
@@ -32,6 +34,17 @@
       "minimum": 0,
       "maximum": 1,
       "description": "Scales how much a member's conviction narrows their effective compromise band. effective_band = compromise_band * (1 - conviction * conviction_band_factor). SPEC-COMM-5."
+    },
+    "dissent_override_threshold": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Minimum dissent count that triggers the median-pull override. When dissents >= this value, decided = proposedRate + median_pull * (committeeMedian - proposedRate). SPEC-COMM-10."
+    },
+    "median_pull": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 1,
+      "description": "Fraction of the distance from proposedRate to committeeMedian to pull when the dissent threshold is met. A value of 1 sets decided = committeeMedian exactly. SPEC-COMM-10."
     }
   }
 }

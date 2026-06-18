@@ -31,6 +31,8 @@ const COMMITTEE_PARAMS: CommitteeParams = {
   target_inflation: 0.02,
   target_unemployment: 0.04,
   conviction_band_factor: 0, // 0 = no conviction narrowing; isolates chair-capital band widening
+  dissent_override_threshold: 99, // high threshold so chair-capital tests never trigger median pull
+  median_pull: 0.5,
 };
 
 function member(id: string, overrides: Partial<CommitteeMember> = {}): CommitteeMember {

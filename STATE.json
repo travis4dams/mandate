@@ -111,6 +111,15 @@
       ]
     },
     {
+      "id": "SPEC-COMM-10",
+      "section": "Staffing economy & the living organization",
+      "tag": "testable",
+      "tests": [
+        "test/fomc.test.ts",
+        "test/session.test.ts"
+      ]
+    },
+    {
       "id": "SPEC-COMM-2",
       "section": "Committee",
       "tag": "testable",

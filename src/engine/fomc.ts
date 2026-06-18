@@ -14,12 +14,17 @@ import type { CommitteeParams } from "./committee-types.js";
 export type { CommitteeParams } from "./committee-types.js";
 
 export interface FomcVote {
-  /** The enacted rate. Always equals proposedRate in slice 1 (the committee has no override power yet); a future slice may add majority-override. */
+  /** The enacted rate. Equals proposedRate when dissents < dissent_override_threshold; when the threshold
+   *  is met, pulled toward the committee median: proposedRate + median_pull * (committeeMedian - proposedRate).
+   *  SPEC-COMM-10. */
   decided: number;
   /** Count of members whose `|preferred - proposedRate| > effectiveBand`, where
    *  `effectiveBand = Math.max(0, compromise_band * (1 - conviction * conviction_band_factor) * (1 + bandMod))`
    *  unless overridden by an `effectiveBands` entry from Chair capital spend (SPEC-COMM-7). */
   dissents: number;
+  /** Arithmetic median of all members' preferred rates — always present regardless of whether the
+   *  dissent override fires. Even-length committees average the two middle values. SPEC-COMM-10. */
+  committeeMedian: number;
 }
 
 // Thrown when vote() is called against a state whose required vars are missing or non-finite.
@@ -61,6 +66,32 @@ function memberPreferred(
   // the Taylor target only contributes 12% per period, but leanShift lands at full magnitude
   // every meeting — consistent with the SPEC ("additive shift to the member's preferred rate").
   return member.inertia * laggedRate + (1 - member.inertia) * taylor + leanShift;
+}
+
+function computeMedian(values: readonly number[]): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0
+    ? (sorted[mid - 1]! + sorted[mid]!) / 2
+    : sorted[mid]!;
+}
+
+/** SPEC-COMM-10: build a FomcVote from already-computed previews, applying the median-pull override
+ *  when dissents >= params.dissent_override_threshold. Exported so Session.proposeRate can use the
+ *  same logic without calling vote() (which would re-run previewVote and lose the previews needed
+ *  for doctrine hooks). */
+export function buildFomcVote(
+  previews: readonly MemberVotePreview[],
+  proposedRate: number,
+  params: CommitteeParams,
+): FomcVote {
+  const dissents = previews.filter((p) => p.wouldDissent).length;
+  const committeeMedian = computeMedian(previews.map((p) => p.preferred));
+  const decided = dissents >= params.dissent_override_threshold
+    ? proposedRate + params.median_pull * (committeeMedian - proposedRate)
+    : proposedRate;
+  return { decided, dissents, committeeMedian };
 }
 
 export interface MemberVotePreview {
@@ -205,7 +236,7 @@ export function previewVote(
   return { previews, gapInflation, gapUnemployment };
 }
 
-/** Pure FOMC vote simulation. decided === proposedRate for slice 1. */
+/** Pure FOMC vote simulation. SPEC-COMM-10: decided equals proposedRate when dissents < threshold; otherwise pulled toward the committee median. */
 export function vote(
   committee: Committee,
   proposedRate: number,
@@ -216,7 +247,7 @@ export function vote(
   effectiveBands?: EffectiveBands,
 ): FomcVote {
   const { previews } = previewVote(committee, proposedRate, state, params, traitCatalog, effectiveBands);
-  return { decided: proposedRate, dissents: previews.filter((p) => p.wouldDissent).length };
+  return buildFomcVote(previews, proposedRate, params);
 }
 
 const SCHEMA_PATH = join(new URL(".", import.meta.url).pathname, "../../schemas/committee-params.schema.json");

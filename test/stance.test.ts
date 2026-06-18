@@ -13,6 +13,8 @@ const PARAMS: CommitteeParams = {
   target_inflation: 0.02,
   target_unemployment: 0.04,
   conviction_band_factor: 0.8,
+  dissent_override_threshold: 99,
+  median_pull: 0.5,
 };
 
 function member(id: string, overrides: Partial<CommitteeMember> = {}): CommitteeMember {

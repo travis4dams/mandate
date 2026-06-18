@@ -2,6 +2,7 @@ import { describe, it, expect, afterEach } from "vitest";
 import {
   vote,
   previewVote,
+  buildFomcVote,
   loadCommitteeParams,
   _resetCommitteeParamsCache,
   VoteMissingVarError,
@@ -25,6 +26,8 @@ const PARAMS: CommitteeParams = {
   target_inflation: 0.02,
   target_unemployment: 0.04,
   conviction_band_factor: 0.8,
+  dissent_override_threshold: 7,
+  median_pull: 0.5,
 };
 
 // Default per-member coefficient fixture (empirical median).
@@ -603,5 +606,87 @@ describe("vote", () => {
     const paramsConv0: CommitteeParams = { ...PARAMS, conviction_band_factor: 0 };
     const cConv0 = committeeOf([member("zero_conv", { compromise_band: 0.010, conviction: 0 })]);
     expect(vote(cConv0, 0.057, state, paramsConv0, []).dissents).toBe(0);
+  });
+
+  // SPEC-COMM-10: dissents below threshold → decided === proposedRate; committeeMedian always present.
+  it("SPEC-COMM-10: dissents < threshold → decided equals proposedRate", () => {
+    // 6 members all prefer ~0.062 (inflation 8%); proposedRate = 0.05.
+    // All 6 dissent, but 6 < threshold (7) → no pull.
+    const c = committeeOf([
+      member("a"), member("b"), member("c"),
+      member("d"), member("e"), member("f"),
+    ]);
+    const state = macroState({ inflation: 0.08, unemployment: 0.04, policy_rate: 0.05 });
+    const result = vote(c, 0.05, state, PARAMS, []);
+    expect(result.dissents).toBe(6);
+    expect(result.decided).toBe(0.05);
+    expect(Number.isFinite(result.committeeMedian)).toBe(true);
+    expect(result.committeeMedian).toBeGreaterThan(0.05);
+  });
+
+  // SPEC-COMM-10: dissents exactly at threshold → decided is pulled toward committeeMedian.
+  it("SPEC-COMM-10: dissents >= threshold → decided is strictly between proposedRate and committeeMedian", () => {
+    // 7 members all prefer ~0.062 (inflation gap 6pp); proposedRate = 0.05.
+    // 7 dissents >= threshold (7) → decided = 0.05 + 0.5 * (median - 0.05).
+    const c = committeeOf([
+      member("a"), member("b"), member("c"), member("d"),
+      member("e"), member("f"), member("g"),
+    ]);
+    const state = macroState({ inflation: 0.08, unemployment: 0.04, policy_rate: 0.05 });
+    const result = vote(c, 0.05, state, PARAMS, []);
+    expect(result.dissents).toBe(7);
+    expect(result.committeeMedian).toBeGreaterThan(0.05);
+    expect(result.decided).toBeGreaterThan(0.05);
+    expect(result.decided).toBeLessThan(result.committeeMedian);
+    // With median_pull = 0.5: decided = proposedRate + 0.5 * (committeeMedian - proposedRate).
+    expect(result.decided).toBeCloseTo(0.05 + PARAMS.median_pull * (result.committeeMedian - 0.05), 10);
+  });
+
+  // SPEC-COMM-10: buildFomcVote applies pull precisely with controlled synthetic previews.
+  it("SPEC-COMM-10: buildFomcVote computes decided = proposedRate + median_pull * (median - proposedRate)", () => {
+    // SPEC-COMM-10
+    const proposedRate = 0.05;
+    const median = 0.08;
+    // 7 previews all preferring 0.08 (median = 0.08), all dissenting.
+    const previews = Array.from({ length: 7 }, (_, i) => ({
+      memberId: `m${i}`,
+      nameKey: `m${i}`,
+      preferred: median,
+      wouldDissent: true,
+    }));
+    const result = buildFomcVote(previews, proposedRate, PARAMS);
+    expect(result.dissents).toBe(7);
+    expect(result.committeeMedian).toBe(median);
+    // decided = 0.05 + 0.5 * (0.08 - 0.05) = 0.065
+    expect(result.decided).toBeCloseTo(proposedRate + PARAMS.median_pull * (median - proposedRate), 10);
+  });
+
+  // SPEC-COMM-10: buildFomcVote with one-below-threshold dissents → no pull.
+  it("SPEC-COMM-10: buildFomcVote does not pull when dissents is one below threshold", () => {
+    // SPEC-COMM-10
+    const proposedRate = 0.05;
+    const previews = Array.from({ length: 7 }, (_, i) => ({
+      memberId: `m${i}`,
+      nameKey: `m${i}`,
+      preferred: 0.08,
+      wouldDissent: i < 6, // only 6 out of 7 dissent
+    }));
+    const result = buildFomcVote(previews, proposedRate, PARAMS);
+    expect(result.dissents).toBe(6);
+    expect(result.decided).toBe(proposedRate);
+  });
+
+  // SPEC-COMM-10: even-member committee median is arithmetic mean of the two middle preferred rates.
+  it("SPEC-COMM-10: even-member committee median is mean of two middle preferred rates", () => {
+    // SPEC-COMM-10
+    // 4 previews: two at 0.06, two at 0.08 → sorted: 0.06, 0.06, 0.08, 0.08 → median = 0.07.
+    const previews = [
+      { memberId: "lo1", nameKey: "lo1", preferred: 0.06, wouldDissent: false },
+      { memberId: "lo2", nameKey: "lo2", preferred: 0.06, wouldDissent: false },
+      { memberId: "hi1", nameKey: "hi1", preferred: 0.08, wouldDissent: false },
+      { memberId: "hi2", nameKey: "hi2", preferred: 0.08, wouldDissent: false },
+    ];
+    const result = buildFomcVote(previews, 0.05, PARAMS);
+    expect(result.committeeMedian).toBeCloseTo(0.07, 10);
   });
 });

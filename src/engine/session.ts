@@ -50,6 +50,7 @@ import {
 import { mulberry32, fnv1a32, type SeededRng } from "./rng.js";
 import { observe } from "./fog.js";
 import type { GameState, GameStateSnapshot } from "./state.js";
+import { buildFomcVote } from "./fomc.js";
 import type { FomcVote, MemberVotePreview } from "./fomc.js";
 import type { Replay } from "../content/replays.js";
 
@@ -970,8 +971,9 @@ export class Session {
     const traits = loadTraitCatalog();
     const effectiveBands = this._resolveEffectiveBands(committee, capitalSpend, "proposeRate");
     // SPEC-DOCT-2: use previewVote directly so member previews are available for dot-plot spread.
+    // SPEC-COMM-10: buildFomcVote applies the median-pull override when dissents exceed the threshold.
     const { previews } = previewVote(committee, rate, this._state, params, traits, effectiveBands);
-    const fomcVote: FomcVote = { decided: rate, dissents: previews.filter((p) => p.wouldDissent).length };
+    const fomcVote: FomcVote = buildFomcVote(previews, rate, params);
 
     // Apply the decided rate and compute new credibility.
     // SPEC-CRED-1 (issue #33): dissents no longer affect credibility, so fomcVote.dissents is
