@@ -193,6 +193,15 @@ describe("applyMacroDynamics — soft-ceiling drain (SPEC-CRED-7)", () => {
     expect(applyMacroDynamics(atCeilingState, nodrainParams).vars.credibility)
       .toBe(applyMacroDynamics(atCeilingState, BASE).vars.credibility);
   });
+
+  it("drain is nonzero above the soft ceiling: drain_rate=0 and drain_rate=0.20 differ", () => {
+    // SPEC-CRED-7: positive test that the drain is actually active above the ceiling.
+    // A bug that zeroed drain_rate silently would pass the zero-drain tests but fail here.
+    const nodrainParams = { ...BASE, credibility_drain_rate: 0 };
+    const aboveState = makeState({ vars: { ...fixedPointVars, credibility: 95 } });
+    expect(applyMacroDynamics(aboveState, nodrainParams).vars.credibility)
+      .not.toBe(applyMacroDynamics(aboveState, BASE).vars.credibility);
+  });
 });
 
 describe("applyMacroDynamics — mission-tied credibility (SPEC-CRED-6)", () => {
@@ -272,5 +281,22 @@ describe("loadDynamicsParams — soft-ceiling guard (SPEC-CRED-7)", () => {
     // Restore spy so the next call uses real files (valid soft_ceiling = 85).
     vi.restoreAllMocks();
     expect(loadDynamicsParams()).toBeDefined();
+  });
+
+  it("throws when credibility_drain_rate <= 0", () => {
+    // SPEC-CRED-7: zero drain_rate silently disables the soft-ceiling drain; guard must reject it.
+    vi.spyOn(contentLoader, "loadValidatedFile")
+      .mockReturnValueOnce({
+        inflation_persistence: 0.952, phillips_slope: 0.106,
+        unemployment_natural_rate: 0.0645, real_neutral_rate: 0.027,
+        okun_coefficient: 1.14, unemployment_adjustment_speed: 0.045,
+      } as any)
+      .mockReturnValueOnce({
+        target_inflation: 0.02, unemployment_target: 0.055,
+        expectations_adaptivity: 0.051, expectations_anchor_pull: 0.025,
+        credibility_mission_gain: 300, credibility_unemployment_weight: 0.5,
+        anchor_threshold: 60, credibility_soft_ceiling: 85, credibility_drain_rate: 0,
+      } as any);
+    expect(() => loadDynamicsParams()).toThrow("credibility_drain_rate");
   });
 });

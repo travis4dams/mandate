@@ -90,7 +90,7 @@
     },
     "credibility_drain_rate": {
       "type": "number",
-      "minimum": 0,
+      "exclusiveMinimum": 0,
       "description": "SPEC-CRED-7: monthly drain per unit of credibility above credibility_soft_ceiling. To prevent endgame pin, the annual drain at cred_max (drain_rate × (cred_max − credibility_soft_ceiling) × 12) must exceed the annual on_target_gain from meetings (on_target_gain × ~8 meetings/year)."
     }
   }
