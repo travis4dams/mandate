@@ -553,6 +553,17 @@ describe("SPEC-GUIDE-3: forward guidance stance is a persisted commitment", () =
     s.reset();
     expect(s.committedGuidanceStance).toBe("neutral");
   });
+
+  it("advance() that throws does not modify committedGuidanceStance", () => {
+    // SPEC-GUIDE-3: a failed advance() must leave committedGuidanceStance unchanged.
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    s.proposeRate(0.1075);
+    s.setForwardGuidanceStance("hawkish");
+    s.advance(1); // committedGuidanceStance = "hawkish"
+    s.setForwardGuidanceStance("dovish"); // change live stance — committed stays "hawkish"
+    expect(() => s.advance(-1)).toThrow(); // invalid argument — advance throws
+    expect(s.committedGuidanceStance).toBe("hawkish"); // must not have changed to "dovish"
+  });
 });
 
 describe("SPEC-SIM-5: macro dynamics wired into Session.advance()", () => {

@@ -329,7 +329,10 @@ export class Session {
     return this._trajectoryCache;
   }
 
-  /** SPEC-GUIDE-3: the stance committed by the last advance(). Before the first advance() (including after reset()), returns the live stance — the same fallback proposeRate() uses. */
+  /** SPEC-GUIDE-3: the stance committed by the last advance(). Before the first advance() —
+   *  and after reset(), which also resets the live stance to "neutral" — returns the live
+   *  stance, matching the fallback proposeRate() uses.
+   */
   get committedGuidanceStance(): ForwardGuidanceStance {
     return this._committedStance ?? this._stance;
   }
@@ -998,9 +1001,7 @@ export class Session {
     // Capturing it here (immediately after vote) keeps that guarantee visible.
     const guidanceP = loadGuidanceParams();
     const preMeetingRate = this._state.vars.policy_rate as number;
-    // SPEC-GUIDE-3: use the committed stance from the last advance(); fall back to live stance
-    // only when advance() has never been called (game start — first meeting before any advance).
-    const committedStance = this._committedStance ?? this._stance;
+    const committedStance = this.committedGuidanceStance; // SPEC-GUIDE-3
     const surprisedMarkets = marketsSurprised(
       committedStance,
       preMeetingRate,
@@ -1060,7 +1061,9 @@ export class Session {
    */
   reset(): void {
     this._stance = "neutral";
-    this._committedStance = undefined; // SPEC-GUIDE-3: restore pre-advance state so the first proposeRate() after reset uses the live stance
+    // SPEC-GUIDE-3: restore pre-advance state so the first proposeRate() after reset()
+    // reads the live stance, matching the fallback used before any advance() is called.
+    this._committedStance = undefined;
     this._rng = mulberry32(this._seed);
     this._pendingEscalations = [];
     this._firedOnce = new Set();
