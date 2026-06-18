@@ -173,6 +173,21 @@ describe("applyMacroDynamics — soft-ceiling drain (SPEC-CRED-7)", () => {
     expect(result.vars.credibility).toBeCloseTo(97.0, 10);
   });
 
+  it("credibility at cred_max drains below cred_max when economy is exactly on the dual-mandate target (SPEC-CRED-7 literal)", () => {
+    // SPEC-CRED-7 literal: inflation=target, unemployment=unemployment_target → distBefore=0.
+    // Economy will drift away from unemployment_target in one tick (toward natural_rate), so
+    // distAfter > 0 and mission_gain is negative — but drain alone guarantees credibility < cred_max.
+    const onTargetVars = {
+      policy_rate: BASE.target_inflation + BASE.real_neutral_rate,
+      inflation: BASE.target_inflation,
+      unemployment: BASE.unemployment_target,
+      expectations_anchor: BASE.target_inflation,
+      months_below_anchor: 0,
+    };
+    const state = makeState({ vars: { ...onTargetVars, credibility: 100 } });
+    expect(applyMacroDynamics(state, BASE).vars.credibility).toBeLessThan(100);
+  });
+
   it("drain is proportional: credibility=90 drains to 89.0", () => {
     // SPEC-CRED-7: drain = 0.20 × (90 − 85) = 1.0  →  newCredibility = 90 − 1.0 = 89.0.
     const state = makeState({ vars: { ...fixedPointVars, credibility: 90 } });
@@ -230,6 +245,12 @@ describe("applyMacroDynamics — soft-ceiling drain (SPEC-CRED-7)", () => {
     // so NaN doesn't silently propagate through clamp and corrupt subsequent ticks.
     const nanState = makeState({ vars: { ...fixedPointVars, credibility: NaN } });
     expect(() => applyMacroDynamics(nanState, BASE)).toThrow("not finite");
+  });
+
+  it("throws when credibility is Infinity (SPEC-CRED-7 NaN guard)", () => {
+    // SPEC-CRED-7: same guard covers Infinity (e.g. a blown-up doctrine delta or overflow).
+    const infState = makeState({ vars: { ...fixedPointVars, credibility: Infinity } });
+    expect(() => applyMacroDynamics(infState, BASE)).toThrow("not finite");
   });
 
   it("drain uses prior credibility, not post-gain credibility (SPEC-CRED-7)", () => {
