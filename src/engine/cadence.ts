@@ -60,6 +60,11 @@ export function scaleParamsForTick(params: MacroDynamicsParams, n: number): Read
   if (!Number.isInteger(n) || n < 1) {
     throw new RangeError(`scaleParamsForTick: n must be a positive integer, got ${n}`);
   }
+  if (params.credibility_drain_rate <= 0 || params.credibility_drain_rate >= 1) {
+    throw new RangeError(
+      `scaleParamsForTick: credibility_drain_rate must be in (0,1), got ${params.credibility_drain_rate}`,
+    );
+  }
   if (n === 1) return params;
   return {
     ...params,

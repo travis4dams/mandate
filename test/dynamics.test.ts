@@ -264,6 +264,24 @@ describe("applyMacroDynamics — mission-tied credibility (SPEC-CRED-6)", () => 
 });
 
 describe("loadDynamicsParams — soft-ceiling guard (SPEC-CRED-7)", () => {
+  const DYNAMICS_MOCK = {
+    inflation_persistence: 0.952, phillips_slope: 0.106,
+    unemployment_natural_rate: 0.0645, real_neutral_rate: 0.027,
+    okun_coefficient: 1.14, unemployment_adjustment_speed: 0.045,
+  } as const;
+  const CRED_MOCK_BASE = {
+    target_inflation: 0.02, unemployment_target: 0.055,
+    expectations_adaptivity: 0.051, expectations_anchor_pull: 0.025,
+    credibility_mission_gain: 300, credibility_unemployment_weight: 0.5,
+    anchor_threshold: 60, credibility_soft_ceiling: 85, credibility_drain_rate: 0.20,
+  } as const;
+
+  function mockParams(overrides: Partial<typeof CRED_MOCK_BASE>): void {
+    vi.spyOn(contentLoader, "loadValidatedFile")
+      .mockReturnValueOnce(DYNAMICS_MOCK as any)
+      .mockReturnValueOnce({ ...CRED_MOCK_BASE, ...overrides } as any);
+  }
+
   afterEach(() => {
     _resetDynamicsParamsCache();
     vi.restoreAllMocks();
@@ -272,36 +290,14 @@ describe("loadDynamicsParams — soft-ceiling guard (SPEC-CRED-7)", () => {
   it("throws when credibility_soft_ceiling >= CRED_MAX", () => {
     // SPEC-CRED-7: runtime guard fires if soft_ceiling >= cred_max (100) so the drain
     // cannot be silently disabled by a misconfigured content file.
-    vi.spyOn(contentLoader, "loadValidatedFile")
-      .mockReturnValueOnce({
-        inflation_persistence: 0.952, phillips_slope: 0.106,
-        unemployment_natural_rate: 0.0645, real_neutral_rate: 0.027,
-        okun_coefficient: 1.14, unemployment_adjustment_speed: 0.045,
-      } as any)
-      .mockReturnValueOnce({
-        target_inflation: 0.02, unemployment_target: 0.055,
-        expectations_adaptivity: 0.051, expectations_anchor_pull: 0.025,
-        credibility_mission_gain: 300, credibility_unemployment_weight: 0.5,
-        anchor_threshold: 60, credibility_soft_ceiling: 100, credibility_drain_rate: 0.20,
-      } as any);
+    mockParams({ credibility_soft_ceiling: 100 });
     expect(() => loadDynamicsParams()).toThrow("credibility_soft_ceiling");
   });
 
   it("does not poison the cache on a failed load", () => {
     // SPEC-CRED-7: _cachedParams is assigned only after the guard passes, so a failed
     // call leaves the cache empty and a subsequent call with valid data succeeds.
-    vi.spyOn(contentLoader, "loadValidatedFile")
-      .mockReturnValueOnce({
-        inflation_persistence: 0.952, phillips_slope: 0.106,
-        unemployment_natural_rate: 0.0645, real_neutral_rate: 0.027,
-        okun_coefficient: 1.14, unemployment_adjustment_speed: 0.045,
-      } as any)
-      .mockReturnValueOnce({
-        target_inflation: 0.02, unemployment_target: 0.055,
-        expectations_adaptivity: 0.051, expectations_anchor_pull: 0.025,
-        credibility_mission_gain: 300, credibility_unemployment_weight: 0.5,
-        anchor_threshold: 60, credibility_soft_ceiling: 100, credibility_drain_rate: 0.20,
-      } as any);
+    mockParams({ credibility_soft_ceiling: 100 });
     expect(() => loadDynamicsParams()).toThrow();
     // Restore spy so the next call uses real files (valid soft_ceiling = 85).
     vi.restoreAllMocks();
@@ -310,70 +306,26 @@ describe("loadDynamicsParams — soft-ceiling guard (SPEC-CRED-7)", () => {
 
   it("throws when credibility_drain_rate <= 0", () => {
     // SPEC-CRED-7: zero drain_rate silently disables the soft-ceiling drain; guard must reject it.
-    vi.spyOn(contentLoader, "loadValidatedFile")
-      .mockReturnValueOnce({
-        inflation_persistence: 0.952, phillips_slope: 0.106,
-        unemployment_natural_rate: 0.0645, real_neutral_rate: 0.027,
-        okun_coefficient: 1.14, unemployment_adjustment_speed: 0.045,
-      } as any)
-      .mockReturnValueOnce({
-        target_inflation: 0.02, unemployment_target: 0.055,
-        expectations_adaptivity: 0.051, expectations_anchor_pull: 0.025,
-        credibility_mission_gain: 300, credibility_unemployment_weight: 0.5,
-        anchor_threshold: 60, credibility_soft_ceiling: 85, credibility_drain_rate: 0,
-      } as any);
+    mockParams({ credibility_drain_rate: 0 });
     expect(() => loadDynamicsParams()).toThrow("credibility_drain_rate");
   });
 
   it("throws when credibility_drain_rate is negative", () => {
     // SPEC-CRED-7: guard is <= 0, not just == 0; a negative rate inverts the drain into a gain.
-    vi.spyOn(contentLoader, "loadValidatedFile")
-      .mockReturnValueOnce({
-        inflation_persistence: 0.952, phillips_slope: 0.106,
-        unemployment_natural_rate: 0.0645, real_neutral_rate: 0.027,
-        okun_coefficient: 1.14, unemployment_adjustment_speed: 0.045,
-      } as any)
-      .mockReturnValueOnce({
-        target_inflation: 0.02, unemployment_target: 0.055,
-        expectations_adaptivity: 0.051, expectations_anchor_pull: 0.025,
-        credibility_mission_gain: 300, credibility_unemployment_weight: 0.5,
-        anchor_threshold: 60, credibility_soft_ceiling: 85, credibility_drain_rate: -0.1,
-      } as any);
+    mockParams({ credibility_drain_rate: -0.1 });
     expect(() => loadDynamicsParams()).toThrow("credibility_drain_rate");
   });
 
   it("throws when credibility_drain_rate >= 1", () => {
     // SPEC-CRED-7 × SPEC-SIM-6: rate >= 1 breaks the 1-(1-r)^(1/n) geometric cadence scaling
     // (rate=1 gives pow(0,1/n)=0 so per-tick rate stays 1; rate>1 gives NaN via pow(negative,fraction)).
-    vi.spyOn(contentLoader, "loadValidatedFile")
-      .mockReturnValueOnce({
-        inflation_persistence: 0.952, phillips_slope: 0.106,
-        unemployment_natural_rate: 0.0645, real_neutral_rate: 0.027,
-        okun_coefficient: 1.14, unemployment_adjustment_speed: 0.045,
-      } as any)
-      .mockReturnValueOnce({
-        target_inflation: 0.02, unemployment_target: 0.055,
-        expectations_adaptivity: 0.051, expectations_anchor_pull: 0.025,
-        credibility_mission_gain: 300, credibility_unemployment_weight: 0.5,
-        anchor_threshold: 60, credibility_soft_ceiling: 85, credibility_drain_rate: 1.0,
-      } as any);
+    mockParams({ credibility_drain_rate: 1.0 });
     expect(() => loadDynamicsParams()).toThrow("credibility_drain_rate");
   });
 
   it("throws when credibility_soft_ceiling <= CRED_MIN", () => {
     // SPEC-CRED-7: soft_ceiling=0 makes max(0, cred - 0) = cred, firing the drain at all credibility levels.
-    vi.spyOn(contentLoader, "loadValidatedFile")
-      .mockReturnValueOnce({
-        inflation_persistence: 0.952, phillips_slope: 0.106,
-        unemployment_natural_rate: 0.0645, real_neutral_rate: 0.027,
-        okun_coefficient: 1.14, unemployment_adjustment_speed: 0.045,
-      } as any)
-      .mockReturnValueOnce({
-        target_inflation: 0.02, unemployment_target: 0.055,
-        expectations_adaptivity: 0.051, expectations_anchor_pull: 0.025,
-        credibility_mission_gain: 300, credibility_unemployment_weight: 0.5,
-        anchor_threshold: 60, credibility_soft_ceiling: 0, credibility_drain_rate: 0.20,
-      } as any);
+    mockParams({ credibility_soft_ceiling: 0 });
     expect(() => loadDynamicsParams()).toThrow("credibility_soft_ceiling");
   });
 });

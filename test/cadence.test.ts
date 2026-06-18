@@ -53,6 +53,19 @@ describe("scaleParamsForTick — SPEC-SIM-6", () => {
     expect(() => scaleParamsForTick(BASE, 1.5)).toThrow(RangeError);
   });
 
+  it("throws RangeError for credibility_drain_rate >= 1 (NaN guard)", () => {
+    // SPEC-SIM-6: rate >= 1 makes 1-rate <= 0; Math.pow(negative, 1/n) returns NaN for
+    // fractional exponents, silently corrupting all downstream credibility calculations.
+    const badParams = { ...BASE, credibility_drain_rate: 1.5 };
+    expect(() => scaleParamsForTick(badParams, 4)).toThrow(RangeError);
+  });
+
+  it("throws RangeError for credibility_drain_rate <= 0", () => {
+    // SPEC-SIM-6: rate <= 0 would invert or zero the drain, invalid regardless of cadence.
+    const badParams = { ...BASE, credibility_drain_rate: 0 };
+    expect(() => scaleParamsForTick(badParams, 4)).toThrow(RangeError);
+  });
+
   it("returns the same reference for n=1 (identity)", () => {
     // SPEC-SIM-6
     const scaled = scaleParamsForTick(BASE, 1);
@@ -196,6 +209,36 @@ describe("trajectory invariance — SPEC-SIM-6", () => {
     }
 
     const TOLERANCE = 0.002;
+    expect(Math.abs((s4.vars.credibility as number) - (s1.vars.credibility as number))).toBeLessThan(TOLERANCE);
+  });
+
+  it("n=4 sub-ticks agree on credibility within 2pp over 12 months when drain and mission-gain are both active (loose tripwire — SPEC-CRED-7 × SPEC-SIM-6)", () => {
+    // Combined (drain + active mission_gain) case is a first-order approximation — documented
+    // in cadence.ts as exceeding the 0.2pp tolerance. This loose 2pp tripwire catches future
+    // content changes that push the divergence from acceptable to several credibility points.
+    const INITIAL = {
+      policy_rate: BASE.target_inflation + BASE.real_neutral_rate,
+      inflation: 0.03, // slightly off target (0.02) → mission_gain is nonzero
+      unemployment: BASE.unemployment_natural_rate,
+      expectations_anchor: BASE.target_inflation,
+      credibility: 95, // above soft_ceiling (85) → drain is also active
+      months_below_anchor: 0,
+    };
+
+    let s1 = makeState({ vars: { ...INITIAL } });
+    for (let m = 0; m < 12; m++) {
+      s1 = applyMacroDynamics(s1, BASE);
+    }
+
+    const scaled4 = scaleParamsForTick(BASE, 4);
+    let s4 = makeState({ vars: { ...INITIAL } });
+    for (let m = 0; m < 12; m++) {
+      for (let t = 0; t < 4; t++) {
+        s4 = applyMacroDynamics(s4, scaled4);
+      }
+    }
+
+    const TOLERANCE = 2.0; // intentionally loose — first-order approximation for the combined case
     expect(Math.abs((s4.vars.credibility as number) - (s1.vars.credibility as number))).toBeLessThan(TOLERANCE);
   });
 

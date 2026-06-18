@@ -73,6 +73,10 @@ export function applyMacroDynamics(state: GameState, params: MacroDynamicsParams
   const realRate = policyRate - anchor;
   const realGap = realRate - params.real_neutral_rate;
 
+  if (!Number.isFinite(credibility)) {
+    throw new Error(`applyMacroDynamics: credibility is not finite (${credibility})`);
+  }
+
   // Use lagged output_gap if available (SPEC-LAG-1), else fall back to the immediate realGap.
   const rawLaggedGap = state.vars.output_gap;
   if (rawLaggedGap !== undefined && !Number.isFinite(rawLaggedGap)) {
@@ -220,7 +224,7 @@ export function loadDynamicsParams(): MacroDynamicsParams {
     );
   }
   _cachedParams = candidate;
-  return _cachedParams!;
+  return candidate;
 }
 
 /** Test-only: clear the cache so the next loadDynamicsParams() re-reads and re-validates. */
