@@ -76,7 +76,7 @@ describe("scaleParamsForTick — SPEC-SIM-6", () => {
     );
   });
 
-  it("flow params (phillips_slope, credibility_mission_gain, credibility_drain_rate) are divided by n", () => {
+  it("flow params (phillips_slope, credibility_mission_gain) are divided by n", () => {
     // SPEC-SIM-6
     const n = 4;
     const scaled = scaleParamsForTick(BASE, n);
@@ -84,7 +84,17 @@ describe("scaleParamsForTick — SPEC-SIM-6", () => {
     expect(scaled.credibility_mission_gain).toBeCloseTo(BASE.credibility_mission_gain / n, 12);
     expect(scaled.expectations_adaptivity).toBeCloseTo(BASE.expectations_adaptivity / n, 12);
     expect(scaled.expectations_anchor_pull).toBeCloseTo(BASE.expectations_anchor_pull / n, 12);
-    expect(scaled.credibility_drain_rate).toBeCloseTo(BASE.credibility_drain_rate / n, 12);
+  });
+
+  it("scaled credibility_drain_rate satisfies (1-r_scaled)^n ≈ 1-r_monthly (AR composition, SPEC-CRED-7 × SPEC-SIM-6)", () => {
+    // SPEC-SIM-6: the drain is AR(1) toward soft_ceiling, same structure as unemployment_adjustment_speed.
+    // Exact geometric scaling (not linear /n) preserves cadence invariance of the credibility trajectory.
+    const n = 4;
+    const scaled = scaleParamsForTick(BASE, n);
+    expect(Math.pow(1 - scaled.credibility_drain_rate, n)).toBeCloseTo(
+      1 - BASE.credibility_drain_rate,
+      10,
+    );
   });
 
   it("structural params (natural rate, targets, thresholds) are unchanged", () => {
@@ -155,6 +165,36 @@ describe("trajectory invariance — SPEC-SIM-6", () => {
     expect(
       Math.abs((s4.vars.expectations_anchor as number) - (s1.vars.expectations_anchor as number)),
     ).toBeLessThan(TOLERANCE);
+  });
+
+  it("n=4 sub-ticks agree on credibility within 0.2pp when starting above soft ceiling (SPEC-CRED-7 × SPEC-SIM-6)", () => {
+    // SPEC-SIM-6 × SPEC-CRED-7: credibility_drain_rate is a cadence-scaled flow param.
+    // Starting above the soft ceiling (95 > 85) exercises the drain in both cadences.
+    // Verifies scaleParamsForTick divides drain_rate by n but leaves soft_ceiling unchanged.
+    const INITIAL = {
+      policy_rate: BASE.target_inflation + BASE.real_neutral_rate,
+      inflation: BASE.target_inflation,
+      unemployment: BASE.unemployment_natural_rate,
+      expectations_anchor: BASE.target_inflation,
+      credibility: 95,
+      months_below_anchor: 0,
+    };
+
+    let s1 = makeState({ vars: { ...INITIAL } });
+    for (let m = 0; m < 12; m++) {
+      s1 = applyMacroDynamics(s1, BASE);
+    }
+
+    const scaled4 = scaleParamsForTick(BASE, 4);
+    let s4 = makeState({ vars: { ...INITIAL } });
+    for (let m = 0; m < 12; m++) {
+      for (let t = 0; t < 4; t++) {
+        s4 = applyMacroDynamics(s4, scaled4);
+      }
+    }
+
+    const TOLERANCE = 0.002;
+    expect(Math.abs((s4.vars.credibility as number) - (s1.vars.credibility as number))).toBeLessThan(TOLERANCE);
   });
 
   it("n=4 sub-ticks match monthly model within 0.2pp after 36 months (Volcker scenario)", () => {

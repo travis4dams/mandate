@@ -163,7 +163,7 @@ describe("applyMacroDynamics — soft-ceiling drain (SPEC-CRED-7)", () => {
     months_below_anchor: 0,
   };
 
-  it("credibility at cred_max drains to 97.0 when economy is exactly on target", () => {
+  it("credibility at cred_max drains to 97.0 when economy is at the macro steady state (zero mission-distance change)", () => {
     // SPEC-CRED-7: drain = credibility_drain_rate × (credibility − credibility_soft_ceiling)
     //              = 0.20 × (100 − 85) = 3.0  →  newCredibility = 100 − 3.0 = 97.0.
     const state = makeState({ vars: { ...fixedPointVars, credibility: 100 } });

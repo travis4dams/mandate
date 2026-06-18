@@ -308,6 +308,7 @@
       "section": "Credibility & expectations",
       "tag": "testable",
       "tests": [
+        "test/cadence.test.ts",
         "test/dynamics.test.ts"
       ]
     },

@@ -5,7 +5,8 @@
 // macro trajectory is invariant to cadence:
 //   - AR(1) persistence: p_tick = p_monthly^(1/n)  [exact for geometric decay]
 //   - Mean-reversion speed: α_tick = 1 − (1−α_monthly)^(1/n)  [exact for linear AR]
-//   - Flow contributions (phillips_slope, expectations_adaptivity, expectations_anchor_pull, credibility_mission_gain, credibility_drain_rate): divided by n  [first-order approximation, error O(α²/n)]
+//   - Soft-ceiling drain rate: same formula as mean-reversion, 1 − (1−rate)^(1/n)  [exact: drain is AR(1) toward soft_ceiling]
+//   - Flow contributions (phillips_slope, expectations_adaptivity, expectations_anchor_pull, credibility_mission_gain): divided by n  [first-order approximation, error O(α²/n)]
 //   - Structural params (natural rates, targets, thresholds): unchanged
 //
 // Documented tolerance: monthly and weekly (n=4) trajectories agree within 0.2pp
@@ -68,6 +69,7 @@ export function scaleParamsForTick(params: MacroDynamicsParams, n: number): Read
     expectations_adaptivity: params.expectations_adaptivity / n,
     expectations_anchor_pull: params.expectations_anchor_pull / n,
     credibility_mission_gain: params.credibility_mission_gain / n,
-    credibility_drain_rate: params.credibility_drain_rate / n,
+    // Drain is AR(1) toward soft_ceiling — exact geometric scaling like unemployment_adjustment_speed.
+    credibility_drain_rate: 1 - Math.pow(1 - params.credibility_drain_rate, 1 / n),
   };
 }

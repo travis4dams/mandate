@@ -1,4 +1,4 @@
-// SPEC-SIM-5 / SPEC-CRED-4 / SPEC-CRED-6: the monthly macro step.
+// SPEC-SIM-5 / SPEC-CRED-4 / SPEC-CRED-6 / SPEC-CRED-7: the monthly macro step.
 //
 // A single simultaneous update: inflation, unemployment, expectations_anchor, and
 // credibility are all computed from the PRIOR month's vars, so the step is
@@ -166,6 +166,12 @@ type CredibilityFile = Pick<
   | "credibility_soft_ceiling"
   | "credibility_drain_rate"
 >;
+
+// Exhaustiveness: DynamicsFile & CredibilityFile must cover all of MacroDynamicsParams.
+// A field added to the interface but omitted from both Picks will fail here (TS2322), not
+// silently produce undefined at runtime.
+type _Exhaustive = DynamicsFile & CredibilityFile extends MacroDynamicsParams ? true : never;
+const _check: _Exhaustive = true; void _check;
 
 let _cachedParams: MacroDynamicsParams | undefined;
 
