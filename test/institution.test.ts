@@ -280,6 +280,19 @@ describe("applyInstitutionDynamics — staffing upkeep (SPEC-INST-3)", () => {
     expect(twoUpkeep).toBeCloseTo(UPKEEP_RATE * (DIV_A.hire_cost + DIV_B.hire_cost));
   });
 
+  it("two staffed divisions with equal hire_cost incur exactly twice the upkeep of one (SPEC-INST-3)", () => {
+    // SPEC-INST-3 verbatim AC: equal costs → exactly 2× upkeep.
+    const DIV_C: Division = { ...DIV_A, id: "div_c" }; // same hire_cost as DIV_A
+    const stateOne = makeState({ vars: { operating_budget: 1000 }, flags: { "staffed.div_a": true } });
+    const stateTwo = makeState({ vars: { operating_budget: 1000 }, flags: { "staffed.div_a": true, "staffed.div_c": true } });
+    const one = applyInstitutionDynamics(stateOne, UPKEEP_PARAMS, [DIV_A, DIV_C]);
+    const two = applyInstitutionDynamics(stateTwo, UPKEEP_PARAMS, [DIV_A, DIV_C]);
+    const growthBase = 1000 * (1 + UPKEEP_PARAMS.budget_monthly_growth);
+    const oneUpkeep = growthBase - (one.vars.operating_budget as number);
+    const twoUpkeep = growthBase - (two.vars.operating_budget as number);
+    expect(twoUpkeep).toBeCloseTo(2 * oneUpkeep);
+  });
+
   it("an unstaffed catalog produces no upkeep deduction", () => {
     // SPEC-INST-3
     const state = makeState({ vars: { operating_budget: 1000 } });

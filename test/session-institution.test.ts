@@ -74,9 +74,8 @@ describe("Session institution + legacy + npc-name wiring", () => {
     s.hire("research", 0); // research: hire_cost = 12
     const budgetAfterHire = s.operatingBudget();
     s.advance(1);
-    // Pure growth alone would give budgetAfterHire * 1.005.
-    // With upkeep_per_hire_cost=0.05 and hire_cost=12, upkeep = 0.6 is also deducted.
-    expect(s.operatingBudget()).toBeLessThan(budgetAfterHire * (1 + 0.005));
+    // Pure growth: budgetAfterHire * 1.005. Upkeep: 0.05 * 12 = 0.6. Both must apply.
+    expect(s.operatingBudget()).toBeCloseTo(budgetAfterHire * (1 + 0.005) - 0.6);
   });
 
   // SPEC-LEGACY-1: term clock, reappointment outlook, and legacy score.
