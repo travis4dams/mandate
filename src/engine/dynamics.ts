@@ -185,7 +185,7 @@ type CredibilityFile = Pick<
 // NOTE: only catches omitted *required* fields; new optional fields in
 // MacroDynamicsParams won't trigger this — add them to a Pick explicitly.
 type _Exhaustive = DynamicsFile & CredibilityFile extends MacroDynamicsParams ? true : never;
-type _check = _Exhaustive extends true ? unknown : never; // TS fails here if MacroDynamicsParams has a field missing from both Picks
+const _check: _Exhaustive = true; void _check; // void forces a read so noUnusedLocals doesn't flag it
 
 let _cachedParams: MacroDynamicsParams | undefined;
 
