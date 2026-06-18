@@ -542,6 +542,17 @@ describe("SPEC-GUIDE-3: forward guidance stance is a persisted commitment", () =
     s.proposeRate(0.13);
     expect(s.current.vars.credibility).toBe(credBefore - 5);
   });
+
+  it("reset() clears committedGuidanceStance back to the live stance", () => {
+    // SPEC-GUIDE-3: reset() returns the session to pre-advance state; committedGuidanceStance
+    // must fall through to the live stance ("neutral") not retain the stale committed value.
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    s.proposeRate(0.1075);
+    s.setForwardGuidanceStance("hawkish");
+    s.advance(1); // committedGuidanceStance = "hawkish"
+    s.reset();
+    expect(s.committedGuidanceStance).toBe("neutral");
+  });
 });
 
 describe("SPEC-SIM-5: macro dynamics wired into Session.advance()", () => {

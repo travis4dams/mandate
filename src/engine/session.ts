@@ -329,7 +329,7 @@ export class Session {
     return this._trajectoryCache;
   }
 
-  /** SPEC-GUIDE-3: the stance committed by the last advance(). Before the first advance(), returns the live stance (same fallback proposeRate() uses). */
+  /** SPEC-GUIDE-3: the stance committed by the last advance(). Before the first advance() (including after reset()), returns the live stance — the same fallback proposeRate() uses. */
   get committedGuidanceStance(): ForwardGuidanceStance {
     return this._committedStance ?? this._stance;
   }
@@ -1060,6 +1060,7 @@ export class Session {
    */
   reset(): void {
     this._stance = "neutral";
+    this._committedStance = undefined; // SPEC-GUIDE-3: restore pre-advance state so the first proposeRate() after reset uses the live stance
     this._rng = mulberry32(this._seed);
     this._pendingEscalations = [];
     this._firedOnce = new Set();
