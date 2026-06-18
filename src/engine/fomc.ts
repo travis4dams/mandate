@@ -98,10 +98,22 @@ export function buildFomcVote(
     throw new Error("buildFomcVote: previews array is empty — committee must have at least one member.");
   }
   const dissents = previews.filter((p) => p.wouldDissent).length;
+  for (const p of previews) {
+    if (!Number.isFinite(p.preferred)) {
+      throw new Error(
+        `buildFomcVote: member "${p.memberId}" has non-finite preferred rate (${p.preferred}); check content coefficients (inflation_coef, output_coef, inertia, neutral_rate).`,
+      );
+    }
+  }
   const committeeMedian = computeMedian(previews.map((p) => p.preferred));
   const decided = dissents >= params.dissent_override_threshold
     ? proposedRate + params.median_pull * (committeeMedian - proposedRate)
     : proposedRate;
+  if (!Number.isFinite(decided)) {
+    throw new Error(
+      `buildFomcVote: computed decided rate is not finite (${decided}); committeeMedian=${committeeMedian}, proposedRate=${proposedRate}, median_pull=${params.median_pull}.`,
+    );
+  }
   return { decided, dissents, committeeMedian };
 }
 

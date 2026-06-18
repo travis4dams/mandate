@@ -748,6 +748,31 @@ describe("vote", () => {
     expect(() => buildFomcVote(previews, 0.05, { ...PARAMS, dissent_override_threshold: 0 })).toThrow(/invalid dissent_override_threshold/);
   });
 
+  it("SPEC-COMM-10: buildFomcVote throws on empty previews", () => {
+    // SPEC-COMM-10
+    expect(() => buildFomcVote([], 0.05, PARAMS)).toThrow(/previews array is empty/);
+  });
+
+  it("SPEC-COMM-10: buildFomcVote throws on non-integer dissent_override_threshold", () => {
+    // SPEC-COMM-10
+    const previews = Array.from({ length: 2 }, (_, i) => ({
+      memberId: `m${i}`, nameKey: `m${i}`, preferred: 0.08, wouldDissent: true,
+    }));
+    expect(() => buildFomcVote(previews, 0.05, { ...PARAMS, dissent_override_threshold: 1.5 }))
+      .toThrow(/invalid dissent_override_threshold/);
+  });
+
+  it("SPEC-COMM-10: dissent_override_threshold = 1 fires override with exactly one dissent", () => {
+    // SPEC-COMM-10: minimum valid threshold — one dissent must be enough to pull.
+    const previews = [
+      { memberId: "m0", nameKey: "m0", preferred: 0.08, wouldDissent: true },
+      { memberId: "m1", nameKey: "m1", preferred: 0.08, wouldDissent: false },
+    ];
+    const result = buildFomcVote(previews, 0.05, { ...PARAMS, dissent_override_threshold: 1 });
+    expect(result.dissents).toBe(1);
+    expect(result.decided).toBeGreaterThan(0.05);
+  });
+
   it("SPEC-COMM-10: decided === proposedRate when committeeMedian === proposedRate despite pull", () => {
     // SPEC-COMM-10: median-pull formula is a no-op when median equals proposed.
     // decided = proposed + pull * (proposed - proposed) = proposed.
