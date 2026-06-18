@@ -215,7 +215,7 @@ export function loadDynamicsParams(): MacroDynamicsParams {
   const candidate = { ...dyn, ...cred };
   if (candidate.credibility_soft_ceiling >= CRED_MAX) {
     throw new Error(
-      `credibility_soft_ceiling (${candidate.credibility_soft_ceiling}) must be strictly less than cred_max (${CRED_MAX}) for the SPEC-CRED-7 drain to fire at the cap`,
+      `credibility_soft_ceiling (${candidate.credibility_soft_ceiling}) must be strictly less than cred_max (${CRED_MAX}) — a value at or above cred_max means the soft-ceiling drain never fires and credibility pins at the cap`,
     );
   }
   if (candidate.credibility_soft_ceiling <= CRED_MIN) {

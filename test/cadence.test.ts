@@ -53,9 +53,11 @@ describe("scaleParamsForTick — SPEC-SIM-6", () => {
     expect(() => scaleParamsForTick(BASE, 1.5)).toThrow(RangeError);
   });
 
-  it("throws RangeError for credibility_drain_rate >= 1 (NaN guard)", () => {
-    // SPEC-SIM-6: rate >= 1 makes 1-rate <= 0; Math.pow(negative, 1/n) returns NaN for
-    // fractional exponents, silently corrupting all downstream credibility calculations.
+  it("throws RangeError for credibility_drain_rate >= 1", () => {
+    // SPEC-SIM-6: rate=1 makes 1-rate=0 so the per-tick scaled rate is always 1 (cadence
+    // invariance breaks — every tick applies the full monthly drain regardless of n);
+    // rate>1 makes 1-rate negative and Math.pow(negative, 1/n) returns NaN for fractional
+    // exponents, silently corrupting all downstream credibility calculations.
     const badParams = { ...BASE, credibility_drain_rate: 1.5 };
     expect(() => scaleParamsForTick(badParams, 4)).toThrow(RangeError);
   });
@@ -84,6 +86,25 @@ describe("scaleParamsForTick — SPEC-SIM-6", () => {
     // SPEC-SIM-6: same guard, monthly path.
     const badParams = { ...BASE, credibility_drain_rate: 0 };
     expect(() => scaleParamsForTick(badParams, 1)).toThrow(RangeError);
+  });
+
+  it("throws RangeError for credibility_soft_ceiling >= CRED_MAX (symmetric guard with drain_rate)", () => {
+    // SPEC-SIM-6: soft_ceiling at or above CRED_MAX means the drain never fires;
+    // applyMacroDynamics uses soft_ceiling directly with no guard of its own.
+    const badParams = { ...BASE, credibility_soft_ceiling: 100 };
+    expect(() => scaleParamsForTick(badParams, 4)).toThrow(RangeError);
+  });
+
+  it("throws RangeError for credibility_soft_ceiling <= CRED_MIN (symmetric guard with drain_rate)", () => {
+    // SPEC-SIM-6: soft_ceiling at or below CRED_MIN fires the drain at all credibility levels.
+    const badParams = { ...BASE, credibility_soft_ceiling: 0 };
+    expect(() => scaleParamsForTick(badParams, 4)).toThrow(RangeError);
+  });
+
+  it("throws RangeError for credibility_soft_ceiling = NaN", () => {
+    // SPEC-SIM-6: NaN bypasses <= and >= checks without the isFinite guard.
+    const badParams = { ...BASE, credibility_soft_ceiling: NaN };
+    expect(() => scaleParamsForTick(badParams, 4)).toThrow(RangeError);
   });
 
   it("returns the same reference for n=1 (identity)", () => {

@@ -283,7 +283,7 @@ describe("applyMacroDynamics — soft-ceiling drain (SPEC-CRED-7)", () => {
       vars: { ...fixedPointVars, credibility: 92, inflation: 0.025 },
     });
     const result = applyMacroDynamics(improvingState, BASE);
-    expect(result.vars.credibility).toBeCloseTo(90.672, 2);
+    expect(result.vars.credibility).toBeCloseTo(90.672, 3);
   });
 });
 

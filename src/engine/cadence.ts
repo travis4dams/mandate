@@ -19,6 +19,7 @@
 import { join } from "node:path";
 import { loadValidatedFile } from "../content/loader.js";
 import type { MacroDynamicsParams } from "./dynamics.js";
+import { CRED_MIN, CRED_MAX } from "./credibility.js";
 
 export interface ClockCadenceParams {
   /** Number of simulation ticks per calendar month. 1 = monthly, 4 = weekly. Integer in [1, 31]; validated by schemas/clock-cadence.schema.json. */
@@ -62,12 +63,17 @@ export function scaleParamsForTick(params: MacroDynamicsParams, n: number): Read
   if (!Number.isInteger(n) || n < 1) {
     throw new RangeError(`scaleParamsForTick: n must be a positive integer, got ${n}`);
   }
-  // Guard runs before the n=1 early-return so callers always receive a validated-or-thrown
-  // result. applyMacroDynamics uses drain_rate directly and has no guard for it; accepting
-  // an invalid rate for n=1 and returning it unchanged would let the bad value propagate.
+  // Guards run before the n=1 early-return so callers always receive a validated-or-thrown
+  // result. applyMacroDynamics uses both drain_rate and soft_ceiling directly with no guards;
+  // accepting invalid values for n=1 and returning them unchanged would let them propagate.
   if (!Number.isFinite(params.credibility_drain_rate) || params.credibility_drain_rate <= 0 || params.credibility_drain_rate >= 1) {
     throw new RangeError(
       `scaleParamsForTick: credibility_drain_rate must be a finite number in (0,1), got ${params.credibility_drain_rate}`,
+    );
+  }
+  if (!Number.isFinite(params.credibility_soft_ceiling) || params.credibility_soft_ceiling <= CRED_MIN || params.credibility_soft_ceiling >= CRED_MAX) {
+    throw new RangeError(
+      `scaleParamsForTick: credibility_soft_ceiling must be a finite number in (CRED_MIN, CRED_MAX) = (${CRED_MIN}, ${CRED_MAX}), got ${params.credibility_soft_ceiling}`,
     );
   }
   if (n === 1) return params;
