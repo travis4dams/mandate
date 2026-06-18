@@ -119,6 +119,24 @@ describe("loadInstitutionParams (SPEC-INST-1)", () => {
     });
     expect(() => loadInstitutionParams()).toThrow();
   });
+
+  it("schema rejects upkeep_per_hire_cost below 0", () => {
+    // SPEC-INST-3: minimum: 0 prevents sign-flip budget injection
+    registerContentFile("content/engine/institution.json", {
+      ...PARAMS,
+      upkeep_per_hire_cost: -0.1,
+    });
+    expect(() => loadInstitutionParams()).toThrow();
+  });
+
+  it("schema accepts upkeep_per_hire_cost at the minimum boundary (0)", () => {
+    // SPEC-INST-3
+    registerContentFile("content/engine/institution.json", {
+      ...PARAMS,
+      upkeep_per_hire_cost: 0,
+    });
+    expect(() => loadInstitutionParams()).not.toThrow();
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -312,6 +330,15 @@ describe("applyInstitutionDynamics — staffing upkeep (SPEC-INST-3)", () => {
     });
     const result = applyInstitutionDynamics(state, extremeParams, [DIV_A]);
     expect(result.vars.operating_budget).toBe(0);
+  });
+
+  it("budget stays at 0 across consecutive ticks when upkeep exceeds growth (SPEC-INST-3)", () => {
+    const extremeParams = { ...PARAMS, upkeep_per_hire_cost: 10 };
+    let state = makeState({ vars: { operating_budget: 1 }, flags: { "staffed.div_a": true } });
+    for (let i = 0; i < 3; i++) {
+      state = applyInstitutionDynamics(state, extremeParams, [DIV_A]);
+      expect(state.vars.operating_budget).toBe(0);
+    }
   });
 
   it("is a pure function — input state is not mutated when catalog is supplied", () => {

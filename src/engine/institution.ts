@@ -23,7 +23,7 @@ export interface InstitutionParams {
   candidate_slate_size: number;
   /** SPEC-INST-5: months between automatic talent-market refreshes of candidate slates. */
   candidate_refresh_months: number;
-  /** SPEC-INST-3: fraction of each staffed division's hire_cost charged as monthly upkeep. Defaults to 0. */
+  /** SPEC-INST-3: fraction of each staffed division's hire_cost charged as monthly upkeep. Defaults to 0. Schema enforces [0, 1]. */
   upkeep_per_hire_cost?: number;
 }
 
@@ -170,7 +170,7 @@ export function _resetInstitutionParamsCache(): void {
 /**
  * Apply one month of institution dynamics:
  *   operating_budget *= (1 + budget_monthly_growth)
- *   operating_budget -= Σ upkeep_per_hire_cost × hire_cost  (staffed divisions only; floor 0)
+ *   operating_budget = max(0, operating_budget × (1 + budget_monthly_growth) − Σ upkeep_per_hire_cost × hire_cost)  [staffed only]
  *   political_capital += political_capital_recovery * (political_capital_baseline - political_capital)
  *
  * Both vars default to their `params.initial_*` value when absent from state
@@ -192,6 +192,8 @@ export function applyInstitutionDynamics(
   let nextBudget = prevBudget * (1 + params.budget_monthly_growth);
 
   // SPEC-INST-3: deduct monthly upkeep for each staffed division.
+  // When catalog is omitted with a non-zero rate, upkeep silently does not apply —
+  // this is a deliberate backward-compat no-op for callers that predated SPEC-INST-3.
   const upkeepRate = params.upkeep_per_hire_cost ?? 0;
   if (catalog && upkeepRate > 0) {
     let totalUpkeep = 0;
