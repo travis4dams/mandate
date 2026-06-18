@@ -329,9 +329,9 @@ export class Session {
     return this._trajectoryCache;
   }
 
-  /** SPEC-GUIDE-3: the stance committed by the last advance(). undefined before the first advance(). */
-  get committedGuidanceStance(): ForwardGuidanceStance | undefined {
-    return this._committedStance;
+  /** SPEC-GUIDE-3: the stance committed by the last advance(). Before the first advance(), returns the live stance (same fallback proposeRate() uses). */
+  get committedGuidanceStance(): ForwardGuidanceStance {
+    return this._committedStance ?? this._stance;
   }
 
   // --- SPEC-SESSION-1: FOMC schedule gate ---

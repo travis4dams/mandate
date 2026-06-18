@@ -528,21 +528,19 @@ describe("SPEC-GUIDE-3: forward guidance stance is a persisted commitment", () =
   it("setting stance after advance() (without further advance) leaves committed stance unchanged", () => {
     // SPEC-GUIDE-3: committed stance from advance() is "neutral"; setting hawkish after
     // does not affect the committed value, so a subsequent propose reads committed = "neutral".
-    // Under neutral, a hike (0.1075 → 0.13) that exceeds surprise_tolerance (0.0025) WOULD
-    // surprise a neutral stance — but confirm committed stance IS what's used, not live _stance.
     const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
     s.proposeRate(0.1075); // clear initial meeting (neutral, hold; credibility unchanged)
-    s.advance(1); // → 1979-09; guidance_stance = "neutral" (default _stance) committed
+    s.advance(1); // → 1979-09; committed = "neutral"
     s.setForwardGuidanceStance("hawkish"); // set hawkish AFTER advance, NO further advance
 
-    const credBefore = s.current.vars.credibility as number;
-    // Hike that would be consistent with hawkish but surprises neutral (|0.13-rate| > 0.0025).
-    // Committed = "neutral" → surprise fires; live "hawkish" would not surprise.
-    // If no surprise (using live hawkish), credBefore would be unchanged.
-    // This test pins that committed (neutral) is used, not live (hawkish).
-    // Check committed stance directly rather than asserting a credibility value
-    // that could drift due to mission dynamics.
     expect(s.committedGuidanceStance).toBe("neutral");
+
+    // A large hike surprises neutral (|0.13 - rate| > 0.0025) but NOT hawkish.
+    // If proposeRate() used live "hawkish" instead of committed "neutral", credibility
+    // would be unchanged. Using committed "neutral" it must drop by exactly 5.
+    const credBefore = s.current.vars.credibility as number;
+    s.proposeRate(0.13);
+    expect(s.current.vars.credibility).toBe(credBefore - 5);
   });
 });
 
