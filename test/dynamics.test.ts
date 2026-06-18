@@ -205,16 +205,27 @@ describe("applyMacroDynamics — soft-ceiling drain (SPEC-CRED-7)", () => {
       .toBeLessThan(applyMacroDynamics(aboveState, lowDrainParams).vars.credibility);
   });
 
+  it("over-range credibility drains at on-cap rate, not proportional to excess (SPEC-CRED-7 + SPEC-DOCT-1)", () => {
+    // credibility=102 (just over CRED_MAX=100): effectiveCred=100, drain = 0.20×(100−85) = 3.0.
+    // Without the cap, drain would be 0.20×(102−85) = 3.4 → result 98.6.
+    // With the cap: clamp(102 − 3.0, 0, 100) = 99.0.
+    const overState = makeState({ vars: { ...fixedPointVars, credibility: 102 } });
+    const result = applyMacroDynamics(overState, BASE);
+    expect(result.vars.credibility).toBeCloseTo(99.0, 5);
+  });
+
   it("drain uses prior credibility, not post-gain credibility (SPEC-CRED-7)", () => {
-    // Economy improving → positive mission gain; credibility starts above ceiling.
-    // drain must equal drain_rate × (prior_cred − ceiling), not (prior_cred + gain − ceiling).
+    // Economy improving (inflation=0.025 above target=0.02) → positive mission gain.
+    // Exact expected: newInflation = 0.952×0.025 + 0.048×0.02 = 0.02476.
+    // distBefore=0.00975, distAfter=0.00951 → missionGain = 300×0.00024 = 0.072.
+    // priorDrain = 0.20 × (92 − 85) = 1.4   →   newCred = 92 + 0.072 − 1.4 = 90.672.
+    // If drain used post-gain cred (92.072): drain = 0.20×7.072 = 1.4144 → newCred = 90.6576.
+    // Difference = 0.0144 > toBeCloseTo-2 tolerance (0.005), so this catches the ordering bug.
     const improvingState = makeState({
       vars: { ...fixedPointVars, credibility: 92, inflation: 0.025 },
     });
     const result = applyMacroDynamics(improvingState, BASE);
-    const priorDrain = BASE.credibility_drain_rate * (92 - BASE.credibility_soft_ceiling); // 0.20×7=1.4
-    // If drain used post-gain cred it would be larger; result would be lower.
-    expect(result.vars.credibility).toBeGreaterThan(92 - priorDrain);
+    expect(result.vars.credibility).toBeCloseTo(90.672, 2);
   });
 });
 

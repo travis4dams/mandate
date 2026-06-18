@@ -118,7 +118,8 @@ export function applyMacroDynamics(state: GameState, params: MacroDynamicsParams
   // Soft-ceiling drain: prevents credibility from pinning at cred_max in a resolved-endgame
   // scenario where mission progress tapers to zero (SPEC-CRED-7).
   // Cap at CRED_MAX so that over-range credibility stored by adoptDoctrine (SPEC-DOCT-1 symmetric-
-  // delta guarantee) does not incur extra drain — the tick clamp restores it to CRED_MAX anyway.
+  // delta guarantee) does not incur extra drain proportional to the excess — the drain applied
+  // equals on-cap drain; the clamp handles the range correction.
   const effectiveCred = Math.min(credibility, CRED_MAX);
   const softCeilingDrain =
     params.credibility_drain_rate * Math.max(0, effectiveCred - params.credibility_soft_ceiling);
