@@ -373,9 +373,9 @@ export class Session {
     // can be force-restored from the known-good checkpoint rather than left in a torn state.
     // _pendingEscalations / _activityLog are length-checkpointed because both are mutated
     // inside the try block (event pushes + crisis log entry) and must be truncated on rollback.
-    // _firedOnce is not mutated inside the advance() loop (eligibleEvents only reads it),
-    // but is copied defensively so a future fires_once mutation added to the loop cannot
-    // silently bypass rollback.
+    // _firedOnce is not written inside the advance() for-loop body; fires_once additions
+    // happen only in resolveEscalation(). The defensive copy ensures any future loop change
+    // that mutates _firedOnce cannot silently bypass rollback.
     const checkpointState = this._state;
     const checkpointCache = this._currentCache;
     const checkpointTrajectoryCache = this._trajectoryCache;
@@ -616,12 +616,12 @@ export class Session {
         // is on mandate. Placed after all monthly state updates (shocks, crises, congressional
         // pressure) so the fully-settled state for the month determines on-target status.
         // IMPORTANT: months_on_target is an accumulation-only counter managed exclusively
-        // here. Content effects (applyEffects, resolveEscalation) must never target this
-        // var — doing so would corrupt the running total. resolveEscalation() enforces this
-        // at runtime; the event option schema has no enum restriction on target names, so
-        // content reviews must also check event option effect targets manually.
+        // here. Content effects must never target this var — doing so corrupts the running
+        // total. resolveEscalation() enforces this by comparing the counter before/after
+        // calling applyEffects; other applyEffects call sites have no such guard and must
+        // be reviewed manually if they are ever added.
         const motRaw = this._state.vars.months_on_target;
-        if (motRaw !== undefined && (typeof motRaw !== "number" || !Number.isFinite(motRaw) || motRaw < 0 || !Number.isInteger(motRaw))) {
+        if (motRaw !== undefined && (!Number.isInteger(motRaw) || motRaw < 0)) {
           throw new Error(
             `Session.advance: months_on_target is corrupted at ${this._state.date} ` +
             `(got ${String(motRaw)}; expected a non-negative integer)`,
@@ -648,7 +648,7 @@ export class Session {
       try {
         this._rebuildCaches();
       } catch (secondaryErr) {
-        // Both the forward path and the rollback _rebuildCaches failed.
+        // The advance() loop threw, and the rollback's _rebuildCaches call also failed.
         // Force-restore caches from checkpoint so they are never left in a torn state.
         // Log the secondary error; the original err is re-thrown below.
         console.error(
@@ -921,7 +921,11 @@ export class Session {
     const { state, queuedEvents } = applyEffects(option.effects, this._state);
     // Guard: months_on_target is managed exclusively by advance(). A content effect that
     // targets this var would silently corrupt the running total even if the value is finite.
-    if (state.vars.months_on_target !== this._state.vars.months_on_target) {
+    // Check both key presence and value: a no-op write (e.g. add:0) changes neither, but a
+    // write that adds the key or changes the value must be caught regardless of the delta.
+    const motKeyBefore = "months_on_target" in this._state.vars;
+    const motKeyAfter = "months_on_target" in state.vars;
+    if (motKeyBefore !== motKeyAfter || state.vars.months_on_target !== this._state.vars.months_on_target) {
       throw new Error(
         `Session.resolveEscalation: event "${eventId}" illegally modified months_on_target. ` +
         `This var is managed exclusively by Session.advance().`,

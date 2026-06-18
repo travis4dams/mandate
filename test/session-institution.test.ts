@@ -165,16 +165,29 @@ describe("Session institution + legacy + npc-name wiring", () => {
       .toThrow(/illegally modified months_on_target/);
   });
 
-  // SPEC-LEGACY-1: advance() throws when months_on_target is corrupted (NaN, negative, non-integer).
+  // SPEC-LEGACY-1: advance() throws when months_on_target is corrupted (NaN, Infinity, negative, fractional).
   it("advance() throws when months_on_target is corrupted", () => {
     // SPEC-LEGACY-1
-    const s = Session.fromScenario(SCEN, 42, COMM);
-    (s as unknown as { _state: { vars: Record<string, number> } })._state.vars.months_on_target = NaN;
-    expect(() => s.advance(1)).toThrow(/months_on_target is corrupted/);
+    for (const bad of [NaN, Infinity, -1, 1.5]) {
+      const s = Session.fromScenario(SCEN, 42, COMM);
+      (s as unknown as { _state: { vars: Record<string, number> } })._state.vars.months_on_target = bad;
+      expect(() => s.advance(1), `expected throw for months_on_target=${bad}`).toThrow(/months_on_target is corrupted/);
+    }
+  });
 
-    const s2 = Session.fromScenario(SCEN, 42, COMM);
-    (s2 as unknown as { _state: { vars: Record<string, number> } })._state.vars.months_on_target = -1;
-    expect(() => s2.advance(1)).toThrow(/months_on_target is corrupted/);
+  // SPEC-LEGACY-1: unemployment off-target alone must suppress months_on_target (dual mandate).
+  it("advance() does not increment months_on_target when unemployment is far off-target", () => {
+    // SPEC-LEGACY-1
+    // Inflation on-target, unemployment pushed to 0.15 (far outside target ± band).
+    const s = Session.fromScenario("scen.recovery_test", 42, "comm.fomc_1979", {
+      varDeltas: {
+        inflation: 0.022 - 0.04,           // → 0.022, on-target
+        unemployment: 0.15 - 0.05,         // → 0.15, far outside unemployment_target ± band
+        expectations_anchor: 0.022 - 0.05,
+      },
+    });
+    s.advance(3);
+    expect(s.current.vars.months_on_target ?? 0).toBe(0);
   });
 
   // SPEC-LEGACY-1: reset() clears months_on_target accumulated during a prior advance.

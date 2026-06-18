@@ -92,6 +92,9 @@ export function computeLegacyScore(
 ): number {
   const credibility = getCredibility(state);
   const monthsOnTarget = state.vars.months_on_target ?? 0;
+  if (!Number.isInteger(monthsOnTarget) || monthsOnTarget < 0) {
+    throw new Error(`computeLegacyScore: months_on_target is corrupted (got ${monthsOnTarget})`);
+  }
   const monthsBelowAnchor = state.vars.months_below_anchor ?? 0;
   return (
     params.legacy_credibility_weight * credibility +
