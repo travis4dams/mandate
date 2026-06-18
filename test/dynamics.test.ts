@@ -205,6 +205,16 @@ describe("applyMacroDynamics — soft-ceiling drain (SPEC-CRED-7)", () => {
       .toBeLessThan(applyMacroDynamics(aboveState, lowDrainParams).vars.credibility);
   });
 
+  it("drain_rate=0 and drain_rate=0.20 diverge above the soft ceiling (positive test that the drain fires)", () => {
+    // SPEC-CRED-7: drain_rate=0 disables the soft-ceiling drain; above the ceiling the two must diverge.
+    // This is the complement to the below/at-ceiling tests: those show drain_rate doesn't matter there;
+    // this shows it does matter above the ceiling.
+    const nodrainParams = { ...BASE, credibility_drain_rate: 0 };
+    const aboveState = makeState({ vars: { ...fixedPointVars, credibility: 95 } });
+    expect(applyMacroDynamics(aboveState, nodrainParams).vars.credibility)
+      .not.toBe(applyMacroDynamics(aboveState, BASE).vars.credibility);
+  });
+
   it("over-range credibility drains at on-cap rate, not proportional to excess (SPEC-CRED-7 + SPEC-DOCT-1)", () => {
     // credibility=102 (just over CRED_MAX=100): effectiveCred=100, drain = 0.20×(100−85) = 3.0.
     // Without the cap, drain would be 0.20×(102−85) = 3.4 → result 98.6.
