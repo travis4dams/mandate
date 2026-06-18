@@ -958,7 +958,9 @@ export class Session {
    * @throws {VoteMissingVarError} if state vars (inflation, unemployment, policy_rate) are missing or non-finite (propagated from previewVote()).
    * SPEC-COMM-10: when dissents >= dissent_override_threshold, `fomcVote.decided` is
    * pulled toward the committee median and will differ from `rate`. Always use
-   * `fomcVote.decided` as the enacted rate, not the input `rate`.
+   * `fomcVote.decided` as the enacted rate, not the input `rate`. The enacted rate
+   * is written to `current.vars.policy_rate` automatically before this method returns;
+   * callers must not reapply it.
    */
   proposeRate(rate: number, capitalSpend?: CapitalSpend): FomcVote {
     if (!this.isMeetingMonth()) {
@@ -973,7 +975,9 @@ export class Session {
     const effectiveBands = this._resolveEffectiveBands(committee, capitalSpend, "proposeRate");
     // SPEC-DOCT-2: use previewVote directly so member previews are available for dot-plot spread.
     // SPEC-COMM-10: buildFomcVote applies the median-pull override when dissents >= dissent_override_threshold,
-    // so fomcVote.decided may differ from rate.
+    // so fomcVote.decided may differ from rate. Previews are relative to the proposed `rate`, not the
+    // enacted `fomcVote.decided` — they represent "how contested was the Chair's proposal", which is
+    // the intended dot-plot semantic. Meeting hooks receive these same proposal-relative previews.
     const { previews } = previewVote(committee, rate, this._state, params, traits, effectiveBands);
     const fomcVote: FomcVote = buildFomcVote(previews, rate, params);
 
@@ -1007,7 +1011,7 @@ export class Session {
     // meeting hook: add the string to DoctrineHook + schema enum, implement a handler,
     // and register it in HOOK_HANDLERS — no changes to this file needed.
     // SPEC-COMM-9: update consensus_capital from the vote outcome.
-    // Zero dissents → add consensus_gain; dissents >= dissent_penalty_threshold → subtract consensus_penalty (clamped ≥ 0).
+    // Zero dissents → add consensus_gain; dissents > dissent_penalty_threshold → subtract consensus_penalty (clamped ≥ 0).
     const ccParams = loadChairCapitalParams();
     const prevConsensusCap = (this._state.vars.consensus_capital ?? 0) as number;
     const nextConsensusCap = updateConsensusCapital(prevConsensusCap, fomcVote.dissents, ccParams);
@@ -1019,19 +1023,24 @@ export class Session {
       vars: { ...this._state.vars, policy_rate: fomcVote.decided, credibility: newCredibility, consensus_capital: nextConsensusCap },
     };
     this._state = stateAfterMeeting;
-    const hookCheckpoint = this._state;
+    // Shallow-spread so a mutating hook (engine-purity violation) can't corrupt the rollback target.
+    const hookCheckpoint = { ...this._state };
+    // Capture flags at meeting-commit time. Hooks that write to flags must not affect whether
+    // *later* hooks in the same loop are considered adopted.
+    const flagsAtMeeting = stateAfterMeeting.flags;
     try {
       const catalog = loadDoctrineCatalog();
       for (const doctrine of catalog) {
         if (doctrine.meeting_hook === undefined) continue;
-        if (stateAfterMeeting.flags[doctrineFlagKey(doctrine.id)] !== true) continue;
+        if (flagsAtMeeting[doctrineFlagKey(doctrine.id)] !== true) continue;
         stateAfterMeeting = HOOK_HANDLERS[doctrine.meeting_hook](stateAfterMeeting, previews);
       }
       this._state = stateAfterMeeting;
     } catch (err) {
-      // Rollback covers GameState only — safe because HOOK_HANDLERS receive only GameState.
-      // If a future handler is given access to Session fields (_stance, _pendingEscalations, etc.),
-      // extend the rollback to cover those fields before widening the handler signature.
+      // Rollback covers GameState only — safe because HOOK_HANDLERS return a new GameState
+      // and cannot mutate Session fields (_stance, _pendingEscalations, etc.) through their args.
+      // If a future handler signature is widened to receive the Session object directly,
+      // extend the rollback to cover those fields before making that change.
       this._state = hookCheckpoint;
       this._rebuildCaches();
       throw err;

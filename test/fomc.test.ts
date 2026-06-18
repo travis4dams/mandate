@@ -811,6 +811,26 @@ describe("vote", () => {
     expect(capitalIfDecidedPassed).toBe(capitalBefore); // no penalty: rate value < threshold
   });
 
+  it("SPEC-COMM-7 × SPEC-COMM-10: capital spend that drops dissents below threshold prevents median pull", () => {
+    // SPEC-COMM-7 + SPEC-COMM-10: the core strategic interaction — spend Chair capital on one member
+    // to widen their band, flipping them from dissent to approve and dropping dissents below threshold.
+    // Without spend: 7 dissents >= threshold(7) → override fires, decided != proposedRate.
+    // With spend: 6 dissents < threshold(7) → decided === proposedRate.
+    const proposedRate = 0.05;
+    const fullDissent = Array.from({ length: 7 }, (_, i) => ({
+      memberId: `m${i}`, nameKey: `m${i}`, preferred: 0.08, wouldDissent: true,
+    }));
+    const withCapitalSpend = fullDissent.map((p, i) =>
+      i === 0 ? { ...p, wouldDissent: false } : p, // capital widened m0's band
+    );
+    const withoutSpend = buildFomcVote(fullDissent, proposedRate, PARAMS);
+    expect(withoutSpend.dissents).toBe(7);
+    expect(withoutSpend.decided).not.toBe(proposedRate); // override fires
+    const withSpend = buildFomcVote(withCapitalSpend, proposedRate, PARAMS);
+    expect(withSpend.dissents).toBe(6);
+    expect(withSpend.decided).toBe(proposedRate); // override suppressed — 6 < threshold(7)
+  });
+
   it("SPEC-COMM-10: decided === proposedRate when committeeMedian === proposedRate despite pull", () => {
     // SPEC-COMM-10: median-pull formula is a no-op when median equals proposed.
     // decided = proposed + pull * (proposed - proposed) = proposed.
@@ -851,5 +871,29 @@ describe("vote", () => {
     expect(result.dissents).toBe(3);
     // decided = 0.10 + 0.5 * (0.05 - 0.10) = 0.075
     expect(result.decided).toBeCloseTo(0.075, 10);
+  });
+
+  it("SPEC-COMM-10: threshold === committee size — all N members must dissent for override to fire", () => {
+    // SPEC-COMM-10: when threshold equals the committee size, every member must object.
+    // Exercises the exact-boundary condition (dissents >= threshold with dissents === N).
+    const N = 5;
+    const previews = Array.from({ length: N }, (_, i) => ({
+      memberId: `m${i}`, nameKey: `m${i}`, preferred: 0.08, wouldDissent: true,
+    }));
+    const result = buildFomcVote(previews, 0.05, { ...PARAMS, dissent_override_threshold: N });
+    expect(result.dissents).toBe(N);
+    expect(result.decided).toBeGreaterThan(0.05); // override fires at exactly N dissents
+  });
+
+  it("SPEC-COMM-10: threshold > committee size — override never fires even when all members dissent", () => {
+    // SPEC-COMM-10: a content author can make the override structurally unreachable by setting
+    // threshold above the number of committee members.
+    const N = 5;
+    const previews = Array.from({ length: N }, (_, i) => ({
+      memberId: `m${i}`, nameKey: `m${i}`, preferred: 0.08, wouldDissent: true,
+    }));
+    const result = buildFomcVote(previews, 0.05, { ...PARAMS, dissent_override_threshold: N + 1 });
+    expect(result.dissents).toBe(N);
+    expect(result.decided).toBe(0.05); // override cannot fire: N < threshold
   });
 });

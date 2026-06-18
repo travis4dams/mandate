@@ -521,6 +521,19 @@ describe("SPEC-GUIDE-2: surprise lever wired into Session.proposeRate()", () => 
     expect(fomcVote.dissents).toBeGreaterThan(fomcVote.decided * 10);
   });
 
+  it("dovish stance + committee override pulls decided above tolerance → surprise (SPEC-GUIDE-2 × SPEC-COMM-10)", () => {
+    // SPEC-GUIDE-2 + SPEC-COMM-10: proposing 0.1075 (= pre-meeting rate) under dovish guidance.
+    // The committee median-pull fires and enacts a rate above 0.1075, contradicting the dovish signal.
+    // Confirms marketsSurprised uses fomcVote.decided (not the proposed rate): if rate were passed,
+    // rate === preMeetingRate → no change → no surprise. Only decided > preMeetingRate + tolerance
+    // triggers the penalty.
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    s.setForwardGuidanceStance("dovish");
+    const fomcVote = s.proposeRate(0.1075);
+    expect(fomcVote.decided).toBeGreaterThan(0.1075); // SPEC-COMM-10 override fired
+    expect(s.current.vars.credibility).toBe(20); // 25 - 5 surprise penalty: decided used, not rate
+  });
+
   it("reset() restores credibility after a surprise penalty", () => {
     // SPEC-GUIDE-2 / SPEC-SESSION-0: the surprise penalty must not persist into _initialState.
     const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");

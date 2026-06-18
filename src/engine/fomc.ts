@@ -72,6 +72,8 @@ function memberPreferred(
 }
 
 function computeMedian(values: readonly number[]): number {
+  // Defensive guard for future call sites; unreachable through the current buildFomcVote caller
+  // which validates previews.length > 0 before calling this function.
   if (values.length === 0) throw new Error("computeMedian: empty values array");
   const sorted = [...values].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
@@ -82,6 +84,9 @@ function computeMedian(values: readonly number[]): number {
 
 /** SPEC-COMM-10: build a FomcVote from already-computed previews, applying the median-pull override
  *  when dissents >= params.dissent_override_threshold.
+ *  @param previews - Each entry's `wouldDissent` must already be evaluated against this same
+ *    `proposedRate`. `buildFomcVote` counts truthy flags directly; it does not recompute dissent.
+ *    Pass previews from `previewVote(committee, proposedRate, ...)` for self-consistent results.
  *  @throws {Error} if params.median_pull is not finite or not in (0, 1].
  *  @throws {Error} if params.dissent_override_threshold is not a positive integer.
  *  @throws {Error} if proposedRate is not finite.
