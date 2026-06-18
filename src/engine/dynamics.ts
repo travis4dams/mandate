@@ -170,6 +170,8 @@ type CredibilityFile = Pick<
 // Exhaustiveness: DynamicsFile & CredibilityFile must cover all of MacroDynamicsParams.
 // A field added to the interface but omitted from both Picks will fail here (TS2322), not
 // silently produce undefined at runtime.
+// NOTE: only catches omitted *required* fields; new optional fields in
+// MacroDynamicsParams won't trigger this — add them to a Pick explicitly.
 type _Exhaustive = DynamicsFile & CredibilityFile extends MacroDynamicsParams ? true : never;
 const _check: _Exhaustive = true; void _check;
 
@@ -186,6 +188,11 @@ export function loadDynamicsParams(): MacroDynamicsParams {
     if (candidate.credibility_soft_ceiling >= CRED_MAX) {
       throw new Error(
         `credibility_soft_ceiling (${candidate.credibility_soft_ceiling}) must be strictly less than cred_max (${CRED_MAX}) for the SPEC-CRED-7 drain to fire at the cap`,
+      );
+    }
+    if (candidate.credibility_soft_ceiling <= CRED_MIN) {
+      throw new Error(
+        `credibility_soft_ceiling (${candidate.credibility_soft_ceiling}) must be strictly greater than cred_min (${CRED_MIN}) — a value at or below cred_min applies the drain at minimum credibility`,
       );
     }
     if (candidate.credibility_drain_rate <= 0) {

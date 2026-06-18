@@ -334,4 +334,21 @@ describe("loadDynamicsParams — soft-ceiling guard (SPEC-CRED-7)", () => {
       } as any);
     expect(() => loadDynamicsParams()).toThrow("credibility_drain_rate");
   });
+
+  it("throws when credibility_soft_ceiling <= CRED_MIN", () => {
+    // SPEC-CRED-7: soft_ceiling=0 makes max(0, cred - 0) = cred, firing the drain at all credibility levels.
+    vi.spyOn(contentLoader, "loadValidatedFile")
+      .mockReturnValueOnce({
+        inflation_persistence: 0.952, phillips_slope: 0.106,
+        unemployment_natural_rate: 0.0645, real_neutral_rate: 0.027,
+        okun_coefficient: 1.14, unemployment_adjustment_speed: 0.045,
+      } as any)
+      .mockReturnValueOnce({
+        target_inflation: 0.02, unemployment_target: 0.055,
+        expectations_adaptivity: 0.051, expectations_anchor_pull: 0.025,
+        credibility_mission_gain: 300, credibility_unemployment_weight: 0.5,
+        anchor_threshold: 60, credibility_soft_ceiling: 0, credibility_drain_rate: 0.20,
+      } as any);
+    expect(() => loadDynamicsParams()).toThrow("credibility_soft_ceiling");
+  });
 });
