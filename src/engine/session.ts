@@ -1037,7 +1037,7 @@ export class Session {
         if (doctrine.meeting_hook === undefined) continue;
         if (flagsAtMeeting[doctrineFlagKey(doctrine.id)] !== true) continue;
         const nextState = HOOK_HANDLERS[doctrine.meeting_hook](stateAfterMeeting, previews);
-        if (nextState == null || typeof nextState !== "object") {
+        if (nextState == null || Array.isArray(nextState) || typeof nextState !== "object") {
           throw new Error(
             `proposeRate: meeting hook "${doctrine.meeting_hook}" for doctrine "${doctrine.id}" returned ${String(nextState)} instead of a GameState`,
           );
