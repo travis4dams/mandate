@@ -6,11 +6,9 @@
 // chosen speed — the Paradox-style clock feel without a calendar rewrite.
 //
 // Design note: between-meeting turns carry no required decision — the clock
-// advances them automatically. Players are never asked to "click through" a non-meeting
-// month. The only pauses are (a) FOMC meeting months (rate-setting opportunity) and
-// (b) escalations that must be resolved before time can continue. This is the intended
-// design per DESIGN.md §"Core loop & the day-to-day": "Time flows continuously; you
-// pause to think and act."
+// advances them automatically. The only pauses are (a) FOMC meeting months
+// (rate-setting opportunity) and (b) escalations. See spec/DESIGN.md
+// ("Core loop & the day-to-day") for the design intent.
 
 import { useEffect, useRef, useState } from "react";
 import type { Session } from "../../src/engine/session";
