@@ -4,11 +4,7 @@
 //  - a scheduled FOMC meeting month pauses ONCE so you can set the rate (resume to hold).
 // The engine calendar is monthly, so each real-time tick advances one month at the
 // chosen speed — the Paradox-style clock feel without a calendar rewrite.
-//
-// Design note: between-meeting turns carry no required decision — the clock
-// advances them automatically. The intentional pauses are (a) FOMC meeting months
-// (rate-setting opportunity) and (b) escalations. See spec/DESIGN.md
-// ("Core loop & the day-to-day") for the design intent.
+// See spec/DESIGN.md ("Core loop & the day-to-day") for the design intent.
 
 import { useEffect, useRef, useState } from "react";
 import type { Session } from "../../src/engine/session";
