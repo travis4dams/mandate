@@ -6,7 +6,7 @@
 // chosen speed — the Paradox-style clock feel without a calendar rewrite.
 //
 // Design note: between-meeting turns carry no required decision — the clock
-// advances them automatically. The only pauses are (a) FOMC meeting months
+// advances them automatically. The intentional pauses are (a) FOMC meeting months
 // (rate-setting opportunity) and (b) escalations. See spec/DESIGN.md
 // ("Core loop & the day-to-day") for the design intent.
 
