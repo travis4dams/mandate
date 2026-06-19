@@ -4,6 +4,13 @@
 //  - a scheduled FOMC meeting month pauses ONCE so you can set the rate (resume to hold).
 // The engine calendar is monthly, so each real-time tick advances one month at the
 // chosen speed — the Paradox-style clock feel without a calendar rewrite.
+//
+// Design note (issue #139): between-meeting turns carry no required decision — the clock
+// advances them automatically. Players are never asked to "click through" a non-meeting
+// month. The only pauses are (a) FOMC meeting months (rate-setting opportunity) and
+// (b) escalations that must be resolved before time can continue. This is the intended
+// design per DESIGN.md §"Core loop & the day-to-day": "Time flows continuously; you
+// pause to think and act."
 
 import { useEffect, useRef, useState } from "react";
 import type { Session } from "../../src/engine/session";
