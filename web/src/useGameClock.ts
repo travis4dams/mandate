@@ -58,7 +58,8 @@ export function useGameClock(session: Session): GameClock {
       }
       try {
         session.advance(1);
-      } catch {
+      } catch (e) {
+        console.error("useGameClock: session.advance() threw; clock stopped.", e);
         setPlaying(false);
       }
     }, SPEED_MS[speed]);
