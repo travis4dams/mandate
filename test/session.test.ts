@@ -545,6 +545,99 @@ describe("SPEC-GUIDE-2: surprise lever wired into Session.proposeRate()", () => 
   });
 });
 
+describe("SPEC-GUIDE-3: forward guidance stance is a persisted commitment", () => {
+  // 1979-08 is a meeting month, so the scenario starts with proposeRate available.
+  // Next meeting month is 1979-09 (meeting_months = [1,3,5,7,8,9,11,12]).
+
+  it("committedGuidanceStance falls through to live stance before first advance()", () => {
+    // SPEC-GUIDE-3: before any advance(), _committedStance is undefined; getter returns live _stance.
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    s.setForwardGuidanceStance("hawkish");
+    expect(s.committedGuidanceStance).toBe("hawkish");
+  });
+
+  it("advance() commits the live stance as committedGuidanceStance", () => {
+    // SPEC-GUIDE-3
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    s.proposeRate(0.1075); // clear initial meeting (neutral, hold)
+    s.setForwardGuidanceStance("hawkish");
+    s.advance(1); // → 1979-09, commits committedGuidanceStance = "hawkish"
+    expect(s.committedGuidanceStance).toBe("hawkish");
+  });
+
+  it("second advance() overwrites the committed stance", () => {
+    // SPEC-GUIDE-3: _committedStance is updated on every advance(), not just the first.
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    s.proposeRate(0.1075);
+    s.setForwardGuidanceStance("hawkish");
+    s.advance(1); // committed = "hawkish"
+    s.setForwardGuidanceStance("dovish");
+    s.advance(1); // committed must overwrite to "dovish"
+    expect(s.committedGuidanceStance).toBe("dovish");
+  });
+
+  it("switching stance after advance() but before proposeRate() does not dodge the surprise penalty", () => {
+    // SPEC-GUIDE-3: committed stance is "hawkish" from advance(); flipping to "dovish" afterward
+    // cannot prevent the surprise when the player proposes a big cut.
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    s.proposeRate(0.1075); // clear initial meeting (neutral, hold)
+    s.setForwardGuidanceStance("hawkish");
+    s.advance(1); // → 1979-09; guidance_stance = "hawkish" committed
+
+    const credBefore = s.current.vars.credibility as number;
+    s.setForwardGuidanceStance("dovish"); // attempt to dodge — too late
+    s.proposeRate(0.09); // easing contradicts committed hawkish → surprise
+    expect(s.current.vars.credibility).toBe(credBefore - 5);
+  });
+
+  it("setting stance after advance() (without further advance) leaves committed stance unchanged", () => {
+    // SPEC-GUIDE-3: committed stance from advance() is "neutral"; setting hawkish after
+    // does not affect the committed value, so a subsequent propose reads committed = "neutral".
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    s.proposeRate(0.1075); // clear initial meeting (neutral, hold; credibility unchanged)
+    s.advance(1); // → 1979-09; committed = "neutral"
+    s.setForwardGuidanceStance("hawkish"); // set hawkish AFTER advance, NO further advance
+
+    expect(s.committedGuidanceStance).toBe("neutral");
+
+    // A large hike surprises neutral (|0.13 - rate| > 0.0025) but NOT hawkish.
+    // If proposeRate() used live "hawkish" instead of committed "neutral", credibility
+    // would be unchanged. Using committed "neutral" it must drop by exactly 5.
+    const credBefore = s.current.vars.credibility as number;
+    s.proposeRate(0.13);
+    expect(s.current.vars.credibility).toBe(credBefore - 5);
+  });
+
+  it("reset() clears committedGuidanceStance back to the live stance", () => {
+    // SPEC-GUIDE-3: reset() returns the session to pre-advance state; committedGuidanceStance
+    // must fall through to the live stance ("neutral") not retain the stale committed value.
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    s.proposeRate(0.1075);
+    s.setForwardGuidanceStance("hawkish");
+    s.advance(1); // committedGuidanceStance = "hawkish"
+    s.reset();
+    expect(s.committedGuidanceStance).toBe("neutral");
+  });
+
+  it("advance() that throws inside the loop rolls back _committedStance (catch-block)", () => {
+    // SPEC-GUIDE-3: when advance() throws inside the try block, the catch block restores
+    // _committedStance to its pre-advance checkpoint value.
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    s.proposeRate(0.1075);
+    s.setForwardGuidanceStance("hawkish");
+    s.advance(1); // committedGuidanceStance = "hawkish"
+
+    s.setForwardGuidanceStance("dovish");
+    // Spy on applyIntermeetingDrift to return the same state reference (triggers the
+    // "applyIntermeetingDrift skipped" guard throw inside the advance() loop, after
+    // _committedStance has been committed to "dovish" inside the try block).
+    vi.spyOn(stanceModule, "applyIntermeetingDrift").mockImplementationOnce((state) => state);
+    expect(() => s.advance(1)).toThrow(/applyIntermeetingDrift skipped/);
+    // catch block must have restored _committedStance from "dovish" back to "hawkish".
+    expect(s.committedGuidanceStance).toBe("hawkish");
+  });
+});
+
 describe("SPEC-SIM-5: macro dynamics wired into Session.advance()", () => {
   // SPEC-SIM-5: holding the 1979 starting rate (10.75% nominal) is NOT real-restrictive against
   // ~9-11% expected inflation — the real rate is below neutral, so it does not cause a recession.

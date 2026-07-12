@@ -214,6 +214,8 @@ export class Session {
 
   // SPEC-GUIDE-1: stored stance; scales `expectations_anchor_pull` passed to `applyMacroDynamics` via stanceMultiplier().
   private _stance: ForwardGuidanceStance = "neutral";
+  // SPEC-GUIDE-3: committed stance captured by advance(); undefined until the first advance().
+  private _committedStance: ForwardGuidanceStance | undefined = undefined;
 
   // Subscriber set for the subscribe/unsubscribe protocol.
   private readonly _listeners: Set<() => void> = new Set();
@@ -326,6 +328,15 @@ export class Session {
     return this._trajectoryCache;
   }
 
+  /** SPEC-GUIDE-3: the stance committed by the last advance(). Before the first advance() —
+   *  and after reset() (which clears _committedStance back to undefined) — returns the live
+   *  stance, so callers always receive a defined ForwardGuidanceStance regardless of lifecycle
+   *  phase.
+   */
+  get committedGuidanceStance(): ForwardGuidanceStance {
+    return this._committedStance ?? this._stance;
+  }
+
   // --- SPEC-SESSION-1: FOMC schedule gate ---
 
   /**
@@ -416,7 +427,14 @@ export class Session {
     const ticksPerMonth = loadClockCadenceParams().ticks_per_month;
     const scaledParams = scaleParamsForTick(effectiveParams, ticksPerMonth);
 
+    // SPEC-GUIDE-3: capture for rollback — committed stance is restored if advance() throws.
+    const checkpointCommittedStance = this._committedStance;
+
     try {
+      // SPEC-GUIDE-3: commit the live stance so proposeRate() reads the pre-meeting committed
+      // stance; setForwardGuidanceStance after advance() cannot retroactively dodge the penalty.
+      this._committedStance = this._stance;
+
       for (let i = 0; i < months; i++) {
         if (this._replay !== null) {
           const action = this._replay.actions.find((a) => a.date === this._state.date);
@@ -620,6 +638,7 @@ export class Session {
       }
     } catch (err) {
       this._state = checkpointState;
+      this._committedStance = checkpointCommittedStance; // SPEC-GUIDE-3: roll back committed stance
       this._trajectoryInternal.length = checkpointTrajectoryLength;
       this._pendingEscalations.length = checkpointEscalationsLength;
       this._activityLog.length = checkpointActivityLength;
@@ -1025,8 +1044,9 @@ export class Session {
     // Capturing it here (immediately after vote) keeps that guarantee visible.
     const guidanceP = loadGuidanceParams();
     const preMeetingRate = this._state.vars.policy_rate as number;
+    const committedStance = this.committedGuidanceStance; // SPEC-GUIDE-3
     const surprisedMarkets = marketsSurprised(
-      this._stance,
+      committedStance,
       preMeetingRate,
       fomcVote.decided,
       guidanceP.surprise_tolerance,
@@ -1116,6 +1136,9 @@ export class Session {
    */
   reset(): void {
     this._stance = "neutral";
+    // SPEC-GUIDE-3: restore pre-advance state so the first proposeRate() after reset()
+    // reads the live stance, matching the fallback used before any advance() is called.
+    this._committedStance = undefined;
     this._rng = mulberry32(this._seed);
     this._pendingEscalations = [];
     this._firedOnce = new Set();
