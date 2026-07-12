@@ -76,15 +76,18 @@ describe("dynamics loader (SPEC-SIM-5)", () => {
   });
 });
 
-describe("committee params loader (SPEC-PARAMS-1 + SPEC-COMM-3 + SPEC-COMM-4 + SPEC-COMM-5)", () => {
+describe("committee params loader (SPEC-PARAMS-1 + SPEC-COMM-3 + SPEC-COMM-4 + SPEC-COMM-5 + SPEC-COMM-10)", () => {
   it("loadValidatedFile returns committee params with all required fields", () => {
     // SPEC-COMM-4: dissent_tolerance removed; per-member compromise_band now governs dissent.
     // SPEC-COMM-5: conviction_band_factor added.
+    // SPEC-COMM-10: dissent_override_threshold and median_pull added.
     const result = loadValidatedFile<{
       neutral_rate: number;
       target_inflation: number;
       target_unemployment: number;
       conviction_band_factor: number;
+      dissent_override_threshold: number;
+      median_pull: number;
     }>("schemas/committee-params.schema.json", "content/engine/committee.json");
     expect(result.neutral_rate).toBeGreaterThan(0);
     expect(result.target_inflation).toBeGreaterThan(0);
@@ -92,6 +95,11 @@ describe("committee params loader (SPEC-PARAMS-1 + SPEC-COMM-3 + SPEC-COMM-4 + S
     // SPEC-COMM-5
     expect(result.conviction_band_factor).toBeGreaterThanOrEqual(0);
     expect(result.conviction_band_factor).toBeLessThanOrEqual(1);
+    // SPEC-COMM-10
+    expect(Number.isInteger(result.dissent_override_threshold)).toBe(true);
+    expect(result.dissent_override_threshold).toBeGreaterThanOrEqual(1);
+    expect(result.median_pull).toBeGreaterThan(0);
+    expect(result.median_pull).toBeLessThanOrEqual(1);
   });
 });
 

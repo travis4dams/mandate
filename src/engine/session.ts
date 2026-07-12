@@ -4,7 +4,7 @@ import { loadReplay } from "../content/replays.js";
 import { loadCommittee } from "../content/committees.js";
 import { loadValidatedFile } from "../content/loader.js";
 import { tick } from "./clock.js";
-import { previewVote, loadCommitteeParams } from "./fomc.js";
+import { previewVote, loadCommitteeParams, buildFomcVote, type FomcVote, type MemberVotePreview } from "./fomc.js";
 import { computeChairCapital, computeEffectiveBands, loadChairCapitalParams, updateConsensusCapital } from "./chair-capital.js";
 import type { CapitalSpend } from "./chair-capital.js";
 import { applyIntermeetingDrift } from "./stance.js";
@@ -50,7 +50,6 @@ import {
 import { mulberry32, fnv1a32, type SeededRng } from "./rng.js";
 import { observe } from "./fog.js";
 import type { GameState, GameStateSnapshot } from "./state.js";
-import type { FomcVote, MemberVotePreview } from "./fomc.js";
 import type { Replay } from "../content/replays.js";
 
 // SPEC-SESSION-0: skeleton Session façade.
@@ -957,6 +956,11 @@ export class Session {
    * @throws {Error} if a capitalSpend key does not match any member id, or the resulting widened
    *   band would exceed 0.5 (propagated from computeEffectiveBands).
    * @throws {VoteMissingVarError} if state vars (inflation, unemployment, policy_rate) are missing or non-finite (propagated from previewVote()).
+   * SPEC-COMM-10: when dissents >= dissent_override_threshold, `fomcVote.decided` is
+   * pulled toward the committee median and will differ from `rate`. Always use
+   * `fomcVote.decided` as the enacted rate, not the input `rate`. The enacted rate
+   * is written to `current.vars.policy_rate` automatically before this method returns;
+   * callers must not reapply it.
    */
   proposeRate(rate: number, capitalSpend?: CapitalSpend): FomcVote {
     if (!this.isMeetingMonth()) {
@@ -970,8 +974,12 @@ export class Session {
     const traits = loadTraitCatalog();
     const effectiveBands = this._resolveEffectiveBands(committee, capitalSpend, "proposeRate");
     // SPEC-DOCT-2: use previewVote directly so member previews are available for dot-plot spread.
+    // SPEC-COMM-10: buildFomcVote applies the median-pull override when dissents >= dissent_override_threshold,
+    // so fomcVote.decided may differ from rate. Previews are relative to the proposed `rate`, not the
+    // enacted `fomcVote.decided` — they represent "how contested was the Chair's proposal", which is
+    // the intended dot-plot semantic. Meeting hooks receive these same proposal-relative previews.
     const { previews } = previewVote(committee, rate, this._state, params, traits, effectiveBands);
-    const fomcVote: FomcVote = { decided: rate, dissents: previews.filter((p) => p.wouldDissent).length };
+    const fomcVote: FomcVote = buildFomcVote(previews, rate, params);
 
     // Apply the decided rate and compute new credibility.
     // SPEC-CRED-1 (issue #33): dissents no longer affect credibility, so fomcVote.dissents is
@@ -1003,7 +1011,7 @@ export class Session {
     // meeting hook: add the string to DoctrineHook + schema enum, implement a handler,
     // and register it in HOOK_HANDLERS — no changes to this file needed.
     // SPEC-COMM-9: update consensus_capital from the vote outcome.
-    // Zero dissents → add consensus_gain; above threshold dissents → subtract consensus_penalty (clamped ≥ 0).
+    // Zero dissents → add consensus_gain; dissents > dissent_penalty_threshold → subtract consensus_penalty (clamped ≥ 0).
     const ccParams = loadChairCapitalParams();
     const prevConsensusCap = (this._state.vars.consensus_capital ?? 0) as number;
     const nextConsensusCap = updateConsensusCapital(prevConsensusCap, fomcVote.dissents, ccParams);
@@ -1015,18 +1023,50 @@ export class Session {
       vars: { ...this._state.vars, policy_rate: fomcVote.decided, credibility: newCredibility, consensus_capital: nextConsensusCap },
     };
     this._state = stateAfterMeeting;
-    const hookCheckpoint = this._state;
+    // Spread vars and flags so a hook that mutates those records in-place (an engine-purity
+    // violation — SPEC-SIM-1 requires hooks to return new state) cannot corrupt the checkpoint.
+    // history is not spread: hooks don't write to history, and copying the array is unnecessary.
+    const hookCheckpoint: GameState = { ...this._state, vars: { ...this._state.vars }, flags: { ...this._state.flags } };
+    const hookCacheCheckpoint = this._currentCache;
+    const hookTrajectoryCheckpoint = this._trajectoryCache;
+    // Snapshot flags before the loop to pin which doctrines are active for this meeting.
+    // A hook that writes a new doctrine-adoption flag into its returned state cannot trigger
+    // a second doctrine's meeting_hook in the same proposeRate() call — the active set is
+    // fixed at meeting start, preventing cascading multi-doctrine interactions.
+    // (Reading stateAfterMeeting.flags live would allow hook A to activate hook B.)
+    const flagsAtMeeting = stateAfterMeeting.flags;
     try {
       const catalog = loadDoctrineCatalog();
       for (const doctrine of catalog) {
         if (doctrine.meeting_hook === undefined) continue;
-        if (stateAfterMeeting.flags[doctrineFlagKey(doctrine.id)] !== true) continue;
-        stateAfterMeeting = HOOK_HANDLERS[doctrine.meeting_hook](stateAfterMeeting, previews);
+        if (flagsAtMeeting[doctrineFlagKey(doctrine.id)] !== true) continue;
+        const nextState = HOOK_HANDLERS[doctrine.meeting_hook](stateAfterMeeting, previews);
+        if (nextState == null || Array.isArray(nextState) || typeof nextState !== "object") {
+          throw new Error(
+            `proposeRate: meeting hook "${doctrine.meeting_hook}" for doctrine "${doctrine.id}" returned ${String(nextState)} instead of a GameState`,
+          );
+        }
+        stateAfterMeeting = nextState;
       }
       this._state = stateAfterMeeting;
     } catch (err) {
+      // Rollback covers GameState only — safe because HOOK_HANDLERS return a new GameState
+      // and cannot mutate Session fields (_stance, _pendingEscalations, etc.) through their args.
+      // If a future handler signature is widened to receive the Session object directly,
+      // extend the rollback to cover those fields before making that change.
       this._state = hookCheckpoint;
-      this._rebuildCaches();
+      try {
+        this._rebuildCaches();
+      } catch (secondaryErr) {
+        // Both hook failure and cache rebuild failed; force-restore caches from the pre-hook
+        // checkpoint so _currentCache / _trajectoryCache stay consistent with _state.
+        this._currentCache = hookCacheCheckpoint;
+        this._trajectoryCache = hookTrajectoryCheckpoint;
+        throw new Error(
+          `Session.proposeRate: cache rebuild failed during hook rollback (force-restored from pre-meeting checkpoint); original hook error: ${String(err)}`,
+          { cause: secondaryErr },
+        );
+      }
       throw err;
     }
 

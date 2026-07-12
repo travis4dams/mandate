@@ -111,6 +111,16 @@
       ]
     },
     {
+      "id": "SPEC-COMM-10",
+      "section": "Committee",
+      "tag": "testable",
+      "tests": [
+        "test/engine-params-loaders.test.ts",
+        "test/fomc.test.ts",
+        "test/session.test.ts"
+      ]
+    },
+    {
       "id": "SPEC-COMM-2",
       "section": "Committee",
       "tag": "testable",
@@ -164,6 +174,7 @@
       "tag": "testable",
       "tests": [
         "test/chair-capital.test.ts",
+        "test/fomc.test.ts",
         "web/src/MeetingPanel.tsx",
         "web/src/PersuasionView.test.tsx",
         "web/src/PersuasionView.tsx"
@@ -182,7 +193,9 @@
       "section": "Staffing economy & the living organization",
       "tag": "testable",
       "tests": [
-        "test/chair-capital.test.ts"
+        "test/chair-capital.test.ts",
+        "test/fomc.test.ts",
+        "test/session.test.ts"
       ]
     },
     {

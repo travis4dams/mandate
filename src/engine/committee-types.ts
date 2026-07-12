@@ -13,4 +13,11 @@ export interface CommitteeParams {
    *  bandMod is the sum of band_modifier from the member's traits — a bandMod of -0.5 halves the band, +0.5 widens it by 50%.
    *  SPEC-COMM-5. Valid range: [0, 1]. */
   readonly conviction_band_factor: number;
+  /** Minimum dissent count that triggers the median-pull override (SPEC-COMM-10).
+   *  When dissents >= this threshold, decided = proposedRate + median_pull * (committeeMedian - proposedRate).
+   *  Must be a positive integer (≥ 1). */
+  readonly dissent_override_threshold: number;
+  /** Fraction of the distance from proposedRate to committeeMedian to pull when the threshold is met (SPEC-COMM-10).
+   *  Valid range: (0, 1]. A value of 1 sets decided = committeeMedian exactly. */
+  readonly median_pull: number;
 }

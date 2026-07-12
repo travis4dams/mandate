@@ -2,6 +2,7 @@ import { describe, it, expect, afterEach } from "vitest";
 import {
   vote,
   previewVote,
+  buildFomcVote,
   loadCommitteeParams,
   _resetCommitteeParamsCache,
   VoteMissingVarError,
@@ -10,12 +11,14 @@ import {
   type CommitteeParams,
 } from "../src/engine/fomc";
 import { applyMeetingOutcome } from "../src/engine/credibility";
+import { updateConsensusCapital, loadChairCapitalParams, _resetChairCapitalParamsCache } from "../src/engine/chair-capital";
 import { makeState } from "../src/engine/state";
 import type { Committee, CommitteeMember } from "../src/content/committees";
 import type { TraitEntry } from "../src/content/traits";
 
 afterEach(() => {
   _resetCommitteeParamsCache();
+  _resetChairCapitalParamsCache();
 });
 
 // SPEC-COMM-2 (vote) + SPEC-COMM-3 (per-member Taylor coefficients with inertia).
@@ -25,6 +28,8 @@ const PARAMS: CommitteeParams = {
   target_inflation: 0.02,
   target_unemployment: 0.04,
   conviction_band_factor: 0.8,
+  dissent_override_threshold: 7,
+  median_pull: 0.5,
 };
 
 // Default per-member coefficient fixture (empirical median).
@@ -603,5 +608,293 @@ describe("vote", () => {
     const paramsConv0: CommitteeParams = { ...PARAMS, conviction_band_factor: 0 };
     const cConv0 = committeeOf([member("zero_conv", { compromise_band: 0.010, conviction: 0 })]);
     expect(vote(cConv0, 0.057, state, paramsConv0, []).dissents).toBe(0);
+  });
+
+  // SPEC-COMM-10: dissents below threshold → decided === proposedRate; committeeMedian always present.
+  it("SPEC-COMM-10: dissents < threshold → decided equals proposedRate", () => {
+    // 6 members all prefer ~0.062 (inflation 8%); proposedRate = 0.05.
+    // All 6 dissent, but 6 < threshold (7) → no pull.
+    const c = committeeOf([
+      member("a"), member("b"), member("c"),
+      member("d"), member("e"), member("f"),
+    ]);
+    const state = macroState({ inflation: 0.08, unemployment: 0.04, policy_rate: 0.05 });
+    const result = vote(c, 0.05, state, PARAMS, []);
+    expect(result.dissents).toBe(6);
+    expect(result.decided).toBe(0.05);
+    expect(Number.isFinite(result.committeeMedian)).toBe(true);
+    expect(result.committeeMedian).toBeGreaterThan(0.05);
+  });
+
+  // SPEC-COMM-10: dissents exactly at threshold → decided is pulled toward committeeMedian.
+  it("SPEC-COMM-10: dissents >= threshold → decided is strictly between proposedRate and committeeMedian", () => {
+    // 7 members all prefer ~0.062 (inflation gap 6pp); proposedRate = 0.05.
+    // 7 dissents >= threshold (7) → decided = 0.05 + 0.5 * (median - 0.05).
+    const c = committeeOf([
+      member("a"), member("b"), member("c"), member("d"),
+      member("e"), member("f"), member("g"),
+    ]);
+    const state = macroState({ inflation: 0.08, unemployment: 0.04, policy_rate: 0.05 });
+    const result = vote(c, 0.05, state, PARAMS, []);
+    expect(result.dissents).toBe(7);
+    expect(result.committeeMedian).toBeGreaterThan(0.05);
+    expect(result.decided).toBeGreaterThan(0.05);
+    expect(result.decided).toBeLessThan(result.committeeMedian);
+    // preferred = 0.88*0.05 + 0.12*(0.05 + 1.7*0.06) = 0.06224; median = 0.06224 (all identical).
+    // decided = 0.05 + 0.5*(0.06224 - 0.05) = 0.05612.
+    expect(result.decided).toBeCloseTo(0.05612, 10);
+  });
+
+  // SPEC-COMM-10: buildFomcVote applies pull precisely with controlled synthetic previews.
+  it("SPEC-COMM-10: buildFomcVote computes decided = proposedRate + median_pull * (median - proposedRate)", () => {
+    // SPEC-COMM-10
+    const proposedRate = 0.05;
+    const median = 0.08;
+    // 7 previews all preferring 0.08 (median = 0.08), all dissenting.
+    const previews = Array.from({ length: 7 }, (_, i) => ({
+      memberId: `m${i}`,
+      nameKey: `m${i}`,
+      preferred: median,
+      wouldDissent: true,
+    }));
+    const result = buildFomcVote(previews, proposedRate, PARAMS);
+    expect(result.dissents).toBe(7);
+    expect(result.committeeMedian).toBe(median);
+    // decided = 0.05 + 0.5 * (0.08 - 0.05) = 0.065
+    expect(result.decided).toBeCloseTo(proposedRate + PARAMS.median_pull * (median - proposedRate), 10);
+  });
+
+  // SPEC-COMM-10: buildFomcVote with one-below-threshold dissents → no pull.
+  it("SPEC-COMM-10: buildFomcVote does not pull when dissents is one below threshold", () => {
+    // SPEC-COMM-10
+    const proposedRate = 0.05;
+    const previews = Array.from({ length: 7 }, (_, i) => ({
+      memberId: `m${i}`,
+      nameKey: `m${i}`,
+      preferred: 0.08,
+      wouldDissent: i < 6, // only 6 out of 7 dissent
+    }));
+    const result = buildFomcVote(previews, proposedRate, PARAMS);
+    expect(result.dissents).toBe(6);
+    expect(result.decided).toBe(proposedRate);
+  });
+
+  // SPEC-COMM-10: dovish committee (committeeMedian < proposedRate) pulls decided downward.
+  it("SPEC-COMM-10: dovish committee where committeeMedian < proposedRate pulls decided down", () => {
+    // SPEC-COMM-10
+    // 7 members all prefer 0.03, proposedRate = 0.10 → all dissent (7 >= 7).
+    // decided = 0.10 + 0.5 * (0.03 - 0.10) = 0.10 - 0.035 = 0.065.
+    // So decided < proposedRate and decided > committeeMedian.
+    const previews = Array.from({ length: 7 }, (_, i) => ({
+      memberId: `m${i}`,
+      nameKey: `m${i}`,
+      preferred: 0.03,
+      wouldDissent: true,
+    }));
+    const result = buildFomcVote(previews, 0.1, PARAMS);
+    expect(result.dissents).toBe(7);
+    expect(result.committeeMedian).toBeCloseTo(0.03, 10);
+    expect(result.decided).toBeGreaterThan(result.committeeMedian);
+    expect(result.decided).toBeLessThan(0.1);
+    expect(result.decided).toBeCloseTo(0.065, 10);
+  });
+
+  // SPEC-COMM-10: even-member committee median is arithmetic mean of the two middle preferred rates.
+  it("SPEC-COMM-10: even-member committee median is mean of two middle preferred rates", () => {
+    // SPEC-COMM-10
+    // 4 previews: two at 0.06, two at 0.08 → sorted: 0.06, 0.06, 0.08, 0.08 → median = 0.07.
+    const previews = [
+      { memberId: "lo1", nameKey: "lo1", preferred: 0.06, wouldDissent: false },
+      { memberId: "lo2", nameKey: "lo2", preferred: 0.06, wouldDissent: false },
+      { memberId: "hi1", nameKey: "hi1", preferred: 0.08, wouldDissent: false },
+      { memberId: "hi2", nameKey: "hi2", preferred: 0.08, wouldDissent: false },
+    ];
+    const result = buildFomcVote(previews, 0.05, PARAMS);
+    expect(result.committeeMedian).toBeCloseTo(0.07, 10);
+  });
+
+  // SPEC-COMM-10: median_pull = 1 sets decided exactly equal to committeeMedian.
+  it("SPEC-COMM-10: median_pull = 1 sets decided exactly equal to committeeMedian", () => {
+    // SPEC-COMM-10: upper boundary of valid range — decided = proposedRate + 1.0 * (median - proposedRate) = median.
+    const previews = Array.from({ length: 7 }, (_, i) => ({
+      memberId: `m${i}`,
+      nameKey: `m${i}`,
+      preferred: 0.08,
+      wouldDissent: true,
+    }));
+    const result = buildFomcVote(previews, 0.05, { ...PARAMS, median_pull: 1 });
+    expect(result.decided).toBeCloseTo(result.committeeMedian, 10);
+  });
+
+  // SPEC-COMM-10: buildFomcVote guard tests.
+  it("SPEC-COMM-10: buildFomcVote throws on median_pull = 0 (exclusive lower bound)", () => {
+    // SPEC-COMM-10
+    const previews = Array.from({ length: 7 }, (_, i) => ({
+      memberId: `m${i}`, nameKey: `m${i}`, preferred: 0.08, wouldDissent: true,
+    }));
+    expect(() => buildFomcVote(previews, 0.05, { ...PARAMS, median_pull: 0 })).toThrow(/invalid median_pull/);
+  });
+
+  it("SPEC-COMM-10: buildFomcVote throws on median_pull > 1", () => {
+    // SPEC-COMM-10
+    const previews = Array.from({ length: 7 }, (_, i) => ({
+      memberId: `m${i}`, nameKey: `m${i}`, preferred: 0.08, wouldDissent: true,
+    }));
+    expect(() => buildFomcVote(previews, 0.05, { ...PARAMS, median_pull: 1.1 })).toThrow(/invalid median_pull/);
+  });
+
+  it("SPEC-COMM-10: buildFomcVote throws on median_pull = NaN", () => {
+    // SPEC-COMM-10: !Number.isFinite(NaN) catches this; a range-only guard would miss it.
+    const previews = Array.from({ length: 7 }, (_, i) => ({
+      memberId: `m${i}`, nameKey: `m${i}`, preferred: 0.08, wouldDissent: true,
+    }));
+    expect(() => buildFomcVote(previews, 0.05, { ...PARAMS, median_pull: NaN })).toThrow(/invalid median_pull/);
+  });
+
+  it("SPEC-COMM-10: buildFomcVote throws on dissent_override_threshold = NaN", () => {
+    // SPEC-COMM-10: Number.isInteger(NaN) is false, so this is caught by the threshold guard.
+    const previews = Array.from({ length: 2 }, (_, i) => ({
+      memberId: `m${i}`, nameKey: `m${i}`, preferred: 0.08, wouldDissent: true,
+    }));
+    expect(() => buildFomcVote(previews, 0.05, { ...PARAMS, dissent_override_threshold: NaN }))
+      .toThrow(/invalid dissent_override_threshold/);
+  });
+
+  it("SPEC-COMM-10: buildFomcVote throws on dissent_override_threshold = 0", () => {
+    // SPEC-COMM-10
+    const previews = Array.from({ length: 7 }, (_, i) => ({
+      memberId: `m${i}`, nameKey: `m${i}`, preferred: 0.08, wouldDissent: true,
+    }));
+    expect(() => buildFomcVote(previews, 0.05, { ...PARAMS, dissent_override_threshold: 0 })).toThrow(/invalid dissent_override_threshold/);
+  });
+
+  it("SPEC-COMM-10: buildFomcVote throws on empty previews", () => {
+    // SPEC-COMM-10
+    expect(() => buildFomcVote([], 0.05, PARAMS)).toThrow(/previews array is empty/);
+  });
+
+  it("SPEC-COMM-10: buildFomcVote throws on non-integer dissent_override_threshold", () => {
+    // SPEC-COMM-10
+    const previews = Array.from({ length: 2 }, (_, i) => ({
+      memberId: `m${i}`, nameKey: `m${i}`, preferred: 0.08, wouldDissent: true,
+    }));
+    expect(() => buildFomcVote(previews, 0.05, { ...PARAMS, dissent_override_threshold: 1.5 }))
+      .toThrow(/invalid dissent_override_threshold/);
+  });
+
+  it("SPEC-COMM-10: dissent_override_threshold = 1 fires override with exactly one dissent", () => {
+    // SPEC-COMM-10: minimum valid threshold — one dissent must be enough to pull.
+    const previews = [
+      { memberId: "m0", nameKey: "m0", preferred: 0.08, wouldDissent: true },
+      { memberId: "m1", nameKey: "m1", preferred: 0.08, wouldDissent: false },
+    ];
+    const result = buildFomcVote(previews, 0.05, { ...PARAMS, dissent_override_threshold: 1 });
+    expect(result.dissents).toBe(1);
+    expect(result.decided).toBeGreaterThan(0.05);
+  });
+
+  it("SPEC-COMM-9 × SPEC-COMM-10: override-level dissents penalise consensus_capital via updateConsensusCapital", () => {
+    // SPEC-COMM-9 + SPEC-COMM-10: fomcVote.dissents (integer count) triggers the SPEC-COMM-9 penalty
+    // when fed to updateConsensusCapital. If fomcVote.decided (~0.065) were passed instead,
+    // `decided > dissent_penalty_threshold` would be false and the penalty would not fire.
+    // SPEC-COMM-10
+    const previews = Array.from({ length: 7 }, (_, i) => ({
+      memberId: `m${i}`, nameKey: `m${i}`, preferred: 0.08, wouldDissent: true,
+    }));
+    const fomcVote = buildFomcVote(previews, 0.05, PARAMS);
+    const chairParams = loadChairCapitalParams();
+    const capitalBefore = 50;
+    // Passing fomcVote.dissents (7) — should trigger the penalty.
+    const capitalAfter = updateConsensusCapital(capitalBefore, fomcVote.dissents, chairParams);
+    expect(capitalAfter).toBeLessThan(capitalBefore);
+    // Passing fomcVote.decided (~0.065) — should NOT trigger the penalty (a rate << threshold).
+    const capitalIfDecidedPassed = updateConsensusCapital(capitalBefore, fomcVote.decided, chairParams);
+    expect(capitalIfDecidedPassed).toBe(capitalBefore); // no penalty: rate value < threshold
+  });
+
+  it("SPEC-COMM-7 × SPEC-COMM-10: capital spend that drops dissents below threshold prevents median pull", () => {
+    // SPEC-COMM-7 + SPEC-COMM-10: the core strategic interaction — spend Chair capital on one member
+    // to widen their band, flipping them from dissent to approve and dropping dissents below threshold.
+    // Without spend: 7 dissents >= threshold(7) → override fires, decided != proposedRate.
+    // With spend: 6 dissents < threshold(7) → decided === proposedRate.
+    const proposedRate = 0.05;
+    const fullDissent = Array.from({ length: 7 }, (_, i) => ({
+      memberId: `m${i}`, nameKey: `m${i}`, preferred: 0.08, wouldDissent: true,
+    }));
+    const withCapitalSpend = fullDissent.map((p, i) =>
+      i === 0 ? { ...p, wouldDissent: false } : p, // capital widened m0's band
+    );
+    const withoutSpend = buildFomcVote(fullDissent, proposedRate, PARAMS);
+    expect(withoutSpend.dissents).toBe(7);
+    expect(withoutSpend.decided).not.toBe(proposedRate); // override fires
+    const withSpend = buildFomcVote(withCapitalSpend, proposedRate, PARAMS);
+    expect(withSpend.dissents).toBe(6);
+    expect(withSpend.decided).toBe(proposedRate); // override suppressed — 6 < threshold(7)
+  });
+
+  it("SPEC-COMM-10: decided === proposedRate when committeeMedian === proposedRate despite pull", () => {
+    // SPEC-COMM-10: median-pull formula is a no-op when median equals proposed.
+    // decided = proposed + pull * (proposed - proposed) = proposed.
+    const previews = Array.from({ length: 7 }, (_, i) => ({
+      memberId: `m${i}`, nameKey: `m${i}`, preferred: 0.05, wouldDissent: true,
+    }));
+    const result = buildFomcVote(previews, 0.05, PARAMS);
+    expect(result.dissents).toBe(7);
+    expect(result.committeeMedian).toBeCloseTo(0.05, 10);
+    expect(result.decided).toBeCloseTo(0.05, 10);
+  });
+
+  it("buildFomcVote guard: throws on non-finite proposedRate (NaN)", () => {
+    // Guard path only reachable by calling buildFomcVote directly — vote() validates upstream.
+    const previews = [{ memberId: "m0", nameKey: "m0", preferred: 0.05, wouldDissent: false }];
+    expect(() => buildFomcVote(previews, NaN, PARAMS)).toThrow("proposedRate");
+  });
+
+  it("buildFomcVote guard: throws on non-finite member preferred rate", () => {
+    // Guard path: synthetic preview carrying NaN preferred — cannot arise through previewVote().
+    const previews = [
+      { memberId: "m0", nameKey: "m0", preferred: NaN, wouldDissent: false },
+    ];
+    expect(() => buildFomcVote(previews, 0.05, PARAMS)).toThrow("m0");
+  });
+
+  it("SPEC-COMM-10: odd-length median with distinct preferred values picks the middle value", () => {
+    // SPEC-COMM-10: for a 3-member committee sorted [0.02, 0.05, 0.08] the median is 0.05.
+    // Verifies the mid = floor(3/2) = 1 index path with distinct values (not all-equal).
+    const previews = [
+      { memberId: "m0", nameKey: "m0", preferred: 0.08, wouldDissent: true },
+      { memberId: "m1", nameKey: "m1", preferred: 0.02, wouldDissent: true },
+      { memberId: "m2", nameKey: "m2", preferred: 0.05, wouldDissent: true },
+    ];
+    const params = { ...PARAMS, dissent_override_threshold: 3 };
+    const result = buildFomcVote(previews, 0.10, params);
+    expect(result.committeeMedian).toBeCloseTo(0.05, 10);
+    expect(result.dissents).toBe(3);
+    // decided = 0.10 + 0.5 * (0.05 - 0.10) = 0.075
+    expect(result.decided).toBeCloseTo(0.075, 10);
+  });
+
+  it("SPEC-COMM-10: threshold === committee size — all N members must dissent for override to fire", () => {
+    // SPEC-COMM-10: when threshold equals the committee size, every member must object.
+    // Exercises the exact-boundary condition (dissents >= threshold with dissents === N).
+    const N = 5;
+    const previews = Array.from({ length: N }, (_, i) => ({
+      memberId: `m${i}`, nameKey: `m${i}`, preferred: 0.08, wouldDissent: true,
+    }));
+    const result = buildFomcVote(previews, 0.05, { ...PARAMS, dissent_override_threshold: N });
+    expect(result.dissents).toBe(N);
+    expect(result.decided).toBeGreaterThan(0.05); // override fires at exactly N dissents
+  });
+
+  it("SPEC-COMM-10: threshold > committee size — override never fires even when all members dissent", () => {
+    // SPEC-COMM-10: a content author can make the override structurally unreachable by setting
+    // threshold above the number of committee members.
+    const N = 5;
+    const previews = Array.from({ length: N }, (_, i) => ({
+      memberId: `m${i}`, nameKey: `m${i}`, preferred: 0.08, wouldDissent: true,
+    }));
+    const result = buildFomcVote(previews, 0.05, { ...PARAMS, dissent_override_threshold: N + 1 });
+    expect(result.dissents).toBe(N);
+    expect(result.decided).toBe(0.05); // override cannot fire: N < threshold
   });
 });

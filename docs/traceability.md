@@ -14,14 +14,15 @@ input in plain mode; only `--enrich` (workflow-only) fills empty cells from git 
 | SPEC-CAL-2 | testable | Calibration | `test/calibration-volcker.test.ts` |  |
 | SPEC-CAL-3 | testable | Calibration | `test/calibration-thresholds.test.ts` |  |
 | SPEC-COMM-1 | testable | Committee | `test/committee.test.ts`, `test/gen-state.test.ts` | #10 |
+| SPEC-COMM-10 | testable | Committee | `test/engine-params-loaders.test.ts`, `test/fomc.test.ts`, `test/session.test.ts` |  |
 | SPEC-COMM-2 | testable | Committee | `test/fomc.test.ts`, `test/gen-state.test.ts` | #11 |
 | SPEC-COMM-3 | testable | Committee | `test/committee.test.ts`, `test/engine-params-loaders.test.ts`, `test/fomc.test.ts` | #27 |
 | SPEC-COMM-4 | testable | Committee | `test/engine-params-loaders.test.ts`, `test/fomc.test.ts` |  |
 | SPEC-COMM-5 | testable | Committee | `test/committee.test.ts`, `test/engine-params-loaders.test.ts`, `test/fomc.test.ts`, `test/traits.test.ts` | #50 |
 | SPEC-COMM-6 | testable | Committee | `test/session.test.ts`, `test/stance.test.ts` | #53 |
-| SPEC-COMM-7 | testable | Committee | `test/chair-capital.test.ts`, `web/src/MeetingPanel.tsx`, `web/src/PersuasionView.test.tsx`, `web/src/PersuasionView.tsx` | #55 |
+| SPEC-COMM-7 | testable | Committee | `test/chair-capital.test.ts`, `test/fomc.test.ts`, `web/src/MeetingPanel.tsx`, `web/src/PersuasionView.test.tsx`, `web/src/PersuasionView.tsx` | #55 |
 | SPEC-COMM-8 | testable | Committee | `test/committee-spread.test.ts` |  |
-| SPEC-COMM-9 | testable | Staffing economy & the living organization | `test/chair-capital.test.ts` |  |
+| SPEC-COMM-9 | testable | Staffing economy & the living organization | `test/chair-capital.test.ts`, `test/fomc.test.ts`, `test/session.test.ts` |  |
 | SPEC-COND-1 | testable | Content language | `test/conditions.test.ts` |  |
 | SPEC-COND-2 | testable | Content language | `test/conditions.test.ts` |  |
 | SPEC-CONGRESS-1 | testable | Federal Reserve finances | `test/congress.test.ts`, `test/session-institution-depth.test.ts` |  |

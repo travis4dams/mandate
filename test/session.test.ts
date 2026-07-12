@@ -162,19 +162,22 @@ describe("Session.proposeRate guards", () => {
   });
 
   // SPEC-SESSION-0: current.vars.policy_rate reflects the decided rate after proposeRate.
+  // SPEC-COMM-10: decided may differ from proposed when dissents >= threshold.
   it("current.vars.policy_rate reflects decided rate after proposeRate(0.15)", () => {
     const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
-    s.proposeRate(0.15);
-    expect(s.current.vars.policy_rate).toBe(0.15);
+    const fomcVote = s.proposeRate(0.15);
+    expect(s.current.vars.policy_rate).toBe(fomcVote.decided);
   });
 
-  // SPEC-SESSION-0: proposeRate returns a FomcVote with the decided rate and dissent count.
-  it("proposeRate(0.15) returns FomcVote with decided === 0.15 and a finite dissent count", () => {
+  // SPEC-SESSION-0: proposeRate returns a FomcVote with a finite decided rate and dissent count.
+  // SPEC-COMM-10: decided may differ from proposed when dissents >= threshold.
+  it("proposeRate(0.15) returns FomcVote with a finite decided rate and non-negative integer dissents", () => {
     const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
-    const vote = s.proposeRate(0.15);
-    expect(vote.decided).toBe(0.15);
-    expect(Number.isInteger(vote.dissents)).toBe(true);
-    expect(vote.dissents).toBeGreaterThanOrEqual(0);
+    const fomcVote = s.proposeRate(0.15);
+    expect(Number.isFinite(fomcVote.decided)).toBe(true);
+    expect(Number.isFinite(fomcVote.committeeMedian)).toBe(true);
+    expect(Number.isInteger(fomcVote.dissents)).toBe(true);
+    expect(fomcVote.dissents).toBeGreaterThanOrEqual(0);
   });
 
   // SPEC-SESSION-1: meeting-month gate runs BEFORE finite-rate check.
@@ -197,8 +200,9 @@ describe("Session.proposeRate guards", () => {
     s.advance(3); // 1979-08 -> 1979-11
     expect(s.current.date).toBe("1979-11");
     expect(s.isMeetingMonth()).toBe(true);
-    const vote = s.proposeRate(0.12);
-    expect(vote.decided).toBe(0.12);
+    const fomcVote = s.proposeRate(0.12);
+    expect(Number.isFinite(fomcVote.decided)).toBe(true);
+    expect(s.current.vars.policy_rate).toBe(fomcVote.decided);
   });
 
   // SPEC-COMM-6
@@ -480,11 +484,54 @@ describe("SPEC-GUIDE-2: surprise lever wired into Session.proposeRate()", () => 
     expect(s.current.vars.credibility).toBe(20);
   });
 
-  it("holding the rate under neutral guidance does not surprise markets", () => {
-    // SPEC-GUIDE-2
+  it("committee override under neutral guidance triggers surprise when enacted rate exceeds tolerance (SPEC-COMM-10)", () => {
+    // SPEC-GUIDE-2 + SPEC-COMM-10: in the 1979 scenario, proposing the current rate 0.1075 with
+    // neutral stance triggers the committee median-pull (all 12 members dissent), enacting a rate
+    // ~50bp higher. That exceeds the neutral surprise_tolerance (25bp), so markets are surprised.
     const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
-    s.proposeRate(0.1075); // unchanged, neutral default → no surprise
-    expect(s.current.vars.credibility).toBe(25);
+    const fomcVote = s.proposeRate(0.1075);
+    expect(fomcVote.decided).toBeGreaterThan(0.1075); // committee median-pull fired
+    expect(s.current.vars.policy_rate).toBe(fomcVote.decided); // SPEC-COMM-10: enacted rate written to state
+    expect(s.current.vars.credibility).toBe(20); // 25 - 5 surprise penalty
+  });
+
+  it("SPEC-GUIDE-2: neutral stance + decided within tolerance → no surprise (no-override path)", () => {
+    // SPEC-GUIDE-2: marketsSurprised uses fomcVote.decided; when decided = current, no surprise.
+    // Exercises the no-override leg directly (independent of Session/1979 committee dynamics).
+    const currentRate = 0.1075;
+    expect(marketsSurprised("neutral", currentRate, currentRate, 0.0025)).toBe(false);
+    // Also verify the SPEC-GUIDE-2 tolerance boundary: decided within band → no surprise.
+    expect(marketsSurprised("neutral", currentRate, currentRate + 0.002, 0.0025)).toBe(false);
+    expect(marketsSurprised("neutral", currentRate, currentRate + 0.003, 0.0025)).toBe(true);
+  });
+
+  it("SPEC-COMM-9 × SPEC-COMM-10: override dissents are an integer count (not the enacted rate)", () => {
+    // SPEC-COMM-9 + SPEC-COMM-10: proposeRate passes fomcVote.dissents (an integer count) to
+    // updateConsensusCapital. The override path produces a fomcVote.decided far smaller than
+    // fomcVote.dissents — if decided were accidentally passed, the penalty threshold check
+    // `dissents > dissent_penalty_threshold` would silently not fire. Composition coverage via
+    // pure functions lives in test/fomc.test.ts (SPEC-COMM-9 × SPEC-COMM-10 test).
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    s.setForwardGuidanceStance("hawkish");
+    const fomcVote = s.proposeRate(0.1075);
+    expect(fomcVote.decided).toBeGreaterThan(0.1075); // SPEC-COMM-10 override fired
+    expect(Number.isInteger(fomcVote.dissents)).toBe(true); // dissents is an integer count
+    // fomcVote.decided is a policy rate (~0.11–0.12); fomcVote.dissents is a member count (>= 7).
+    // These differ by 2+ orders of magnitude, making them non-substitutable in capital accounting.
+    expect(fomcVote.dissents).toBeGreaterThan(fomcVote.decided * 10);
+  });
+
+  it("dovish stance + committee override pulls decided above tolerance → surprise (SPEC-GUIDE-2 × SPEC-COMM-10)", () => {
+    // SPEC-GUIDE-2 + SPEC-COMM-10: proposing 0.1075 (= pre-meeting rate) under dovish guidance.
+    // The committee median-pull fires and enacts a rate above 0.1075, contradicting the dovish signal.
+    // Confirms marketsSurprised uses fomcVote.decided (not the proposed rate): if rate were passed,
+    // rate === preMeetingRate → no change → no surprise. Only decided > preMeetingRate + tolerance
+    // triggers the penalty.
+    const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    s.setForwardGuidanceStance("dovish");
+    const fomcVote = s.proposeRate(0.1075);
+    expect(fomcVote.decided).toBeGreaterThan(0.1075); // SPEC-COMM-10 override fired
+    expect(s.current.vars.credibility).toBe(20); // 25 - 5 surprise penalty: decided used, not rate
   });
 
   it("reset() restores credibility after a surprise penalty", () => {
@@ -540,20 +587,21 @@ describe("SPEC-MANDATE-1: onTarget wired into Session.proposeRate()", () => {
   afterEach(() => { vi.restoreAllMocks(); });
 
   // SPEC-MANDATE-1 / SPEC-CRED-1 (issue #33): 1979 inflation=0.114 >> target=0.02 → onTarget=false
-  // → no +3 bonus. The 12-member committee dissents heavily at this stress state, but dissents no
-  // longer touch credibility, so proposeRate leaves credibility unchanged at 25.
-  it("credibility is unchanged when onTarget is false and dissents do not bite", () => {
+  // → no +3 bonus. SPEC-COMM-10: in the 1979 scenario, the committee overrides pull rates upward;
+  // hawkish stance avoids surprise so the only lever is onTarget (which is false here → no change).
+  it("credibility is unchanged when onTarget is false (hawkish stance prevents surprise penalty)", () => {
     // SPEC-MANDATE-1
     const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    s.setForwardGuidanceStance("hawkish"); // committee pulls rate up; hawkish = no surprise
     const credBefore = s.current.vars.credibility;
     s.proposeRate(0.1075);
     const credAfter = s.current.vars.credibility;
     expect(credBefore).toBe(25);
-    expect(credAfter).toBe(25); // 25 + 0 (onTarget=false), dissents ignored
+    expect(credAfter).toBe(25); // 25 + 0 (onTarget=false), no surprise → unchanged
   });
 
   // SPEC-MANDATE-1: when onTarget is true, the +3 lever fires — credAfter is exactly 3 higher.
-  // Mock mandate params so inflation=0.114 is "on target". Dissents are ignored, so the net is +3.
+  // Mock mandate params so inflation=0.114 is "on target". Hawkish stance avoids surprise.
   it("credibility is exactly 3 higher when onTarget is true (positive path)", () => {
     // SPEC-MANDATE-1
     vi.spyOn(mandateModule, "loadMandateParams").mockReturnValue({
@@ -564,11 +612,12 @@ describe("SPEC-MANDATE-1: onTarget wired into Session.proposeRate()", () => {
       unemployment_band: 0.01,
     });
     const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
+    s.setForwardGuidanceStance("hawkish"); // committee pulls rate up; hawkish = no surprise
     const credBefore = s.current.vars.credibility;
     s.proposeRate(0.1075);
     const credAfter = s.current.vars.credibility;
     expect(credBefore).toBe(25);
-    expect(credAfter).toBe(28); // 25 + 3 (onTarget=true), dissents ignored
+    expect(credAfter).toBe(28); // 25 + 3 (onTarget=true), no surprise → net +3
   });
 });
 
@@ -729,16 +778,18 @@ describe("SPEC-DOCT-2: dot-plot meeting effect wired into Session.proposeRate()"
     // The flip-flop cost is charged on abandonment (before proposeRate), so we verify
     // that proposeRate does NOT apply the anchoring bonus on top — i.e. the credibility
     // delta from proposeRate alone matches the no-doctrine baseline delta (zero here:
-    // neutral stance, off-target inflation → no surprise penalty, no onTarget bonus).
+    // hawkish stance, off-target inflation → no surprise penalty, no onTarget bonus).
+    // SPEC-COMM-10: hawkish stance avoids the surprise triggered by committee pulling rates up.
     const s = Session.fromScenario("scen.1979_stagflation", 42, "comm.fomc_1979");
     s.adoptDoctrine("doctrine.dot_plot");
     s.abandonDoctrine("doctrine.dot_plot");
+    s.setForwardGuidanceStance("hawkish"); // committee pulls rate up; hawkish = no surprise
     const credBeforePropose = s.current.vars.credibility as number;
     s.proposeRate(0.1075);
     const credAfterPropose = s.current.vars.credibility as number;
 
     // Without the meeting hook, proposeRate should not change credibility here
-    // (neutral stance, inflation far off-target → no surprise, no onTarget bonus).
+    // (hawkish stance, inflation far off-target → no surprise, no onTarget bonus).
     expect(credAfterPropose).toBe(credBeforePropose);
   });
 

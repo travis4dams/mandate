@@ -7,19 +7,29 @@ import type { EffectiveBands } from "./chair-capital.js";
 import { stanceKey, resolveStoredStance } from "./stance.js";
 import type { CommitteeParams } from "./committee-types.js";
 
-// FOMC vote engine — SPEC-COMM-2 + SPEC-COMM-3 + SPEC-COMM-5 + SPEC-COMM-7.
+// FOMC vote engine — SPEC-COMM-2 + SPEC-COMM-3 + SPEC-COMM-5 + SPEC-COMM-7 + SPEC-COMM-10.
 // SPEC-COMM-7 adds optional Chair capital effectiveBands that override the trait-computed band.
+// SPEC-COMM-10 adds the median-pull dissent override via buildFomcVote.
 // Pure: returns a new FomcVote; never mutates state or committee.
 
 export type { CommitteeParams } from "./committee-types.js";
 
 export interface FomcVote {
-  /** The enacted rate. Always equals proposedRate in slice 1 (the committee has no override power yet); a future slice may add majority-override. */
-  decided: number;
+  /** The enacted rate. Equals proposedRate when dissents < dissent_override_threshold; when
+   *  dissents >= dissent_override_threshold, pulled toward the committee median:
+   *  proposedRate + median_pull * (committeeMedian - proposedRate). SPEC-COMM-10. */
+  readonly decided: number;
   /** Count of members whose `|preferred - proposedRate| > effectiveBand`, where
    *  `effectiveBand = Math.max(0, compromise_band * (1 - conviction * conviction_band_factor) * (1 + bandMod))`
-   *  unless overridden by an `effectiveBands` entry from Chair capital spend (SPEC-COMM-7). */
-  dissents: number;
+   *  unless overridden by an `effectiveBands` entry from Chair capital spend (SPEC-COMM-7).
+   *  This count drives the median-pull override — see SPEC-COMM-10 and `FomcVote.decided`. */
+  readonly dissents: number;
+  /** Median of all members' preferred rates (post-trait lean shift) as
+   *  computed by `previewVote`. Chair capital `effectiveBands` do not affect `preferred`
+   *  rates — only the `wouldDissent` threshold — so capital spend does not shift the median.
+   *  Always present regardless of whether the dissent override fires.
+   *  For even-length committees this is the arithmetic mean of the two middle values. SPEC-COMM-10. */
+  readonly committeeMedian: number;
 }
 
 // Thrown when vote() is called against a state whose required vars are missing or non-finite.
@@ -61,6 +71,63 @@ function memberPreferred(
   // the Taylor target only contributes 12% per period, but leanShift lands at full magnitude
   // every meeting — consistent with the SPEC ("additive shift to the member's preferred rate").
   return member.inertia * laggedRate + (1 - member.inertia) * taylor + leanShift;
+}
+
+function computeMedian(values: readonly number[]): number {
+  // Defensive: buildFomcVote is the only caller and guards empty previews before this
+  // point, but the check is kept so adding a second call site within this module can't
+  // silently produce a NaN median (sorted[mid] on an empty array returns undefined).
+  if (values.length === 0) throw new Error("computeMedian: empty values array");
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0
+    ? (sorted[mid - 1]! + sorted[mid]!) / 2
+    : sorted[mid]!;
+}
+
+/** SPEC-COMM-10: build a FomcVote from already-computed previews, applying the median-pull override
+ *  when dissents >= params.dissent_override_threshold.
+ *  @param previews - Each entry's `wouldDissent` must already be evaluated against this same
+ *    `proposedRate`. `buildFomcVote` counts truthy flags directly; it does not recompute dissent.
+ *    Pass previews from `previewVote(committee, proposedRate, ...)` for self-consistent results.
+ *  @throws {Error} if params.median_pull is not finite or not in (0, 1].
+ *  @throws {Error} if params.dissent_override_threshold is not a positive integer.
+ *  @throws {Error} if proposedRate is not finite.
+ *  @throws {Error} if previews is empty.
+ *  @throws {Error} if any preview's preferred rate is not finite. */
+export function buildFomcVote(
+  previews: readonly MemberVotePreview[],
+  proposedRate: number,
+  params: CommitteeParams,
+): FomcVote {
+  if (!Number.isFinite(params.median_pull) || params.median_pull <= 0 || params.median_pull > 1) {
+    throw new Error(`buildFomcVote: invalid median_pull (${params.median_pull}); expected finite in (0, 1].`);
+  }
+  if (!Number.isInteger(params.dissent_override_threshold) || params.dissent_override_threshold < 1) {
+    throw new Error(`buildFomcVote: invalid dissent_override_threshold (${params.dissent_override_threshold}); expected integer >= 1.`);
+  }
+  if (!Number.isFinite(proposedRate)) {
+    throw new Error(`buildFomcVote: proposedRate ${proposedRate} is not finite.`);
+  }
+  if (previews.length === 0) {
+    throw new Error("buildFomcVote: previews array is empty — committee must have at least one member.");
+  }
+  for (const p of previews) {
+    if (!Number.isFinite(p.preferred)) {
+      throw new Error(
+        `buildFomcVote: member "${p.memberId}" has non-finite preferred rate (${p.preferred}); check content coefficients (inflation_coef, output_coef, inertia, neutral_rate).`,
+      );
+    }
+  }
+  const dissents = previews.filter((p) => p.wouldDissent).length;
+  const committeeMedian = computeMedian(previews.map((p) => p.preferred));
+  // decided is always finite (proposedRate, median_pull, and committeeMedian are all finite).
+  // The range is intentionally unclamped: negative enacted rates are permitted for NIRP scenarios;
+  // clamping here would be inconsistent with proposedRate, which also has no floor.
+  const decided = dissents >= params.dissent_override_threshold
+    ? proposedRate + params.median_pull * (committeeMedian - proposedRate)
+    : proposedRate;
+  return { decided, dissents, committeeMedian };
 }
 
 export interface MemberVotePreview {
@@ -205,7 +272,7 @@ export function previewVote(
   return { previews, gapInflation, gapUnemployment };
 }
 
-/** Pure FOMC vote simulation. decided === proposedRate for slice 1. */
+/** Pure FOMC vote simulation. SPEC-COMM-10: decided equals proposedRate when dissents < threshold; otherwise pulled toward the committee median. */
 export function vote(
   committee: Committee,
   proposedRate: number,
@@ -216,7 +283,7 @@ export function vote(
   effectiveBands?: EffectiveBands,
 ): FomcVote {
   const { previews } = previewVote(committee, proposedRate, state, params, traitCatalog, effectiveBands);
-  return { decided: proposedRate, dissents: previews.filter((p) => p.wouldDissent).length };
+  return buildFomcVote(previews, proposedRate, params);
 }
 
 const SCHEMA_PATH = join(new URL(".", import.meta.url).pathname, "../../schemas/committee-params.schema.json");
@@ -229,7 +296,7 @@ export function loadCommitteeParams(): CommitteeParams {
   try {
     _cachedCommitteeParams = loadValidatedFile<CommitteeParams>(SCHEMA_PATH, FILE_PATH);
   } catch (e) {
-    throw new Error("Failed to load committee params from content/engine/committee.json", { cause: e });
+    throw new Error(`Failed to load committee params from ${FILE_PATH}`, { cause: e });
   }
   return _cachedCommitteeParams;
 }
