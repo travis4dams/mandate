@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { Session } from "../src/engine/session.js";
 import * as stanceModule from "../src/engine/stance.js";
 import type { GameEvent } from "../src/content/events.js";
+import { loadInstitutionParams, loadDivisionCatalog } from "../src/engine/institution.js";
 
 // Integration coverage for the Session surface that wires the institution,
 // legacy, and name-generator engine modules into the live game façade.
@@ -66,6 +67,41 @@ describe("Session institution + legacy + npc-name wiring", () => {
     const s = Session.fromScenario(SCEN, 42, COMM);
     expect(() => s.hire("nonexistent_division", 0)).toThrow();
     expect(() => s.hire("research", 99)).toThrow();
+  });
+
+  // SPEC-INST-3: Session.advance() wires upkeep deduction for staffed divisions.
+  it("Session.advance() deducts monthly upkeep for a staffed division (SPEC-INST-3)", () => {
+    const params = loadInstitutionParams();
+    const catalog = loadDivisionCatalog();
+    const research = catalog.find((d) => d.id === "research");
+    if (!research) throw new Error("research division missing from content catalog — fixture assumption violated");
+    const upkeep = (params.upkeep_per_hire_cost ?? 0) * research.hire_cost;
+
+    const s = Session.fromScenario(SCEN, 42, COMM);
+    s.hire("research", 0);
+    const budgetAfterHire = s.operatingBudget();
+    s.advance(1);
+    expect(upkeep).toBeGreaterThan(0); // guard: test is meaningless if content upkeep_per_hire_cost is 0
+    expect(s.operatingBudget()).toBeCloseTo(budgetAfterHire * (1 + params.budget_monthly_growth) - upkeep);
+  });
+
+  // SPEC-INST-3: Session.advance() sums upkeep across two staffed divisions.
+  it("Session.advance() deducts combined upkeep for two staffed divisions (SPEC-INST-3)", () => {
+    const params = loadInstitutionParams();
+    const catalog = loadDivisionCatalog();
+    const research = catalog.find((d) => d.id === "research");
+    const monetary = catalog.find((d) => d.id === "monetary_affairs");
+    if (!research || !monetary) throw new Error("research or monetary_affairs division missing — fixture assumption violated");
+    const upkeepRate = params.upkeep_per_hire_cost ?? 0;
+    const combinedUpkeep = upkeepRate * (research.hire_cost + monetary.hire_cost);
+
+    const s = Session.fromScenario(SCEN, 42, COMM);
+    s.hire("research", 0);
+    s.hire("monetary_affairs", 0);
+    const budgetAfterHire = s.operatingBudget();
+    s.advance(1);
+    expect(upkeepRate).toBeGreaterThan(0); // guard: test is meaningless if upkeep_per_hire_cost is 0
+    expect(s.operatingBudget()).toBeCloseTo(budgetAfterHire * (1 + params.budget_monthly_growth) - combinedUpkeep);
   });
 
   // SPEC-LEGACY-1: term clock, reappointment outlook, and legacy score.

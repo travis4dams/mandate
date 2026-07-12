@@ -1,4 +1,4 @@
-// SPEC-INST-1 + SPEC-INST-2: institution resources + division staffing
+// SPEC-INST-1 + SPEC-INST-2 + SPEC-INST-3: institution resources, division staffing, and monthly upkeep
 import { describe, it, expect, beforeEach } from "vitest";
 import {
   applyInstitutionDynamics,
@@ -7,6 +7,7 @@ import {
   staffedFlagKey,
   generateCandidates,
   hireStaff,
+  fireStaff,
   institutionInvestment,
   InsufficientCapitalError,
   InsufficientBudgetError,
@@ -110,6 +111,42 @@ describe("loadInstitutionParams (SPEC-INST-1)", () => {
     registerContentFile("content/engine/institution.json", rest);
     expect(() => loadInstitutionParams()).toThrow();
   });
+
+  it("schema rejects upkeep_per_hire_cost above 1", () => {
+    // SPEC-INST-3: maximum: 1 in schema is enforced at content-load time
+    registerContentFile("content/engine/institution.json", {
+      ...PARAMS,
+      upkeep_per_hire_cost: 1.5,
+    });
+    expect(() => loadInstitutionParams()).toThrow();
+  });
+
+  it("schema rejects upkeep_per_hire_cost below 0", () => {
+    // SPEC-INST-3: minimum: 0 prevents sign-flip budget injection
+    registerContentFile("content/engine/institution.json", {
+      ...PARAMS,
+      upkeep_per_hire_cost: -0.1,
+    });
+    expect(() => loadInstitutionParams()).toThrow();
+  });
+
+  it("schema accepts upkeep_per_hire_cost at the minimum boundary (0)", () => {
+    // SPEC-INST-3
+    registerContentFile("content/engine/institution.json", {
+      ...PARAMS,
+      upkeep_per_hire_cost: 0,
+    });
+    expect(() => loadInstitutionParams()).not.toThrow();
+  });
+
+  it("schema accepts upkeep_per_hire_cost at the maximum boundary (1)", () => {
+    // SPEC-INST-3: maximum: 1 should be accepted
+    registerContentFile("content/engine/institution.json", {
+      ...PARAMS,
+      upkeep_per_hire_cost: 1,
+    });
+    expect(() => loadInstitutionParams()).not.toThrow();
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -209,6 +246,150 @@ describe("applyInstitutionDynamics (SPEC-INST-1)", () => {
     const result = applyInstitutionDynamics(state, PARAMS);
     expect(result.vars.inflation).toBe(0.03);
     expect(result.vars.policy_rate).toBe(0.05);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// applyInstitutionDynamics with upkeep — SPEC-INST-3
+// ---------------------------------------------------------------------------
+
+describe("applyInstitutionDynamics — staffing upkeep (SPEC-INST-3)", () => {
+  const UPKEEP_RATE = 0.1;
+  const UPKEEP_PARAMS = { ...PARAMS, upkeep_per_hire_cost: UPKEEP_RATE };
+
+  const DIV_A: Division = {
+    id: "div_a",
+    name: "div_a.name",
+    desc: "div_a.desc",
+    hire_cost: 20,
+    investment: 0.1,
+    channel: "fog",
+    skill_weights: { forecasting: 1, markets: 0, supervision: 0, communication: 0, crisis: 0 },
+  };
+
+  const DIV_B: Division = {
+    id: "div_b",
+    name: "div_b.name",
+    desc: "div_b.desc",
+    hire_cost: 30, // intentionally different from DIV_A so the sum formula is load-bearing
+    investment: 0.1,
+    channel: "transmission",
+    skill_weights: { forecasting: 0, markets: 1, supervision: 0, communication: 0, crisis: 0 },
+  };
+
+  it("deducts upkeep proportional to hire_cost for a staffed division", () => {
+    // SPEC-INST-3
+    const state = makeState({
+      vars: { operating_budget: 1000 },
+      flags: { "staffed.div_a": true },
+    });
+    const result = applyInstitutionDynamics(state, UPKEEP_PARAMS, [DIV_A]);
+    const expectedGrowth = 1000 * (1 + UPKEEP_PARAMS.budget_monthly_growth);
+    const expectedUpkeep = UPKEEP_RATE * DIV_A.hire_cost;
+    expect(result.vars.operating_budget).toBeCloseTo(expectedGrowth - expectedUpkeep);
+  });
+
+  it("two staffed divisions incur the sum of their individual upkeeps (not count × one cost)", () => {
+    // SPEC-INST-3: DIV_A.hire_cost=20, DIV_B.hire_cost=30 — sum (50) ≠ 2×20 (40)
+    const growthBase = 1000 * (1 + UPKEEP_PARAMS.budget_monthly_growth);
+    const stateOne = makeState({
+      vars: { operating_budget: 1000 },
+      flags: { "staffed.div_a": true },
+    });
+    const stateTwo = makeState({
+      vars: { operating_budget: 1000 },
+      flags: { "staffed.div_a": true, "staffed.div_b": true },
+    });
+    const one = applyInstitutionDynamics(stateOne, UPKEEP_PARAMS, [DIV_A, DIV_B]);
+    const two = applyInstitutionDynamics(stateTwo, UPKEEP_PARAMS, [DIV_A, DIV_B]);
+    expect(one.vars.operating_budget).toBeCloseTo(growthBase - UPKEEP_RATE * DIV_A.hire_cost);
+    expect(two.vars.operating_budget).toBeCloseTo(growthBase - UPKEEP_RATE * (DIV_A.hire_cost + DIV_B.hire_cost));
+  });
+
+  it("two staffed divisions with equal hire_cost incur exactly twice the upkeep of one (SPEC-INST-3)", () => {
+    // SPEC-INST-3 verbatim AC: equal costs → exactly 2× upkeep.
+    const DIV_C: Division = { ...DIV_A, id: "div_c" }; // same hire_cost as DIV_A
+    const stateOne = makeState({
+      vars: { operating_budget: 1000 },
+      flags: { "staffed.div_a": true },
+    });
+    const stateTwo = makeState({
+      vars: { operating_budget: 1000 },
+      flags: { "staffed.div_a": true, "staffed.div_c": true },
+    });
+    const one = applyInstitutionDynamics(stateOne, UPKEEP_PARAMS, [DIV_A, DIV_C]);
+    const two = applyInstitutionDynamics(stateTwo, UPKEEP_PARAMS, [DIV_A, DIV_C]);
+    const growthBase = 1000 * (1 + UPKEEP_PARAMS.budget_monthly_growth);
+    const oneUpkeep = growthBase - (one.vars.operating_budget as number);
+    const twoUpkeep = growthBase - (two.vars.operating_budget as number);
+    expect(twoUpkeep).toBeCloseTo(2 * oneUpkeep);
+  });
+
+  it("an unstaffed catalog produces no upkeep deduction", () => {
+    // SPEC-INST-3
+    const state = makeState({ vars: { operating_budget: 1000 } });
+    const withCatalog = applyInstitutionDynamics(state, UPKEEP_PARAMS, [DIV_A, DIV_B]);
+    const withoutCatalog = applyInstitutionDynamics(state, UPKEEP_PARAMS);
+    expect(withCatalog.vars.operating_budget).toBeCloseTo(
+      withoutCatalog.vars.operating_budget as number
+    );
+  });
+
+  it("budget floors at 0 and stays at 0 across consecutive ticks when upkeep exceeds growth (SPEC-INST-3)", () => {
+    // upkeep_per_hire_cost: 1 = 100% of hire_cost per month (schema maximum).
+    // Starting budget below hire_cost ensures growth < upkeep, so the floor fires on tick 1
+    // and stays at 0 on subsequent ticks.
+    const extremeParams = { ...PARAMS, upkeep_per_hire_cost: 1 };
+    let state = makeState({
+      vars: { operating_budget: DIV_A.hire_cost * 0.5 },
+      flags: { "staffed.div_a": true },
+    });
+    for (let i = 0; i < 3; i++) {
+      state = applyInstitutionDynamics(state, extremeParams, [DIV_A]);
+      expect(state.vars.operating_budget).toBe(0);
+    }
+  });
+
+  it("explicit upkeep_per_hire_cost: 0 with a staffed catalog produces no deduction (SPEC-INST-3)", () => {
+    // SPEC-INST-3: the > 0 guard at institution.ts must be tested with rate=0, not just catalog=undefined.
+    const zeroRateParams = { ...PARAMS, upkeep_per_hire_cost: 0 };
+    const state = makeState({ vars: { operating_budget: 1000 }, flags: { "staffed.div_a": true } });
+    const result = applyInstitutionDynamics(state, zeroRateParams, [DIV_A]);
+    expect(result.vars.operating_budget).toBeCloseTo(1000 * (1 + PARAMS.budget_monthly_growth));
+  });
+
+  it("is a pure function — input state is not mutated when catalog is supplied", () => {
+    // SPEC-INST-3
+    const state = makeState({
+      vars: { operating_budget: 500 },
+      flags: { "staffed.div_a": true },
+    });
+    const varsBefore = { ...state.vars };
+    applyInstitutionDynamics(state, UPKEEP_PARAMS, [DIV_A]);
+    expect(state.vars).toEqual(varsBefore);
+  });
+
+  it("omitting catalog keeps existing SPEC-INST-1 behaviour regardless of upkeep_per_hire_cost", () => {
+    // SPEC-INST-3: backward-compat path
+    const state = makeState({
+      vars: { operating_budget: 1000 },
+      flags: { "staffed.div_a": true },
+    });
+    const result = applyInstitutionDynamics(state, UPKEEP_PARAMS);
+    expect(result.vars.operating_budget).toBeCloseTo(1000 * (1 + UPKEEP_PARAMS.budget_monthly_growth));
+  });
+
+  it("firing a division removes its upkeep from subsequent applyInstitutionDynamics calls (SPEC-INST-3)", () => {
+    const state = makeState({
+      vars: { operating_budget: 1000 },
+      flags: { "staffed.div_a": true },
+    });
+    const afterUpkeep = applyInstitutionDynamics(state, UPKEEP_PARAMS, [DIV_A]);
+    const afterFire = fireStaff(afterUpkeep, DIV_A);
+    const afterSecondTick = applyInstitutionDynamics(afterFire, UPKEEP_PARAMS, [DIV_A]);
+    const expectedNoUpkeep =
+      (afterFire.vars.operating_budget as number) * (1 + UPKEEP_PARAMS.budget_monthly_growth);
+    expect(afterSecondTick.vars.operating_budget).toBeCloseTo(expectedNoUpkeep);
   });
 });
 

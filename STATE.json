@@ -527,6 +527,15 @@
       ]
     },
     {
+      "id": "SPEC-INST-3",
+      "section": "Institution & resources (engine)",
+      "tag": "testable",
+      "tests": [
+        "test/institution.test.ts",
+        "test/session-institution.test.ts"
+      ]
+    },
+    {
       "id": "SPEC-INST-5",
       "section": "Staffing economy & the living organization",
       "tag": "testable",
