@@ -362,14 +362,14 @@ export class Session {
       throw new Error(`Session.advance: months must be a positive integer, got ${months}.`);
     }
 
-    // Checkpoint for mid-loop rollback: capture the current state reference and RNG position.
-    // Safe because all tick/spiral/dynamics functions are pure (CLAUDE.md) — they
-    // return new GameState objects and never mutate in place, so this ref stays valid.
-    // The RNG checkpoint is required for SPEC-SIM-1: if the loop throws mid-way, draws
-    // already consumed by applySupplyShock must be rolled back so the next advance() call
-    // sees the same RNG stream as if the failed attempt never happened.
+    // Checkpoint _firedOnce defensively; checkpoint caches so a double _rebuildCaches failure can force-restore from a known-good state.
     const checkpointState = this._state;
+    const checkpointCache = this._currentCache;
+    const checkpointTrajectoryCache = this._trajectoryCache;
     const checkpointTrajectoryLength = this._trajectoryInternal.length;
+    const checkpointEscalationsLength = this._pendingEscalations.length;
+    const checkpointActivityLength = this._activityLog.length;
+    const checkpointFiredOnce = new Set(this._firedOnce);
     const checkpointRng = this._rng.snapshot();
 
     // SPEC-GUIDE-1 / SPEC-SIM-5 / SPEC-SIM-6: loaders + effectiveParams are loop-invariant.
@@ -398,6 +398,8 @@ export class Session {
     const divisionCatalog = loadDivisionCatalog();
     // SPEC-EVENT-1: the event catalog is loop-invariant.
     const eventCatalog = loadEventCatalog();
+    // SPEC-LEGACY-1: mandate params are loop-invariant (cached singleton).
+    const mandateParams = loadMandateParams();
     const effectiveParams = {
       ...dynamicsParams,
       expectations_anchor_pull:
@@ -597,17 +599,42 @@ export class Session {
           }
         }
 
+        // SPEC-LEGACY-1: accumulate months_on_target after fully-settled state; advance() is the sole writer — content effects must never target this var.
+        const motRaw = this._state.vars.months_on_target;
+        if (motRaw !== undefined && (!Number.isInteger(motRaw) || motRaw < 0)) {
+          throw new Error(
+            `Session.advance: months_on_target is corrupted at ${this._state.date} ` +
+            `(got ${String(motRaw)}; expected a non-negative integer)`,
+          );
+        }
+        if (onTarget(this._state, mandateParams)) {
+          const mot = motRaw ?? 0;
+          this._state = {
+            ...this._state,
+            vars: { ...this._state.vars, months_on_target: mot + 1 },
+          };
+        }
+
         const snapshot = Session._snapshotOf(this._state);
         this._trajectoryInternal.push(snapshot);
       }
     } catch (err) {
       this._state = checkpointState;
       this._trajectoryInternal.length = checkpointTrajectoryLength;
+      this._pendingEscalations.length = checkpointEscalationsLength;
+      this._activityLog.length = checkpointActivityLength;
+      this._firedOnce = checkpointFiredOnce;
       this._rng.restore(checkpointRng);
       try {
         this._rebuildCaches();
-      } catch {
-        // _rebuildCaches failure must not replace the original error.
+      } catch (secondaryErr) {
+        // advance() loop threw and _rebuildCaches also failed — force-restore caches from checkpoint to avoid torn state.
+        console.error(
+          `Session.advance: _rebuildCaches failed during rollback (force-restoring from checkpoint).`,
+          { originalErr: err, secondaryErr },
+        );
+        this._currentCache = checkpointCache;
+        this._trajectoryCache = checkpointTrajectoryCache;
       }
       throw err;
     }
@@ -775,7 +802,7 @@ export class Session {
 
   /** The Chair's current legacy score. */
   legacyScore(): number {
-    return computeLegacyScore(this._state, this._trajectoryInternal.length - 1, loadLegacyParams());
+    return computeLegacyScore(this._state, loadLegacyParams());
   }
 
   // --- PR A: banking stability, Fed finances, independence, division effects, culture ---
@@ -870,6 +897,13 @@ export class Session {
     }
     const before = this._snapshotFeedVars();
     const { state, queuedEvents } = applyEffects(option.effects, this._state);
+    // SPEC-LEGACY-1: months_on_target is managed exclusively by advance(); any content effect touching it corrupts the running total.
+    if (state.vars.months_on_target !== this._state.vars.months_on_target) {
+      throw new Error(
+        `Session.resolveEscalation: event "${eventId}" illegally modified months_on_target. ` +
+        `This var is managed exclusively by Session.advance().`,
+      );
+    }
     this._state = state;
     // SPEC-FEED-1: record the decision and its felt effect on the economy.
     this._logActivity(event.title, before);
