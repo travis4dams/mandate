@@ -137,6 +137,15 @@ describe("loadInstitutionParams (SPEC-INST-1)", () => {
     });
     expect(() => loadInstitutionParams()).not.toThrow();
   });
+
+  it("schema accepts upkeep_per_hire_cost at the maximum boundary (1)", () => {
+    // SPEC-INST-3: maximum: 1 should be accepted
+    registerContentFile("content/engine/institution.json", {
+      ...PARAMS,
+      upkeep_per_hire_cost: 1,
+    });
+    expect(() => loadInstitutionParams()).not.toThrow();
+  });
 });
 
 // ---------------------------------------------------------------------------

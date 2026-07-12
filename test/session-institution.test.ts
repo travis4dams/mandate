@@ -73,7 +73,8 @@ describe("Session institution + legacy + npc-name wiring", () => {
   it("Session.advance() deducts monthly upkeep for a staffed division (SPEC-INST-3)", () => {
     const params = loadInstitutionParams();
     const catalog = loadDivisionCatalog();
-    const research = catalog.find((d) => d.id === "research")!;
+    const research = catalog.find((d) => d.id === "research");
+    if (!research) throw new Error("research division missing from content catalog — fixture assumption violated");
     const upkeep = (params.upkeep_per_hire_cost ?? 0) * research.hire_cost;
 
     const s = Session.fromScenario(SCEN, 42, COMM);
