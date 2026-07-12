@@ -335,21 +335,15 @@ describe("applyInstitutionDynamics — staffing upkeep (SPEC-INST-3)", () => {
     );
   });
 
-  it("budget floors at 0 and never goes negative even when upkeep exceeds growth", () => {
-    // SPEC-INST-3: upkeep_per_hire_cost: 1 = 100% of hire_cost per month (schema maximum).
-    // Starting budget below hire_cost ensures growth < upkeep, so the floor must fire.
+  it("budget floors at 0 and stays at 0 across consecutive ticks when upkeep exceeds growth (SPEC-INST-3)", () => {
+    // upkeep_per_hire_cost: 1 = 100% of hire_cost per month (schema maximum).
+    // Starting budget below hire_cost ensures growth < upkeep, so the floor fires on tick 1
+    // and stays at 0 on subsequent ticks.
     const extremeParams = { ...PARAMS, upkeep_per_hire_cost: 1 };
-    const state = makeState({
+    let state = makeState({
       vars: { operating_budget: DIV_A.hire_cost * 0.5 },
       flags: { "staffed.div_a": true },
     });
-    const result = applyInstitutionDynamics(state, extremeParams, [DIV_A]);
-    expect(result.vars.operating_budget).toBe(0);
-  });
-
-  it("budget stays at 0 across consecutive ticks when upkeep exceeds growth (SPEC-INST-3)", () => {
-    const extremeParams = { ...PARAMS, upkeep_per_hire_cost: 1 };
-    let state = makeState({ vars: { operating_budget: DIV_A.hire_cost * 0.5 }, flags: { "staffed.div_a": true } });
     for (let i = 0; i < 3; i++) {
       state = applyInstitutionDynamics(state, extremeParams, [DIV_A]);
       expect(state.vars.operating_budget).toBe(0);

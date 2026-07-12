@@ -85,6 +85,25 @@ describe("Session institution + legacy + npc-name wiring", () => {
     expect(s.operatingBudget()).toBeCloseTo(budgetAfterHire * (1 + params.budget_monthly_growth) - upkeep);
   });
 
+  // SPEC-INST-3: Session.advance() sums upkeep across two staffed divisions.
+  it("Session.advance() deducts combined upkeep for two staffed divisions (SPEC-INST-3)", () => {
+    const params = loadInstitutionParams();
+    const catalog = loadDivisionCatalog();
+    const research = catalog.find((d) => d.id === "research");
+    const monetary = catalog.find((d) => d.id === "monetary_affairs");
+    if (!research || !monetary) throw new Error("research or monetary_affairs division missing — fixture assumption violated");
+    const upkeepRate = params.upkeep_per_hire_cost ?? 0;
+    const combinedUpkeep = upkeepRate * (research.hire_cost + monetary.hire_cost);
+
+    const s = Session.fromScenario(SCEN, 42, COMM);
+    s.hire("research", 0);
+    s.hire("monetary_affairs", 0);
+    const budgetAfterHire = s.operatingBudget();
+    s.advance(1);
+    expect(upkeepRate).toBeGreaterThan(0); // guard: test is meaningless if upkeep_per_hire_cost is 0
+    expect(s.operatingBudget()).toBeCloseTo(budgetAfterHire * (1 + params.budget_monthly_growth) - combinedUpkeep);
+  });
+
   // SPEC-LEGACY-1: term clock, reappointment outlook, and legacy score.
   it("exposes term progress, reappointment outlook, and legacy score", () => {
     const s = Session.fromScenario(SCEN, 42, COMM);
