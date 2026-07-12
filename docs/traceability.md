@@ -61,7 +61,7 @@ input in plain mode; only `--enrich` (workflow-only) fills empty cells from git 
 | SPEC-INST-2 | testable | Institution & resources (engine) | `test/institution.test.ts`, `test/session-institution.test.ts`, `web/src/engine-content.test.ts`, `web/src/engine-content.ts` |  |
 | SPEC-INST-5 | testable | Staffing economy & the living organization | `test/refresh-and-feed.test.ts` |  |
 | SPEC-LAG-1 | testable | Macro dynamics | `test/lags.test.ts`, `test/session.test.ts` | #52 |
-| SPEC-LEGACY-1 | testable | Legacy & tenure | `test/legacy.test.ts`, `test/session-institution.test.ts` |  |
+| SPEC-LEGACY-1 | testable | Legacy & tenure | `test/legacy.test.ts`, `test/session-institution.test.ts` | #135 |
 | SPEC-MANDATE-1 | testable | Mandate evaluator | `test/engine-params-loaders.test.ts`, `test/mandate.test.ts`, `test/session.test.ts` | #22 |
 | SPEC-META-1 | testable | Repo metadata | `test/gen-docs.test.ts`, `test/gen-state.test.ts` | #111 |
 | SPEC-META-2 | testable | Repo metadata | `test/gen-docs.test.ts` | #113 |
