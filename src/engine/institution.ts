@@ -1,4 +1,4 @@
-// SPEC-INST-1 + SPEC-INST-2: institution resources and division staffing.
+// SPEC-INST-1 + SPEC-INST-2 + SPEC-INST-3: institution resources, division staffing, and monthly upkeep.
 // All randomness flows through fnv1a32 + mulberry32 (SPEC-SIM-1).
 // Pure functions return new state; they never mutate inputs.
 import { join } from "node:path";

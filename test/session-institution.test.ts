@@ -81,6 +81,7 @@ describe("Session institution + legacy + npc-name wiring", () => {
     s.hire("research", 0);
     const budgetAfterHire = s.operatingBudget();
     s.advance(1);
+    expect(upkeep).toBeGreaterThan(0); // guard: test is meaningless if content upkeep_per_hire_cost is 0
     expect(s.operatingBudget()).toBeCloseTo(budgetAfterHire * (1 + params.budget_monthly_growth) - upkeep);
   });
 
