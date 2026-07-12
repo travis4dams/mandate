@@ -317,6 +317,15 @@
       ]
     },
     {
+      "id": "SPEC-CRED-7",
+      "section": "Credibility & expectations",
+      "tag": "testable",
+      "tests": [
+        "test/cadence.test.ts",
+        "test/dynamics.test.ts"
+      ]
+    },
+    {
       "id": "SPEC-CRISIS-1",
       "section": "Banking stability & the financial cycle",
       "tag": "testable",
@@ -705,7 +714,8 @@
       "section": "Simulation core",
       "tag": "testable",
       "tests": [
-        "test/cadence.test.ts"
+        "test/cadence.test.ts",
+        "test/dynamics.test.ts"
       ]
     },
     {

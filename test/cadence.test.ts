@@ -28,6 +28,8 @@ const BASE: MacroDynamicsParams = {
   credibility_mission_gain: 300,
   credibility_unemployment_weight: 0.5,
   anchor_threshold: 60,
+  credibility_soft_ceiling: 85,
+  credibility_drain_rate: 0.20,
 };
 
 const STEADY_VARS = {
@@ -49,6 +51,60 @@ describe("scaleParamsForTick — SPEC-SIM-6", () => {
   it("throws RangeError for non-integer n", () => {
     // SPEC-SIM-6: non-integer n (e.g. 1.5) is not a valid tick count and must throw.
     expect(() => scaleParamsForTick(BASE, 1.5)).toThrow(RangeError);
+  });
+
+  it("throws RangeError for credibility_drain_rate >= 1", () => {
+    // SPEC-SIM-6: rate=1 makes 1-rate=0 so the per-tick scaled rate is always 1 (cadence
+    // invariance breaks — every tick applies the full monthly drain regardless of n);
+    // rate>1 makes 1-rate negative and Math.pow(negative, 1/n) returns NaN for fractional
+    // exponents, silently corrupting all downstream credibility calculations.
+    const badParams = { ...BASE, credibility_drain_rate: 1.5 };
+    expect(() => scaleParamsForTick(badParams, 4)).toThrow(RangeError);
+  });
+
+  it("throws RangeError for credibility_drain_rate <= 0", () => {
+    // SPEC-SIM-6: rate <= 0 would invert or zero the drain, invalid regardless of cadence.
+    const badParams = { ...BASE, credibility_drain_rate: 0 };
+    expect(() => scaleParamsForTick(badParams, 4)).toThrow(RangeError);
+  });
+
+  it("throws RangeError for credibility_drain_rate = NaN (NaN bypasses <= 0 and >= 1 without isFinite guard)", () => {
+    // SPEC-SIM-6: NaN <= 0 and NaN >= 1 are both false in JS, so bare range checks let NaN
+    // through. Without the isFinite guard, Math.pow(1-NaN, 1/n) = NaN propagates into state.
+    const badParams = { ...BASE, credibility_drain_rate: NaN };
+    expect(() => scaleParamsForTick(badParams, 4)).toThrow(RangeError);
+  });
+
+  it("throws RangeError for credibility_drain_rate >= 1 when n=1 (guard runs before identity return)", () => {
+    // SPEC-SIM-6: guard must fire on the monthly (n=1) path — confirms the guard sits before
+    // the n=1 early return, so invalid rates can't silently reach applyMacroDynamics.
+    const badParams = { ...BASE, credibility_drain_rate: 1.5 };
+    expect(() => scaleParamsForTick(badParams, 1)).toThrow(RangeError);
+  });
+
+  it("throws RangeError for credibility_drain_rate <= 0 when n=1 (guard runs before identity return)", () => {
+    // SPEC-SIM-6: same guard, monthly path.
+    const badParams = { ...BASE, credibility_drain_rate: 0 };
+    expect(() => scaleParamsForTick(badParams, 1)).toThrow(RangeError);
+  });
+
+  it("throws RangeError for credibility_soft_ceiling >= CRED_MAX (symmetric guard with drain_rate)", () => {
+    // SPEC-SIM-6: soft_ceiling at or above CRED_MAX means the drain never fires;
+    // applyMacroDynamics uses soft_ceiling directly with no guard of its own.
+    const badParams = { ...BASE, credibility_soft_ceiling: 100 };
+    expect(() => scaleParamsForTick(badParams, 4)).toThrow(RangeError);
+  });
+
+  it("throws RangeError for credibility_soft_ceiling <= CRED_MIN (symmetric guard with drain_rate)", () => {
+    // SPEC-SIM-6: soft_ceiling at or below CRED_MIN fires the drain at all credibility levels.
+    const badParams = { ...BASE, credibility_soft_ceiling: 0 };
+    expect(() => scaleParamsForTick(badParams, 4)).toThrow(RangeError);
+  });
+
+  it("throws RangeError for credibility_soft_ceiling = NaN", () => {
+    // SPEC-SIM-6: NaN bypasses <= and >= checks without the isFinite guard.
+    const badParams = { ...BASE, credibility_soft_ceiling: NaN };
+    expect(() => scaleParamsForTick(badParams, 4)).toThrow(RangeError);
   });
 
   it("returns the same reference for n=1 (identity)", () => {
@@ -84,6 +140,17 @@ describe("scaleParamsForTick — SPEC-SIM-6", () => {
     expect(scaled.expectations_anchor_pull).toBeCloseTo(BASE.expectations_anchor_pull / n, 12);
   });
 
+  it("scaled credibility_drain_rate satisfies (1-r_scaled)^n ≈ 1-r_monthly (AR composition, SPEC-CRED-7 × SPEC-SIM-6)", () => {
+    // SPEC-SIM-6: the drain is AR(1) toward soft_ceiling, same structure as unemployment_adjustment_speed.
+    // Exact geometric scaling (not linear /n) preserves cadence invariance of the credibility trajectory.
+    const n = 4;
+    const scaled = scaleParamsForTick(BASE, n);
+    expect(Math.pow(1 - scaled.credibility_drain_rate, n)).toBeCloseTo(
+      1 - BASE.credibility_drain_rate,
+      10,
+    );
+  });
+
   it("structural params (natural rate, targets, thresholds) are unchanged", () => {
     // SPEC-SIM-6: these are level params, not per-period rates.
     const scaled = scaleParamsForTick(BASE, 4);
@@ -94,6 +161,7 @@ describe("scaleParamsForTick — SPEC-SIM-6", () => {
     expect(scaled.unemployment_target).toBe(BASE.unemployment_target);
     expect(scaled.credibility_unemployment_weight).toBe(BASE.credibility_unemployment_weight);
     expect(scaled.anchor_threshold).toBe(BASE.anchor_threshold);
+    expect(scaled.credibility_soft_ceiling).toBe(BASE.credibility_soft_ceiling);
   });
 
   it("is a pure function (does not mutate input)", () => {
@@ -151,6 +219,70 @@ describe("trajectory invariance — SPEC-SIM-6", () => {
     expect(
       Math.abs((s4.vars.expectations_anchor as number) - (s1.vars.expectations_anchor as number)),
     ).toBeLessThan(TOLERANCE);
+  });
+
+  it("n=4 sub-ticks agree on credibility within 0.002 credibility points when starting above soft ceiling — drain only (SPEC-CRED-7 × SPEC-SIM-6)", () => {
+    // SPEC-SIM-6 × SPEC-CRED-7: credibility_drain_rate is cadence-scaled with exact geometric formula.
+    // Uses the macro fixed point (distBefore === distAfter) so only the drain moves credibility.
+    // The geometric scaling is exact in isolation; actual error is floating-point noise (~1e-13),
+    // so TOLERANCE = 0.002 credibility points (on the 0-100 scale) is essentially float precision.
+    // The combined (drain + mission_gain) case is documented in cadence.ts as a first-order
+    // approximation — a loose 2pp tripwire for the combined case exists in the next test,
+    // but no tight (0.2pp) invariance test is attempted for the combined case.
+    const INITIAL = {
+      policy_rate: BASE.target_inflation + BASE.real_neutral_rate,
+      inflation: BASE.target_inflation,
+      unemployment: BASE.unemployment_natural_rate,
+      expectations_anchor: BASE.target_inflation,
+      credibility: 95,
+      months_below_anchor: 0,
+    };
+
+    let s1 = makeState({ vars: { ...INITIAL } });
+    for (let m = 0; m < 12; m++) {
+      s1 = applyMacroDynamics(s1, BASE);
+    }
+
+    const scaled4 = scaleParamsForTick(BASE, 4);
+    let s4 = makeState({ vars: { ...INITIAL } });
+    for (let m = 0; m < 12; m++) {
+      for (let t = 0; t < 4; t++) {
+        s4 = applyMacroDynamics(s4, scaled4);
+      }
+    }
+
+    const TOLERANCE = 0.002;
+    expect(Math.abs((s4.vars.credibility as number) - (s1.vars.credibility as number))).toBeLessThan(TOLERANCE);
+  });
+
+  it("n=4 sub-ticks agree on credibility within 2pp over 12 months when drain and mission-gain are both active (loose tripwire — SPEC-CRED-7 × SPEC-SIM-6)", () => {
+    // Combined (drain + active mission_gain) case is a first-order approximation — documented
+    // in cadence.ts as exceeding the 0.2pp tolerance. This loose 2pp tripwire catches future
+    // content changes that push the divergence from acceptable to several credibility points.
+    const INITIAL = {
+      policy_rate: BASE.target_inflation + BASE.real_neutral_rate,
+      inflation: 0.03, // slightly off target (0.02) → mission_gain is nonzero
+      unemployment: BASE.unemployment_natural_rate,
+      expectations_anchor: BASE.target_inflation,
+      credibility: 95, // above soft_ceiling (85) → drain is also active
+      months_below_anchor: 0,
+    };
+
+    let s1 = makeState({ vars: { ...INITIAL } });
+    for (let m = 0; m < 12; m++) {
+      s1 = applyMacroDynamics(s1, BASE);
+    }
+
+    const scaled4 = scaleParamsForTick(BASE, 4);
+    let s4 = makeState({ vars: { ...INITIAL } });
+    for (let m = 0; m < 12; m++) {
+      for (let t = 0; t < 4; t++) {
+        s4 = applyMacroDynamics(s4, scaled4);
+      }
+    }
+
+    const TOLERANCE = 2.0; // intentionally loose — first-order approximation for the combined case
+    expect(Math.abs((s4.vars.credibility as number) - (s1.vars.credibility as number))).toBeLessThan(TOLERANCE);
   });
 
   it("n=4 sub-ticks match monthly model within 0.2pp after 36 months (Volcker scenario)", () => {

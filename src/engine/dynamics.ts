@@ -1,8 +1,10 @@
-// SPEC-SIM-5 / SPEC-CRED-4 / SPEC-CRED-6: the monthly macro step.
+// SPEC-SIM-5 / SPEC-CRED-4 / SPEC-CRED-6 / SPEC-CRED-7: the monthly macro step.
 //
-// A single simultaneous update: inflation, unemployment, expectations_anchor, and
-// credibility are all computed from the PRIOR month's vars, so the step is
-// order-independent and matches the calibration harness (SPEC-CAL-2).
+// A single simultaneous update: inflation, unemployment, and expectations_anchor are
+// computed purely from prior-month vars. credibility uses prior-month credibility and
+// inflation/unemployment, but its mission-gain term reads the newly-computed
+// newInflation/newUnemployment (distAfter) — still cycle-free, but not pure-prior-month.
+// Matches the calibration harness (SPEC-CAL-2).
 //
 // The transmission is real-rate based: the policy rate bites on the economy only
 // through the *real* rate (nominal minus expected inflation). In 1979 an 11% nominal
@@ -46,6 +48,10 @@ export interface MacroDynamicsParams {
   credibility_unemployment_weight: number;
   /** Credibility below this counts as a month "below anchor" for the persistent-memory stat. */
   anchor_threshold: number;
+  /** SPEC-CRED-7: credibility above this threshold incurs a monthly drain (prevents endgame pin). Must be in (CRED_MIN, CRED_MAX); enforced at load time in loadDynamicsParams(). */
+  credibility_soft_ceiling: number;
+  /** SPEC-CRED-7: monthly drain per unit of credibility above credibility_soft_ceiling. Must be in (0, 1) — values ≥ 1 break the 1-(1-r)^(1/n) cadence scaling (SPEC-SIM-6); enforced in loadDynamicsParams() and scaleParamsForTick(). */
+  credibility_drain_rate: number;
 }
 
 const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));
@@ -61,7 +67,23 @@ export function applyMacroDynamics(state: GameState, params: MacroDynamicsParams
   const policyRate = state.vars.policy_rate as number;
   const anchor = state.vars.expectations_anchor as number;
   const credibility = state.vars.credibility as number;
-  const monthsBelow = state.vars.months_below_anchor ?? 0;
+  const rawMonthsBelow = state.vars.months_below_anchor;
+  if (rawMonthsBelow !== undefined && !Number.isFinite(rawMonthsBelow)) {
+    throw new Error(`applyMacroDynamics: months_below_anchor is not finite (${rawMonthsBelow})`);
+  }
+  const monthsBelow = rawMonthsBelow ?? 0;
+
+  // Fail-fast on NaN/Infinity in primary inputs — `as number` casts above let corrupt values
+  // pass schema type-checking (e.g. a miscalculated event delta). Guards here prevent silent
+  // propagation through the entire dynamics step.
+  for (const [key, val] of [
+    ["inflation", inflation], ["unemployment", unemployment],
+    ["policy_rate", policyRate], ["expectations_anchor", anchor], ["credibility", credibility],
+  ] as [string, number][]) {
+    if (!Number.isFinite(val)) {
+      throw new Error(`applyMacroDynamics: ${key} is not finite (${val})`);
+    }
+  }
 
   // Real-rate transmission.
   const realRate = policyRate - anchor;
@@ -109,8 +131,18 @@ export function applyMacroDynamics(state: GameState, params: MacroDynamicsParams
     params.credibility_unemployment_weight * Math.abs(u - params.unemployment_target);
   const distBefore = distance(inflation, unemployment);
   const distAfter = distance(newInflation, newUnemployment);
+  // Soft-ceiling drain: prevents credibility from pinning at cred_max in a resolved-endgame
+  // scenario where mission progress tapers to zero (SPEC-CRED-7).
+  // Cap at CRED_MAX so that over-range credibility stored by adoptDoctrine (SPEC-DOCT-1 symmetric-
+  // delta guarantee) does not incur extra drain proportional to the excess — the drain applied
+  // equals on-cap drain. The arithmetic result typically lands within [CRED_MIN, CRED_MAX] in the
+  // over-range case (starting value minus on-cap drain < CRED_MAX); the outer clamp is a general
+  // safety net, not the mechanism for range correction.
+  const effectiveCred = Math.min(credibility, CRED_MAX);
+  const softCeilingDrain =
+    params.credibility_drain_rate * Math.max(0, effectiveCred - params.credibility_soft_ceiling);
   const newCredibility = clamp(
-    credibility + params.credibility_mission_gain * (distBefore - distAfter),
+    credibility + params.credibility_mission_gain * (distBefore - distAfter) - softCeilingDrain,
     CRED_MIN,
     CRED_MAX,
   );
@@ -155,24 +187,57 @@ type CredibilityFile = Pick<
   | "credibility_mission_gain"
   | "credibility_unemployment_weight"
   | "anchor_threshold"
+  | "credibility_soft_ceiling"
+  | "credibility_drain_rate"
 >;
 
-let _cachedParams: MacroDynamicsParams | undefined;
+// Exhaustiveness: DynamicsFile & CredibilityFile must cover all of MacroDynamicsParams.
+// A field added to the interface but omitted from both Picks will fail here (TS2322), not
+// silently produce undefined at runtime.
+// NOTE: only catches omitted *required* fields; new optional fields in
+// MacroDynamicsParams won't trigger this — add them to a Pick explicitly.
+type _Exhaustive = DynamicsFile & CredibilityFile extends MacroDynamicsParams ? true : never;
+const _check: _Exhaustive = true; void _check; // void forces a read so noUnusedLocals doesn't flag it
+
+let _cachedParams: Readonly<MacroDynamicsParams> | undefined;
 
 /** Lazy-loaded, cached merge of the macro (dynamics.json) and expectations/credibility
  *  (credibility.json) params — the full parameter set `applyMacroDynamics` consumes. */
-export function loadDynamicsParams(): MacroDynamicsParams {
+export function loadDynamicsParams(): Readonly<MacroDynamicsParams> {
   if (_cachedParams !== undefined) return _cachedParams;
+  let dyn: DynamicsFile;
+  let cred: CredibilityFile;
   try {
-    const dyn = loadValidatedFile<DynamicsFile>(DYNAMICS_SCHEMA, DYNAMICS_FILE);
-    const cred = loadValidatedFile<CredibilityFile>(CREDIBILITY_SCHEMA, CREDIBILITY_FILE);
-    _cachedParams = { ...dyn, ...cred };
+    dyn = loadValidatedFile<DynamicsFile>(DYNAMICS_SCHEMA, DYNAMICS_FILE);
+    cred = loadValidatedFile<CredibilityFile>(CREDIBILITY_SCHEMA, CREDIBILITY_FILE);
   } catch (e) {
     throw new Error(
-      "Failed to load macro dynamics params from content/engine/dynamics.json + credibility.json",
+      `Failed to load macro dynamics params: ${e instanceof Error ? e.message : String(e)}`,
       { cause: e },
     );
   }
+  const candidate = { ...dyn, ...cred };
+  if (candidate.credibility_soft_ceiling >= CRED_MAX) {
+    throw new Error(
+      `credibility_soft_ceiling (${candidate.credibility_soft_ceiling}) must be strictly less than cred_max (${CRED_MAX}) — a value at or above cred_max means the soft-ceiling drain never fires and credibility pins at the cap`,
+    );
+  }
+  if (candidate.credibility_soft_ceiling <= CRED_MIN) {
+    throw new Error(
+      `credibility_soft_ceiling (${candidate.credibility_soft_ceiling}) must be strictly greater than cred_min (${CRED_MIN}) — a value at or below cred_min makes the drain fire at all positive credibility levels (proportional to the full credibility score, not just the excess)`,
+    );
+  }
+  if (!Number.isFinite(candidate.credibility_drain_rate) || candidate.credibility_drain_rate <= 0) {
+    throw new Error(
+      `credibility_drain_rate (${candidate.credibility_drain_rate}) must be a finite number strictly greater than 0 — zero or NaN silently disables the SPEC-CRED-7 soft-ceiling drain`,
+    );
+  }
+  if (candidate.credibility_drain_rate >= 1) {
+    throw new Error(
+      `credibility_drain_rate (${candidate.credibility_drain_rate}) must be strictly less than 1 — a value ≥ 1 breaks the 1-(1-r)^(1/n) cadence scaling (SPEC-SIM-6)`,
+    );
+  }
+  _cachedParams = Object.freeze(candidate);
   return _cachedParams;
 }
 

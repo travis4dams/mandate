@@ -36,6 +36,7 @@ input in plain mode; only `--enrich` (workflow-only) fills empty cells from git 
 | SPEC-CRED-4 | testable | Credibility & expectations | `test/calibration-volcker.test.ts`, `test/credibility.test.ts`, `test/dynamics.test.ts`, `test/engine-params-loaders.test.ts`, `test/gen-state.test.ts`, `test/session.test.ts` | #7 |
 | SPEC-CRED-5 | testable | Credibility & expectations | `test/credibility.test.ts`, `test/session.test.ts` | #95 |
 | SPEC-CRED-6 | testable | Credibility & expectations | `test/calibration-volcker.test.ts`, `test/credibility.test.ts`, `test/dynamics.test.ts`, `test/engine-params-loaders.test.ts` |  |
+| SPEC-CRED-7 | testable | Credibility & expectations | `test/cadence.test.ts`, `test/dynamics.test.ts` |  |
 | SPEC-CRISIS-1 | testable | Banking stability & the financial cycle | `test/crisis.test.ts`, `test/session-institution-depth.test.ts` |  |
 | SPEC-CULTURE-1 | testable | Director skills, division functions & institutional culture | `test/culture.test.ts`, `test/session-institution-depth.test.ts` |  |
 | SPEC-DIV-1 | testable | Director skills, division functions & institutional culture | `test/division-effects.test.ts`, `test/session-institution-depth.test.ts`, `web/src/InstitutionPanel.tsx` |  |
@@ -79,7 +80,7 @@ input in plain mode; only `--enrich` (workflow-only) fills empty cells from git 
 | SPEC-SIM-3 | testable | Simulation core | `test/clock.test.ts`, `test/gen-state.test.ts` | #5 |
 | SPEC-SIM-4 | testable | Simulation core | `test/gen-state.test.ts`, `test/replay.test.ts`, `test/run-replay.ts` | #6 |
 | SPEC-SIM-5 | testable | Macro dynamics | `test/calibration-volcker.test.ts`, `test/dynamics.test.ts`, `test/engine-params-loaders.test.ts`, `test/session.test.ts` | #20 |
-| SPEC-SIM-6 | testable | Simulation core | `test/cadence.test.ts` | #64 |
+| SPEC-SIM-6 | testable | Simulation core | `test/cadence.test.ts`, `test/dynamics.test.ts` | #64 |
 | SPEC-STAFF-1 | testable | Director skills, division functions & institutional culture | `test/staff.test.ts` |  |
 | SPEC-STAFF-2 | testable | Director skills, division functions & institutional culture | `test/disposition.test.ts` |  |
 | SPEC-STAFF-3 | testable | Staffing economy & the living organization | `test/institution.test.ts`, `test/session-institution.test.ts`, `test/staff-economy.test.ts`, `web/src/InstitutionPanel.test.tsx` |  |

@@ -5,14 +5,21 @@
 // macro trajectory is invariant to cadence:
 //   - AR(1) persistence: p_tick = p_monthly^(1/n)  [exact for geometric decay]
 //   - Mean-reversion speed: α_tick = 1 − (1−α_monthly)^(1/n)  [exact for linear AR]
+//   - Soft-ceiling drain rate: `1 − (1−rate)^(1/n)` — exact when drain is the sole active credibility term; first-order approximation when `credibility_mission_gain` is simultaneously active (cross-term error; 2pp loose tripwire in cadence.test.ts guards against gross divergence)
 //   - Flow contributions (phillips_slope, expectations_adaptivity, expectations_anchor_pull, credibility_mission_gain): divided by n  [first-order approximation, error O(α²/n)]
 //   - Structural params (natural rates, targets, thresholds): unchanged
 //
 // Documented tolerance: monthly and weekly (n=4) trajectories agree within 0.2pp
-// over 36 months; typical error < 0.01pp.
+// over 36 months for inflation, unemployment, and expectations_anchor; typical error < 0.01pp.
+// Credibility cadence invariance is tested at two levels: a tight 0.002-point test for the
+// isolated-drain case (fixed-point state, mission_gain = 0, where geometric scaling is exact);
+// and a loose 2pp tripwire for the combined (drain + active mission_gain) case. The combined
+// trajectory is a first-order approximation — the drain's geometric scaling is exact in isolation,
+// but the cross-term interaction with the /n-scaled mission_gain introduces error.
 import { join } from "node:path";
 import { loadValidatedFile } from "../content/loader.js";
 import type { MacroDynamicsParams } from "./dynamics.js";
+import { CRED_MIN, CRED_MAX } from "./credibility.js";
 
 export interface ClockCadenceParams {
   /** Number of simulation ticks per calendar month. 1 = monthly, 4 = weekly. Integer in [1, 31]; validated by schemas/clock-cadence.schema.json. */
@@ -56,6 +63,19 @@ export function scaleParamsForTick(params: MacroDynamicsParams, n: number): Read
   if (!Number.isInteger(n) || n < 1) {
     throw new RangeError(`scaleParamsForTick: n must be a positive integer, got ${n}`);
   }
+  // Guards run before the n=1 early-return so callers always receive a validated-or-thrown
+  // result. applyMacroDynamics uses both drain_rate and soft_ceiling directly with no guards;
+  // accepting invalid values for n=1 and returning them unchanged would let them propagate.
+  if (!Number.isFinite(params.credibility_drain_rate) || params.credibility_drain_rate <= 0 || params.credibility_drain_rate >= 1) {
+    throw new RangeError(
+      `scaleParamsForTick: credibility_drain_rate must be a finite number in (0,1), got ${params.credibility_drain_rate}`,
+    );
+  }
+  if (!Number.isFinite(params.credibility_soft_ceiling) || params.credibility_soft_ceiling <= CRED_MIN || params.credibility_soft_ceiling >= CRED_MAX) {
+    throw new RangeError(
+      `scaleParamsForTick: credibility_soft_ceiling must be a finite number in (CRED_MIN, CRED_MAX) = (${CRED_MIN}, ${CRED_MAX}), got ${params.credibility_soft_ceiling}`,
+    );
+  }
   if (n === 1) return params;
   return {
     ...params,
@@ -68,5 +88,8 @@ export function scaleParamsForTick(params: MacroDynamicsParams, n: number): Read
     expectations_adaptivity: params.expectations_adaptivity / n,
     expectations_anchor_pull: params.expectations_anchor_pull / n,
     credibility_mission_gain: params.credibility_mission_gain / n,
+    // Drain is AR(1) toward soft_ceiling — exact geometric scaling for the drain alone;
+    // first-order approximation when mission_gain is also active (see module header).
+    credibility_drain_rate: 1 - Math.pow(1 - params.credibility_drain_rate, 1 / n),
   };
 }

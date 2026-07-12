@@ -16,7 +16,9 @@
     "cred_min",
     "cred_max",
     "surprise_penalty",
-    "on_target_gain"
+    "on_target_gain",
+    "credibility_soft_ceiling",
+    "credibility_drain_rate"
   ],
   "properties": {
     "target_inflation": {
@@ -79,6 +81,18 @@
       "type": "number",
       "minimum": 0,
       "description": "SPEC-CRED-5: credibility gained when the mandate is satisfied within tolerance at a meeting (SPEC-CRED-1)."
+    },
+    "credibility_soft_ceiling": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "exclusiveMaximum": 100,
+      "description": "SPEC-CRED-7: credibility above this threshold incurs a monthly drain (prevents endgame pin at cred_max). Must be strictly between CRED_MIN (0) and CRED_MAX (100). The upper bound is also enforced at runtime by loadDynamicsParams() for resilience against schema-bypass paths."
+    },
+    "credibility_drain_rate": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "exclusiveMaximum": 1,
+      "description": "SPEC-CRED-7: monthly drain per unit of credibility above credibility_soft_ceiling. Must be strictly between 0 and 1 (enforced at load time — rate ≥ 1 breaks the 1-(1-r)^(1/n) cadence scaling, SPEC-SIM-6). To prevent endgame pin, the annual drain at cred_max (drain_rate × (cred_max − credibility_soft_ceiling) × 12) must exceed the annual on_target_gain from meetings (on_target_gain × ~8 meetings/year)."
     }
   }
 }
