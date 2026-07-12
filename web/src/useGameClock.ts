@@ -4,6 +4,7 @@
 //  - a scheduled FOMC meeting month pauses ONCE so you can set the rate (resume to hold).
 // The engine calendar is monthly, so each real-time tick advances one month at the
 // chosen speed — the Paradox-style clock feel without a calendar rewrite.
+// See spec/DESIGN.md ("Core loop & the day-to-day") for the design intent.
 
 import { useEffect, useRef, useState } from "react";
 import type { Session } from "../../src/engine/session";
@@ -53,7 +54,8 @@ export function useGameClock(session: Session): GameClock {
       }
       try {
         session.advance(1);
-      } catch {
+      } catch (e) {
+        console.error("useGameClock: session.advance() threw; clock stopped.", e);
         setPlaying(false);
       }
     }, SPEED_MS[speed]);
